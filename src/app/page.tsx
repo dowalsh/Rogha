@@ -16,7 +16,7 @@ export default async function Home() {
         {user ? <CreatePost /> : null}
         <div className="space-y-6">
           {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} dbUserId={dbUserId} />
           ))}
         </div>
       </div>

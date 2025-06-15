@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
 
 export async function syncUser() {
   // should really be done using webhooks in production.. this is fine for now.
@@ -54,7 +55,7 @@ export async function getUserByClerkId(clerkId: string) {
 
 export async function getDbUserId() {
   const { userId: clerkId } = await auth();
-  if (!clerkId) throw new Error("Unauthorized");
+  if (!clerkId) return null;
 
   const user = await getUserByClerkId(clerkId);
 
@@ -66,7 +67,7 @@ export async function getDbUserId() {
 export async function getRandomUsers() {
   try {
     const userId = await getDbUserId();
-
+    if (!userId) return [];
     // get 3 random users exlcuing current user & users that the current user follows
     const randomUsers = await prisma.user.findMany({
       where: {
@@ -98,6 +99,7 @@ export async function getRandomUsers() {
 export async function toggleFollow(targetUserId: string) {
   try {
     const userId = await getDbUserId();
+    if (!userId) return;
     if (userId === targetUserId) throw new Error("You cannot follow yourself");
     const existingFollow = await prisma.follows.findUnique({
       where: {
@@ -136,6 +138,7 @@ export async function toggleFollow(targetUserId: string) {
         }),
       ]);
     }
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.log("Error in toggleFollow", error);

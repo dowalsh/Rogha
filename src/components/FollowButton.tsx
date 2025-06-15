@@ -15,6 +15,8 @@ function FollowButton({ userId }: { userId: string }) {
       toast.success("User followed succesfully");
     } catch (error) {
       toast.error("Error following user");
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -21,7 +21,7 @@ import {
   SendIcon,
 } from "lucide-react";
 import { Textarea } from "./ui/textarea";
-import { DeleteAlertDialog } from "./deleteAlertDialog";
+import { DeleteAlertDialog } from "./DeleteAlertDialog";
 
 type Posts = Awaited<ReturnType<typeof getPosts>>;
 type Post = Posts[number];

@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "migrate:dev": "dotenv -e .env -- prisma migrate dev",
+    "migrate:prod": "dotenv -e .env.production -- prisma migrate deploy",
+    "studio": "dotenv -e .env -- prisma studio"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.9.6",

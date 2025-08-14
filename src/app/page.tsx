@@ -1,3 +1,5 @@
+// https://www.youtube.com/watch?v=vUYopHWOURg&ab_channel=Codesistency
+
 import { getPosts } from "@/actions/post.action";
 import { getDbUserId } from "@/actions/user.action";
 import CreatePost from "@/components/CreatePost";

@@ -8,6 +8,7 @@ import {
   MoonIcon,
   SunIcon,
   UserIcon,
+  Newspaper,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +65,16 @@ function MobileNavbar() {
 
             {isSignedIn ? (
               <>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-3 justify-start"
+                  asChild
+                >
+                  <Link href="/notifications">
+                    <Newspaper className="w-4 h-4" />
+                    Editions
+                  </Link>
+                </Button>
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"

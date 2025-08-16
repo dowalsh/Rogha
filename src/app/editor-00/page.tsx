@@ -1,58 +1,40 @@
-"use client";
+// app/editor/page.tsx
+import { currentUser } from "@clerk/nextjs/server";
+import type { SerializedEditorState } from "lexical";
+import EditorClient from "./_EditorClient";
 
-import { useState } from "react";
-import { SerializedEditorState } from "lexical";
-
-import { Editor } from "@/components/blocks/editor-00/editor";
-
-export const initialValue = {
+const EMPTY: SerializedEditorState = {
   root: {
-    children: [
-      {
-        children: [
-          {
-            detail: 0,
-            format: 0,
-            mode: "normal",
-            style: "",
-            text: "Hello World 🚀",
-            type: "text",
-            version: 1,
-          },
-        ],
-        direction: "ltr",
-        format: "",
-        indent: 0,
-        type: "paragraph",
-        version: 1,
-      },
-    ],
-    direction: "ltr",
-    format: "",
-    indent: 0,
     type: "root",
     version: 1,
+    indent: 0,
+    format: "",
+    direction: "ltr",
+    children: [
+      {
+        type: "paragraph",
+        version: 1,
+        indent: 0,
+        format: "",
+        direction: "ltr",
+        children: [],
+      },
+    ],
   },
-} as unknown as SerializedEditorState;
+} as any;
 
-export default function EditorPage() {
-  const [editorState, setEditorState] =
-    useState<SerializedEditorState>(initialValue);
+export default async function NewEditorPage() {
+  const user = await currentUser(); // same pattern as your Home page
+
+  // Optional: if you want to hard-require sign-in here, you can redirect to /sign-in instead.
+  // if (!user) redirect("/sign-in");
 
   return (
-    <div className="flex flex-col items-center px-4 py-8">
-      {/* Empty div for future content */}
-      <div className="w-full max-w-3xl mb-6">
-        {/* Add any additional content here later */}
-      </div>
-
-      {/* Editor container */}
-      <div className="w-full max-w-3xl">
-        <Editor
-          editorSerializedState={editorState}
-          onSerializedChange={(value) => setEditorState(value)}
-        />
-      </div>
-    </div>
+    <EditorClient
+      initialSerializedState={EMPTY}
+      initialPostId={null}
+      initialVersion={null}
+      initialStatus="DRAFT"
+    />
   );
 }

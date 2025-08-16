@@ -1,44 +1,78 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getDbUserId, getUserByClerkId } from "./user.action";
 import { revalidatePath } from "next/cache";
+import { getDbUserId } from "./user.action";
+import { z } from "zod";
 
-export async function createPost(content: string, image: string) {
+/** Minimal validator for Lexical SerializedEditorState (MVP).
+ *  You can tighten this later with a full schema if you add custom nodes.
+ */
+const SerializedEditorStateSchema = z.any();
+
+const EMPTY_LEXICAL_STATE = {
+  root: {
+    type: "root",
+    version: 1,
+    indent: 0,
+    format: "",
+    direction: "ltr",
+    children: [
+      {
+        type: "paragraph",
+        version: 1,
+        indent: 0,
+        format: "",
+        direction: "ltr",
+        children: [],
+      },
+    ],
+  },
+} as const;
+
+/** CREATE */
+export async function createPost(input: {
+  content?: unknown; // SerializedEditorState JSON
+  image?: string | null;
+  editionId?: string | null;
+  status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
+}) {
   try {
     const userId = await getDbUserId();
-    if (!userId) return;
+    if (!userId) return { success: false, error: "Unauthorized" };
+
+    const parsed =
+      input.content !== undefined
+        ? SerializedEditorStateSchema.parse(input.content)
+        : EMPTY_LEXICAL_STATE;
+
     const post = await prisma.post.create({
       data: {
-        content,
-        image,
         authorId: userId,
+        editionId: input.editionId ?? null,
+        image: input.image ?? null,
+        status: (input.status as any) ?? "DRAFT",
+        content: parsed, // JSON
+        // version defaults to 1 in the DB
       },
     });
 
     revalidatePath("/");
     return { success: true, post };
   } catch (error) {
-    console.log("Failed to create post:", error);
+    console.error("Failed to create post:", error);
     return { success: false, error: "Failed to create post" };
   }
 }
 
+/** READ LIST */
 export async function getPosts() {
-  // const userId = getDbUserId();
   try {
     const posts = await prisma.post.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
       include: {
         author: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-            username: true,
-          },
+          select: { id: true, name: true, image: true, username: true },
         },
         comments: {
           include: {
@@ -48,17 +82,8 @@ export async function getPosts() {
           },
           orderBy: { createdAt: "asc" },
         },
-        likes: {
-          select: {
-            userId: true,
-          },
-        },
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-          },
-        },
+        likes: { select: { userId: true } },
+        _count: { select: { likes: true, comments: true } },
       },
     });
     return posts;
@@ -68,45 +93,92 @@ export async function getPosts() {
   }
 }
 
+/** AUTOSAVE / UPDATE with optimistic concurrency
+ *  - Pass the Post.id, new content JSON, and the current version you loaded.
+ *  - If someone else saved first, you’ll get { conflict: true } and should refetch.
+ */
+export async function updatePost(input: {
+  id: string;
+  content?: unknown; // SerializedEditorState JSON
+  image?: string | null;
+  editionId?: string | null;
+  status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
+  version: number; // client-side version you last loaded
+}) {
+  try {
+    const userId = await getDbUserId();
+    if (!userId) return { success: false, error: "Unauthorized" };
+
+    // Ownership check
+    const existing = await prisma.post.findUnique({
+      where: { id: input.id },
+      select: { authorId: true },
+    });
+    if (!existing) return { success: false, error: "Post not found" };
+    if (existing.authorId !== userId)
+      return { success: false, error: "Unauthorized - no edit permission" };
+
+    const parsedContent =
+      input.content !== undefined
+        ? SerializedEditorStateSchema.parse(input.content)
+        : undefined;
+
+    // Optimistic concurrency: update where id AND version match
+    const res = await prisma.post.updateMany({
+      where: { id: input.id, version: input.version },
+      data: {
+        ...(parsedContent !== undefined ? { content: parsedContent } : {}),
+        ...(input.image !== undefined ? { image: input.image } : {}),
+        ...(input.editionId !== undefined
+          ? { editionId: input.editionId }
+          : {}),
+        ...(input.status ? { status: input.status as any } : {}),
+        version: { increment: 1 },
+      },
+    });
+
+    if (res.count === 0) {
+      // Either not found, or version mismatch (someone else updated first)
+      return { success: false, conflict: true };
+    }
+
+    const updated = await prisma.post.findUnique({
+      where: { id: input.id },
+      select: { id: true, version: true, updatedAt: true },
+    });
+
+    revalidatePath("/");
+    return { success: true, post: updated };
+  } catch (error) {
+    console.error("Failed to update post:", error);
+    return { success: false, error: "Failed to update post" };
+  }
+}
+
+/** LIKE/UNLIKE (unchanged) */
 export async function toggleLike(postId: string) {
   try {
     const userId = await getDbUserId();
     if (!userId) return;
+
     const existingLike = await prisma.like.findUnique({
-      where: {
-        userId_postId: {
-          userId,
-          postId,
-        },
-      },
+      where: { userId_postId: { userId, postId } },
     });
+
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: {
-        authorId: true,
-      },
+      select: { authorId: true },
     });
     if (!post) return;
+
     if (existingLike) {
-      // unlike
       await prisma.like.delete({
-        where: {
-          userId_postId: {
-            userId,
-            postId,
-          },
-        },
+        where: { userId_postId: { userId, postId } },
       });
       return { liked: false };
     } else {
-      // like
       await prisma.$transaction([
-        prisma.like.create({
-          data: {
-            userId,
-            postId,
-          },
-        }),
+        prisma.like.create({ data: { userId, postId } }),
         ...(post.authorId !== userId
           ? [
               prisma.notification.create({
@@ -129,20 +201,17 @@ export async function toggleLike(postId: string) {
   }
 }
 
+/** COMMENT (unchanged except types) */
 export async function createComment(postId: string, content: string) {
   try {
     const userId = await getDbUserId();
-
     if (!userId) return;
     if (!content) throw new Error("Content is required");
 
     const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
+      where: { id: postId },
       select: { authorId: true },
     });
-
     if (!post) throw new Error("Post not found");
 
     const [comment] = await prisma.$transaction(async (tx) => {
@@ -173,6 +242,7 @@ export async function createComment(postId: string, content: string) {
   }
 }
 
+/** DELETE (unchanged) */
 export async function deletePost(postId: string) {
   try {
     const userId = await getDbUserId();
@@ -186,11 +256,8 @@ export async function deletePost(postId: string) {
     if (post.authorId !== userId)
       throw new Error("Unauthorized - no delete permission");
 
-    await prisma.post.delete({
-      where: { id: postId },
-    });
-
-    revalidatePath("/"); // purge the cache
+    await prisma.post.delete({ where: { id: postId } });
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("Failed to delete post:", error);

@@ -26,6 +26,65 @@ import { DeleteAlertDialog } from "./DeleteAlertDialog";
 type Posts = Awaited<ReturnType<typeof getPosts>>;
 type Post = Posts[number];
 
+// --- add near the top of the file (above the component) ---
+type LexicalNode =
+  | { type: "text"; text?: string; children?: LexicalNode[] }
+  | { type: string; children?: LexicalNode[] }
+  | any;
+
+type SerializedEditorState =
+  | {
+      root?: { children?: LexicalNode[] } | any;
+    }
+  | any;
+
+/** Minimal plain-text extractor for Lexical SerializedEditorState.
+ *  - Concatenates TEXT nodes across paragraphs
+ *  - Adds newlines between block nodes
+ *  - Ignores formatting marks (bold/italic/etc.)
+ */
+function lexicalToPlainText(state: SerializedEditorState): string {
+  try {
+    if (!state || typeof state === "string") {
+      // Legacy or unexpected type: just return the string
+      return (state as string) ?? "";
+    }
+    const root = state.root;
+    if (!root || !Array.isArray(root.children)) return "";
+
+    const parts: string[] = [];
+
+    const visit = (node: LexicalNode) => {
+      if (!node) return;
+      if (node.type === "text" && typeof node.text === "string") {
+        parts.push(node.text);
+        return;
+      }
+      if (Array.isArray(node.children)) {
+        for (const child of node.children) visit(child);
+        // Add a newline after common block nodes
+        if (
+          node.type === "paragraph" ||
+          node.type === "heading" ||
+          node.type === "list" ||
+          node.type === "quote"
+        ) {
+          parts.push("\n");
+        }
+      }
+    };
+
+    for (const child of root.children) visit(child);
+    // Collapse whitespace/newlines for a compact preview
+    return parts
+      .join("")
+      .replace(/\n{2,}/g, "\n")
+      .trim();
+  } catch {
+    return "";
+  }
+}
+
 function PostCard({ post, dbUserId }: { post: Post; dbUserId: string | null }) {
   const { user } = useUser();
   const [newComment, setNewComment] = useState("");
@@ -122,8 +181,8 @@ function PostCard({ post, dbUserId }: { post: Post; dbUserId: string | null }) {
                   />
                 )}
               </div>
-              <p className="mt-2 text-sm text-foreground break-words">
-                {post.content}
+              <p className="mt-2 text-sm text-foreground break-words whitespace-pre-wrap">
+                {lexicalToPlainText(post.content) || " "}
               </p>
             </div>
           </div>

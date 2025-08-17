@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import React, { use, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Avatar, AvatarImage } from "./ui/avatar";
 import { Textarea } from "./ui/textarea";
@@ -9,6 +9,41 @@ import { Button } from "./ui/button";
 import { ImageIcon, Loader2Icon, SendIcon } from "lucide-react";
 import { createPost } from "@/actions/post.action";
 import { toast } from "react-hot-toast";
+
+// Convert plain text into a minimal Lexical SerializedEditorState
+function textToLexicalState(text: string) {
+  return {
+    root: {
+      type: "root",
+      version: 1,
+      indent: 0,
+      format: "",
+      direction: "ltr",
+      children: [
+        {
+          type: "paragraph",
+          version: 1,
+          indent: 0,
+          format: "",
+          direction: "ltr",
+          children: text
+            ? [
+                {
+                  type: "text",
+                  version: 1,
+                  detail: 0,
+                  format: 0,
+                  mode: "normal",
+                  style: "",
+                  text,
+                },
+              ]
+            : [],
+        },
+      ],
+    },
+  };
+}
 
 function CreatePost() {
   const { user } = useUser();
@@ -18,18 +53,30 @@ function CreatePost() {
   const [showImageUpload, setShowImageUpload] = useState(false);
 
   const handleSubmit = async () => {
-    if (!content.trim() && !imageUrl) return;
+    const hasContent = content.trim().length > 0;
+    const hasImage = imageUrl.trim().length > 0;
+    if (!hasContent && !hasImage) return;
+
     setIsPosting(true);
     try {
-      const result = await createPost(content, imageUrl);
+      const serialized = textToLexicalState(content);
+
+      const result = await createPost({
+        content: serialized, // ✅ JSON (Lexical)
+        image: hasImage ? imageUrl : null,
+        status: "DRAFT", // optional (your server can default to DRAFT)
+      });
+
       if (result?.success) {
         setContent("");
         setImageUrl("");
         setShowImageUpload(false);
         toast.success("Post created!");
+      } else {
+        toast.error(result?.error || "Failed to create post");
       }
     } catch (error) {
-      toast.error("Failed to crete post");
+      toast.error("Failed to create post");
     } finally {
       setIsPosting(false);
     }
@@ -51,26 +98,31 @@ function CreatePost() {
               disabled={isPosting}
             />
           </div>
-          {/* TODO handle image uploads */}
+
+          {/* TODO handle image uploads
+          <div className="flex space-x-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-primary"
+              onClick={() => setShowImageUpload(!showImageUpload)}
+              disabled={isPosting}
+            >
+              <ImageIcon className="size-4 mr-2" />
+              Photo
+            </Button>
+          </div>
+          */}
 
           <div className="flex items-center justify-between border-t pt-4">
             <div className="flex space-x-2">
-              {/* <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-primary"
-                onClick={() => setShowImageUpload(!showImageUpload)}
-                disabled={isPosting}
-              >
-                <ImageIcon className="size-4 mr-2" />
-                Photo
-              </Button> */}
+              {/* reserved for future actions */}
             </div>
             <Button
               className="flex items-center"
               onClick={handleSubmit}
-              disabled={(!content.trim() && !imageUrl) || isPosting}
+              disabled={(!content.trim() && !imageUrl.trim()) || isPosting}
             >
               {isPosting ? (
                 <>

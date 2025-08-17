@@ -1,90 +1,91 @@
-import type {
+// src/components/editor/nodes/emoji-node.tsx
+"use client";
+
+import * as React from "react";
+import {
   EditorConfig,
   LexicalNode,
   NodeKey,
   SerializedTextNode,
   Spread,
-} from "lexical"
-import { $applyNodeReplacement, TextNode } from "lexical"
+  TextNode,
+} from "lexical";
 
-export type SerializedEmojiNode = Spread<
+type SerializedEmojiNode = Spread<
   {
-    className: string
+    type: "emoji";
+    version: 1;
+    emoji: string;
   },
   SerializedTextNode
->
+>;
 
 export class EmojiNode extends TextNode {
-  __className: string
+  __emoji: string;
 
   static getType(): string {
-    return "emoji"
+    return "emoji";
   }
 
   static clone(node: EmojiNode): EmojiNode {
-    return new EmojiNode(node.__className, node.__text, node.__key)
-  }
-
-  constructor(className: string, text: string, key?: NodeKey) {
-    super(text, key)
-    this.__className = className
-  }
-
-  createDOM(config: EditorConfig): HTMLElement {
-    const dom = document.createElement("span")
-    const inner = super.createDOM(config)
-    dom.className = this.__className
-    inner.className = "emoji-inner"
-    dom.appendChild(inner)
-    return dom
-  }
-
-  updateDOM(
-    prevNode: TextNode,
-    dom: HTMLElement,
-    config: EditorConfig
-  ): boolean {
-    const inner = dom.firstChild
-    if (inner === null) {
-      return true
-    }
-    super.updateDOM(prevNode, inner as HTMLElement, config)
-    return false
+    return new EmojiNode(node.__emoji, node.__text, node.__key);
   }
 
   static importJSON(serializedNode: SerializedEmojiNode): EmojiNode {
-    const node = $createEmojiNode(serializedNode.className, serializedNode.text)
-    node.setFormat(serializedNode.format)
-    node.setDetail(serializedNode.detail)
-    node.setMode(serializedNode.mode)
-    node.setStyle(serializedNode.style)
-    return node
+    const node = new EmojiNode(serializedNode.emoji, serializedNode.text);
+    node.setFormat(serializedNode.format);
+    node.setDetail(serializedNode.detail);
+    node.setMode(serializedNode.mode);
+    node.setStyle(serializedNode.style);
+    return node;
   }
 
   exportJSON(): SerializedEmojiNode {
     return {
       ...super.exportJSON(),
-      className: this.getClassName(),
       type: "emoji",
-    }
+      version: 1,
+      emoji: this.__emoji,
+    };
   }
 
-  getClassName(): string {
-    const self = this.getLatest()
-    return self.__className
+  constructor(emoji: string, text?: string, key?: NodeKey) {
+    // we can store the actual emoji char in text for selection behavior
+    super(text ?? emoji, key);
+    this.__emoji = emoji;
   }
+
+  // Optional: control behavior
+  isTextEntity(): true {
+    return true;
+  }
+
+  createDOM(config: EditorConfig): HTMLElement {
+    const dom = super.createDOM(config);
+    // Style your emoji (optional)
+    dom.classList.add("emoji-node");
+    return dom;
+  }
+
+  // ⛔️ FIX: use `this` for the first param to match the base signature
+  updateDOM(prevNode: this, dom: HTMLElement, config: EditorConfig): boolean {
+    // If nothing relevant changed, reuse DOM
+    if (this.__emoji === prevNode.__emoji && this.__text === prevNode.__text) {
+      // delegate to parent (handles format/style changes)
+      return super.updateDOM(prevNode, dom, config);
+    }
+    // If emoji/text changed, ask Lexical to re-create DOM
+    return false;
+  }
+}
+
+// helper to construct
+export function $createEmojiNode(emoji: string): EmojiNode {
+  return new EmojiNode(emoji);
 }
 
 export function $isEmojiNode(
-  node: LexicalNode | null | undefined
+  node?: LexicalNode | null | undefined
 ): node is EmojiNode {
-  return node instanceof EmojiNode
-}
-
-export function $createEmojiNode(
-  className: string,
-  emojiText: string
-): EmojiNode {
-  const node = new EmojiNode(className, emojiText).setMode("token")
-  return $applyNodeReplacement(node)
+  return node instanceof EmojiNode;
 }

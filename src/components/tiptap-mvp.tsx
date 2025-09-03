@@ -95,13 +95,6 @@ export function TiptapMvp({
         >
           • List
         </Button>
-        <Button
-          size="sm"
-          variant={editor?.isActive("codeBlock") ? "default" : "ghost"}
-          onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
-        >
-          {"</>"}
-        </Button>
       </div>
 
       <div className="p-3">

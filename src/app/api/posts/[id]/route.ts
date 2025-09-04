@@ -111,6 +111,7 @@ export async function PUT(
       data: {
         content: body.content,
         status: body.status,
+        title: body.title,
       },
     });
 

@@ -55,6 +55,7 @@ enum PostStatus {
 
 model Post {
   id          String     @id @default(cuid())
+  title      String?
   authorId    String
   editionId   String?
   content     Json?     // TipTap Json

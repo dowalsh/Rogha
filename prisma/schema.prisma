@@ -39,7 +39,7 @@ model User {
 model Edition {
   id          String   @id @default(cuid())
   title       String?
-  publishedAt DateTime
+  publishedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -57,7 +57,7 @@ model Post {
   id          String     @id @default(cuid())
   authorId    String
   editionId   String?
-  content     Json     // Lexical SerializedEditorState (source of truth), temporarily optional
+  content     Json?     // TipTap Json
   image       String?
   status      PostStatus @default(DRAFT)
   version     Int        @default(1) // optimistic concurrency for autosave
@@ -66,7 +66,7 @@ model Post {
   updatedAt   DateTime   @updatedAt
 
   author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  edition     Edition?   @relation(fields: [editionId], references: [id], onDelete: Cascade)
+  edition     Edition?   @relation(fields: [editionId], references: [id], onDelete: SetNull)
   comments    Comment[]
   likes       Like[]
   notifications Notification[]

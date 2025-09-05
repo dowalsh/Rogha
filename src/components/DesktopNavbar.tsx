@@ -1,4 +1,10 @@
-import { Newspaper, BellIcon, HomeIcon, UserIcon } from "lucide-react";
+import {
+  Newspaper,
+  BellIcon,
+  HomeIcon,
+  UserIcon,
+  NotebookPen,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
@@ -12,7 +18,7 @@ async function DesktopNavbar() {
 
   return (
     <div className="hidden md:flex items-center space-x-4">
-      <ModeToggle />
+      {/* <ModeToggle /> */}
 
       <Button variant="ghost" className="flex items-center gap-2" asChild>
         <Link href="/">
@@ -30,12 +36,19 @@ async function DesktopNavbar() {
             </Link>
           </Button>
           <Button variant="ghost" className="flex items-center gap-2" asChild>
+            <Link href="/posts">
+              <NotebookPen className="w-4 h-4" />
+              <span className="hidden lg:inline">Posts</span>
+            </Link>
+          </Button>
+          {/* <Button variant="ghost" className="flex items-center gap-2" asChild>
             <Link href="/notifications">
               <BellIcon className="w-4 h-4" />
               <span className="hidden lg:inline">Notifications</span>
             </Link>
           </Button>
-          <Button variant="ghost" className="flex items-center gap-2" asChild>
+           */}
+          {/* <Button variant="ghost" className="flex items-center gap-2" asChild>
             <Link
               href={`/profile/${
                 user.username ??
@@ -45,7 +58,7 @@ async function DesktopNavbar() {
               <UserIcon className="w-4 h-4" />
               <span className="hidden lg:inline">Profile</span>
             </Link>
-          </Button>
+          </Button> */}
           <UserButton />
         </>
       ) : (

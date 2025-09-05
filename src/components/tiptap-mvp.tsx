@@ -70,6 +70,12 @@ export function TiptapMvp({
     } catch {}
   }, [editor, value]);
 
+  // 2) React to editability changes ONLY
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!!editable);
+  }, [editor, editable]);
+
   return (
     <div className={cn("rounded-md border", className)}>
       {/* Tiny toolbar (bold/italic, bullets, code) */}

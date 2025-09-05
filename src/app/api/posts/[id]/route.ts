@@ -125,10 +125,9 @@ export async function PUT(
   }
 }
 
-// DELETE post by ID
 export async function DELETE(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  _req: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
     const { userId: clerkUserId } = await auth();
@@ -136,22 +135,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get the current user from Clerk to find their email
-    const { currentUser } = await import("@clerk/nextjs/server");
-    const user = await currentUser();
-
-    if (!user || !user.emailAddresses[0]?.emailAddress) {
-      return NextResponse.json(
-        { error: "User email not found" },
-        { status: 400 }
-      );
-    }
-
-    // Find the user in our database by email
     const dbUser = await prisma.user.findUnique({
-      where: { email: user.emailAddresses[0].emailAddress },
+      where: { clerkId: clerkUserId },
+      select: { id: true },
     });
-
     if (!dbUser) {
       return NextResponse.json(
         { error: "User not found in database" },
@@ -159,21 +146,20 @@ export async function DELETE(
       );
     }
 
-    const { id } = await context.params;
-
-    const post = await prisma.post.findUnique({
-      where: { id },
-    });
+    const { id } = context.params;
+    const post = await prisma.post.findUnique({ where: { id } });
 
     if (!post || post.authorId !== dbUser.id) {
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    await prisma.post.delete({
-      where: { id },
-    });
+    // Optional guardrails (uncomment if you want to block deletes for published/archived)
+    // if (post.status === "PUBLISHED" || post.status === "ARCHIVED") {
+    //   return NextResponse.json({ error: "Cannot delete published/archived post" }, { status: 409 });
+    // }
 
-    return NextResponse.json({ message: "Post deleted" }, { status: 200 });
+    await prisma.post.delete({ where: { id } });
+    return NextResponse.json({ ok: true }, { status: 200 }); // or return new Response(null, { status: 204 })
   } catch (error) {
     console.error("[POST_DELETE_ERROR]", error);
     return NextResponse.json(

@@ -41,4 +41,6 @@
 //     />
 //   );
 // }
-// export default ProfilePageServer;
+export default function ProfilePageServer() {
+  return null;
+}

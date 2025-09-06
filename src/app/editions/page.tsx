@@ -1,8 +1,9 @@
+// src/app/editions/page.tsx
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
-import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +20,23 @@ export default function EditionsPage() {
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  const { user, isLoaded } = useUser();
+
+  // determine admin on the client using a public env var
+  const isAdmin = useMemo(() => {
+    if (!isLoaded) return false;
+    const email =
+      user?.primaryEmailAddress?.emailAddress ??
+      user?.emailAddresses?.[0]?.emailAddress ??
+      "";
+    const list =
+      (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean) || [];
+    return email ? list.includes(email.toLowerCase()) : false;
+  }, [isLoaded, user]);
 
   const fetchEditions = useCallback(async () => {
     setLoading(true);
@@ -41,7 +59,6 @@ export default function EditionsPage() {
   }, [fetchEditions]);
 
   const handlePublishLastWeek = async () => {
-    console.log("Publishing last week...");
     setPublishing(true);
     setMsg(null);
     try {
@@ -86,9 +103,13 @@ export default function EditionsPage() {
             <CardHeader className="border-b">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle>Editions</CardTitle>
-                <Button onClick={handlePublishLastWeek} disabled={publishing}>
-                  {publishing ? "Publishing…" : "Publish last week"}
-                </Button>
+
+                {/* Show publish button ONLY for admins */}
+                {isAdmin && (
+                  <Button onClick={handlePublishLastWeek} disabled={publishing}>
+                    {publishing ? "Publishing…" : "Publish last week"}
+                  </Button>
+                )}
               </div>
               {msg && (
                 <div className="pt-2 text-sm text-muted-foreground">{msg}</div>

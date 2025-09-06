@@ -5,7 +5,7 @@ import { notFound, useRouter } from "next/navigation";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
-import { Send, Undo, Trash2 } from "lucide-react";
+import { Send, Undo, Trash2, ChevronLeft } from "lucide-react";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 
@@ -131,6 +131,16 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     <div className="mx-auto max-w-3xl p-6 space-y-4">
       {/* Top bar with delete on the right */}
       <div className="flex items-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push("/posts")}
+          className="mr-2"
+          title="Back to posts"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
         <div className="text-sm text-muted-foreground">
           {editorLocked ? `Status: ${status} (read-only)` : `Status: ${status}`}
         </div>

@@ -1,23 +1,22 @@
-// src/components/PostView.tsx
+// src/components/PostRow.tsx
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { title } from "process";
 
-type PostViewProps = {
+import { Button } from "@/components/ui/button";
+type PostRowProps = {
   title: string;
   id: string;
   status: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
-  edition?: string;
+  edition?: { id: string; title: string }; // Update edition type
   updatedAt: Date;
 };
 
-export function PostView({
+export function PostRow({
   id,
   title,
   status,
   edition,
   updatedAt,
-}: PostViewProps) {
+}: PostRowProps) {
   return (
     <tr className="border-t">
       <td className="p-3">
@@ -26,7 +25,20 @@ export function PostView({
         </Link>
       </td>
       <td className="p-3">{status}</td>
-      <td className="p-3">{edition ?? "—"}</td>
+      <td className="p-3">
+        {edition ? (
+          <Button asChild variant="link" size="sm" className="p-0 h-auto">
+            <Link
+              href={`/editions/${edition.id}`}
+              aria-label={`Open ${edition.title}`}
+            >
+              {edition.title}
+            </Link>
+          </Button>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
       <td className="p-3">
         {new Intl.DateTimeFormat("en-US", {
           dateStyle: "medium",

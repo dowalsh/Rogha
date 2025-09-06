@@ -4,31 +4,31 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
-import { PostView } from "@/components/PostView";
+import { PostRow } from "@/components/PostRow";
 import { Button } from "@/components/ui/button";
 
-type PostRow = {
+// ✅ rename to avoid shadowing the component & match API shape
+type PostRowData = {
   id: string;
   title?: string | null;
   status: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
   updatedAt: string; // from JSON
-  edition?: { title?: string | null } | null;
+  edition?: { id: string; title: string | null } | null; // ✅ now has id + title
 };
 
 export default function PostsPage() {
   const router = useRouter();
-  const [posts, setPosts] = useState<PostRow[] | null>(null);
+  const [posts, setPosts] = useState<PostRowData[] | null>(null); // ✅ use PostRowData
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
-  // Load posts from your API
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/posts", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: PostRow[] = await res.json();
+        const data: PostRowData[] = await res.json(); // ✅ typed to match API
         if (!cancelled) setPosts(data);
       } catch (e) {
         console.error("Failed to load posts:", e);
@@ -42,7 +42,6 @@ export default function PostsPage() {
     };
   }, []);
 
-  // Create draft → go to editor
   const handleCreate = async () => {
     try {
       setCreating(true);
@@ -97,13 +96,20 @@ export default function PostsPage() {
                 </thead>
                 <tbody>
                   {(posts ?? []).map((p) => (
-                    <PostView
+                    <PostRow
                       key={p.id}
                       id={p.id}
                       title={p.title ?? "Untitled Post"}
                       status={p.status}
-                      edition={p.edition?.title ?? undefined}
                       updatedAt={new Date(p.updatedAt)}
+                      edition={
+                        p.edition
+                          ? {
+                              id: p.edition.id,
+                              title: p.edition.title ?? "Untitled Edition",
+                            }
+                          : undefined
+                      }
                     />
                   ))}
                 </tbody>

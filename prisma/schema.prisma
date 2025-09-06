@@ -37,13 +37,17 @@ model User {
 }
 
 model Edition {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String?
+  weekStart   DateTime  // Monday 00:00:00 in your canonical TZ, stored as UTC
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   posts       Post[]
+
+  @@unique([weekStart])
+  @@index([publishedAt])
 }
 
 enum PostStatus {

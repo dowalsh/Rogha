@@ -15,8 +15,6 @@ type EditionRow = {
   _count?: { posts: number };
 };
 
-// test
-
 export default function EditionsPage() {
   const [editions, setEditions] = useState<EditionRow[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +23,7 @@ export default function EditionsPage() {
 
   const { user, isLoaded } = useUser();
 
-  // determine admin on the client using a public env var
+  // Client-side admin check (for button visibility only)
   const isAdmin = useMemo(() => {
     if (!isLoaded) return false;
     const email =
@@ -60,17 +58,25 @@ export default function EditionsPage() {
     fetchEditions();
   }, [fetchEditions]);
 
+  // ✅ Use the MANUAL ADMIN endpoint (Clerk session + ADMIN_EMAILS), not the cron path
   const handlePublishLastWeek = async () => {
     setPublishing(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/editions/publish", {
+      console.log("[editions] publish button clicked");
+      const res = await fetch("/api/cron/publish-weekly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: "{}", // default: publish last week
+        credentials: "include", // make sure Clerk session cookie is sent (helpful in local testing)
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || res.statusText);
+
+      const data = await res.json().catch(() => ({}));
+      console.log("[editions] publish response", res.status, data);
+
+      if (!res.ok) {
+        throw new Error(data?.error || res.statusText || "Publish failed");
+      }
 
       if (data.published) {
         setMsg(
@@ -85,6 +91,7 @@ export default function EditionsPage() {
             : "Nothing to publish for last week."
         );
       }
+
       await fetchEditions();
     } catch (e: any) {
       setMsg(e.message || "Publish failed.");

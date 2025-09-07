@@ -86,17 +86,22 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
     const next: PostStatus = status === "SUBMITTED" ? "DRAFT" : "SUBMITTED";
     try {
+      setIsSaving(true);
+
       const res = await fetch(`/api/posts/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next }),
+        body: JSON.stringify({ title, content: doc, status: next }),
       });
       if (!res.ok) throw new Error(`Toggle failed: ${res.status}`);
+      setSaved(true);
       setStatus(next);
       await res.json();
       setSaved(true);
     } catch (err) {
       console.error("Failed to toggle submit:", err);
+    } finally {
+      setIsSaving(false);
     }
   };
 

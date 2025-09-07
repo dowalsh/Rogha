@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * Publishes the edition for the given weekStart (LA Monday 00:00 stored in UTC).
- * Idempotent: if already published, it returns without changing publishedAt.
+ * Idempotent for the "publishedAt" stamp. Subsequent runs will still promote any
+ * newly SUBMITTED posts to PUBLISHED.
  */
 export async function publishEditionForWeek(weekStart: Date) {
   return prisma.$transaction(async (tx) => {
@@ -11,46 +12,53 @@ export async function publishEditionForWeek(weekStart: Date) {
       select: { id: true, publishedAt: true },
     });
 
-    // Nothing to publish (no edition was created for that week)
+    // No edition for that week → nothing to do
     if (!edition) {
-      return { ok: true, published: false, reason: "NO_EDITION" as const };
+      return {
+        ok: true,
+        published: false,
+        reason: "NO_EDITION" as const,
+        postsPublished: 0,
+      };
     }
 
-    // Already published — do nothing
+    // If already published: still promote any SUBMITTED posts now
     if (edition.publishedAt) {
+      const { count: promotedNow } = await tx.post.updateMany({
+        where: { editionId: edition.id, status: "SUBMITTED" },
+        data: { status: "PUBLISHED" },
+      });
+
       return {
         ok: true,
         published: false,
         reason: "ALREADY_PUBLISHED" as const,
         editionId: edition.id,
+        postsPublished: promotedNow,
       };
     }
 
-    // Publish the edition and promote posts
+    // First-time publish: stamp publishedAt, publish SUBMITTED, archive remaining DRAFT
     await tx.edition.update({
       where: { id: edition.id },
       data: { publishedAt: new Date() },
     });
 
-    // Publish submitted posts
     const { count: publishedCount } = await tx.post.updateMany({
       where: { editionId: edition.id, status: "SUBMITTED" },
       data: { status: "PUBLISHED" },
     });
 
-    // Archive draft posts
     await tx.post.updateMany({
       where: { editionId: edition.id, status: "DRAFT" },
       data: { status: "ARCHIVED" },
     });
 
-    const count = publishedCount;
-
     return {
       ok: true,
       published: true,
       editionId: edition.id,
-      postsPublished: count,
+      postsPublished: publishedCount,
     };
   });
 }

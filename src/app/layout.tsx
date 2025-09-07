@@ -38,7 +38,7 @@ export default function RootLayout({
           <TooltipProvider delayDuration={150}>
             <ThemeProvider
               attribute="class"
-              defaultTheme="system"
+              forcedTheme="light"
               enableSystem
               disableTransitionOnChange
             >

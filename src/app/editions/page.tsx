@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FollowsCarousel } from "@/components/FollowsCarousel";
 
 type EditionRow = {
   id: string;
@@ -20,6 +21,7 @@ export default function EditionsPage() {
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [refreshFollows, setRefreshFollows] = useState(0);
 
   const { user, isLoaded } = useUser();
 
@@ -107,6 +109,11 @@ export default function EditionsPage() {
       </SignedOut>
 
       <SignedIn>
+        {/* …inside <SignedIn> … */}
+        <div className="space-y-4">
+          <FollowsCarousel refreshKey={refreshFollows} />
+          {/* your existing Editions card(s) below */}
+        </div>
         <div className="space-y-4">
           <Card>
             <CardHeader className="border-b">

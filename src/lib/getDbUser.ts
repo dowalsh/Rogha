@@ -1,25 +1,22 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+// lib/getDbUser.ts
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
 export async function getDbUser() {
-  // Clerk auth
-  const { userId } = await auth();
-  if (!userId) {
-    return { error: { code: "UNAUTHORIZED", status: 401 } as const };
-  }
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { user: null, error: { code: "UNAUTHORIZED", status: 401 } };
+    }
 
-  // Clerk current user → email
-  const user = await currentUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress;
-  if (!email) {
-    return { error: { code: "EMAIL_NOT_FOUND", status: 400 } as const };
-  }
+    const dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    if (!dbUser) {
+      return { user: null, error: { code: "NOT_FOUND", status: 404 } };
+    }
 
-  // DB lookup
-  const dbUser = await prisma.user.findUnique({ where: { email } });
-  if (!dbUser) {
-    return { error: { code: "USER_NOT_IN_DB", status: 404 } as const };
+    return { user: dbUser, error: null };
+  } catch (e) {
+    console.error("[getDbUser] error:", e);
+    return { user: null, error: { code: "INTERNAL", status: 500 } };
   }
-
-  return { user: dbUser } as const;
 }

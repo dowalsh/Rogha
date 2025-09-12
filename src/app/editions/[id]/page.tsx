@@ -1,41 +1,44 @@
+"use client";
+
 // src/app/editions/[id]/page.tsx
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
 
-export const dynamic = "force-dynamic"; // optional while iterating
+export const dynamic = "force-dynamic";
+
+type EditionResponse = {
+  id: string;
+  title?: string | null;
+  weekStart: string; // comes from API as ISO
+  posts: {
+    id: string;
+    title?: string | null;
+    author?: { id: string; name?: string | null; image?: string | null } | null;
+  }[];
+};
 
 export default async function EditionPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const edition = await prisma.edition.findUnique({
-    where: { id: params.id },
-    select: {
-      id: true,
-      title: true,
-      weekStart: true,
-      posts: {
-        where: { status: "PUBLISHED" },
-        orderBy: { updatedAt: "desc" },
-        select: {
-          id: true,
-          title: true,
-          author: { select: { name: true } },
-        },
-      },
-    },
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/editions/${params.id}`,
+    { cache: "no-store" }
+  );
 
-  if (!edition) notFound();
+  if (res.status === 404) notFound();
+  if (!res.ok) throw new Error(`Failed to load edition: ${res.status}`);
+
+  const edition: EditionResponse = await res.json();
 
   const editionLabel =
-    edition.title ?? `Week of ${edition.weekStart.toISOString().slice(0, 10)}`;
+    edition.title ??
+    `Week of ${new Date(edition.weekStart).toISOString().slice(0, 10)}`;
 
   return (
     <div className="space-y-4">

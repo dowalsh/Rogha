@@ -44,7 +44,7 @@ async function Sidebar() {
               <p className="mt-3 text-sm text-muted-foreground">{user.bio}</p>
             )}
 
-            <div className="w-full">
+            {/* <div className="w-full">
               <Separator className="my-4" />
               <div className="flex justify-between">
                 <div>
@@ -58,7 +58,7 @@ async function Sidebar() {
                 </div>
               </div>
               <Separator className="my-4" />
-            </div>
+            </div> */}
 
             <div className="w-full space-y-2 text-sm">
               <div className="flex items-center text-muted-foreground">

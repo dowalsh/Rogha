@@ -2,9 +2,9 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { publishEditionForWeek } from "@/lib/editions";
 import { getWeekStartUTC } from "@/lib/utils";
+import { getDbUser } from "@/lib/getDbUser";
 
 function isAdminEmail(email?: string | null) {
   const list =
@@ -46,13 +46,12 @@ async function handlePublish(req: NextRequest) {
 
     // Allow POST from a signed-in admin (manual button)
     if (!bearerOk && req.method === "POST") {
-      const { userId } = await auth();
-      if (!userId) {
-        console.warn("[cron] 401 no Clerk session (POST manual)");
+      const { user, error } = await getDbUser();
+      if (error) {
+        console.warn("[cron] 401/500 getDbUser failed (POST manual)", error);
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      const user = await currentUser();
-      adminEmail = user?.emailAddresses?.[0]?.emailAddress ?? null;
+      adminEmail = user.email;
       adminOk = isAdminEmail(adminEmail);
       if (!adminOk) {
         console.warn("[cron] 403 not admin", { adminEmail });
@@ -78,7 +77,6 @@ async function handlePublish(req: NextRequest) {
     });
 
     // ── Target week selection ────────────────────────────────────────────────────
-    // POST may include { weekISO: "YYYY-MM-DD" } for manual runs; GET (cron) uses "yesterday".
     let target = new Date(Date.now() - 24 * 60 * 60 * 1000); // default: "yesterday"
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({} as { weekISO?: string }));

@@ -8,12 +8,10 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
-import ModeToggle from "./ModeToggle";
-import { currentUser } from "@clerk/nextjs/server";
+import { getDbUser } from "@/lib/getDbUser";
 
 async function DesktopNavbar() {
-  const user = await currentUser();
-
+  const { user, error } = await getDbUser();
   //   console.log("Current User:", user);
 
   return (

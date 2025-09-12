@@ -1,4 +1,5 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { getDbUser } from "@/lib/getDbUser";
+
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { Button } from "./ui/button";
@@ -9,11 +10,16 @@ import { Separator } from "./ui/separator";
 import { LinkIcon, MapPinIcon } from "lucide-react";
 
 async function Sidebar() {
-  const authUser = await currentUser();
-  if (!authUser) return <UnAuthenticatedSidebar />;
+  const { user, error } = await getDbUser();
 
-  const user = await getUserByClerkId(authUser.id);
-  if (!user) return null;
+  if (error?.code === "UNAUTHORIZED") {
+    return <UnAuthenticatedSidebar />;
+  }
+
+  if (!user) {
+    // could be NOT_FOUND or INTERNAL; render nothing or a fallback
+    return null;
+  }
 
   return (
     <div className="sticky top-20">

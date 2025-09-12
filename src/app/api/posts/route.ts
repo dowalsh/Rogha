@@ -1,46 +1,28 @@
 // src/app/api/posts/route.ts
+export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { getDbUser } from "@/lib/getDbUser";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 
 // GET all posts for the signed-in user (most recent first)
 export async function GET(_req: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = await currentUser();
-    const email = user?.emailAddresses?.[0]?.emailAddress;
-    if (!email) {
-      return NextResponse.json(
-        { error: "User email not found" },
-        { status: 400 }
-      );
-    }
-
-    const dbUser = await prisma.user.findUnique({ where: { email } });
-    if (!dbUser) {
-      return NextResponse.json(
-        { error: "User not found in database" },
-        { status: 404 }
-      );
+    const { user, error } = await getDbUser();
+    if (error) {
+      return NextResponse.json({ error: error.code }, { status: error.status });
     }
 
     const posts = await prisma.post.findMany({
-      where: { authorId: dbUser.id },
+      where: { authorId: user.id },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
         title: true,
         status: true,
         updatedAt: true,
-        // pull just what the row renders from Edition
         edition: { select: { id: true, title: true } },
-        // omit `content` and other heavy fields for the listing
       },
     });
 
@@ -57,26 +39,9 @@ export async function GET(_req: NextRequest) {
 // POST create a new draft post and link it to this week's edition
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = await currentUser();
-    const email = user?.emailAddresses?.[0]?.emailAddress;
-    if (!email) {
-      return NextResponse.json(
-        { error: "User email not found" },
-        { status: 400 }
-      );
-    }
-
-    const dbUser = await prisma.user.findUnique({ where: { email } });
-    if (!dbUser) {
-      return NextResponse.json(
-        { error: "User not found in database" },
-        { status: 404 }
-      );
+    const { user, error } = await getDbUser();
+    if (error) {
+      return NextResponse.json({ error: error.code }, { status: error.status });
     }
 
     let body: any = {};
@@ -91,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     const { id } = await prisma.$transaction(async (tx) => {
       const edition = await tx.edition.upsert({
-        where: { weekStart: weekStartUTC }, // @@unique([weekStart])
+        where: { weekStart: weekStartUTC },
         update: {},
         create: {
           weekStart: weekStartUTC,
@@ -100,10 +65,9 @@ export async function POST(req: NextRequest) {
         select: { id: true },
       });
 
-      // ✅ Use scalar FKs (unchecked path): authorId + editionId
       const post = await tx.post.create({
         data: {
-          authorId: dbUser.id,
+          authorId: user.id,
           editionId: edition.id,
           title: (body.title as string | null) ?? null,
           status: "DRAFT",

@@ -34,6 +34,10 @@ model User {
   following Follows[] @relation("follower")
   notifications         Notification[] @relation("userNotifications")
   notificationsCreated  Notification[] @relation("notificationCreator")
+
+  friendshipsA          Friendship[] @relation("friendship_a")
+  friendshipsB          Friendship[] @relation("friendship_b")
+  friendshipsRequested  Friendship[] @relation("friendship_requester")
 }
 
 model Edition {
@@ -76,6 +80,30 @@ model Post {
   likes       Like[]
   notifications Notification[]
 }
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+model Friendship {
+  aId          String
+  bId          String
+  requesterId  String
+  status       FriendshipStatus
+  acceptedAt   DateTime?         // null until accepted
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  a            User @relation("friendship_a", fields: [aId], references: [id], onDelete: Cascade)
+  b            User @relation("friendship_b", fields: [bId], references: [id], onDelete: Cascade)
+  requester    User @relation("friendship_requester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@id([aId, bId])
+  @@index([requesterId])
+}
+
 
 model Comment {
   id        String   @id @default(cuid())

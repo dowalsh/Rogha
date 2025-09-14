@@ -1,147 +1,48 @@
-"use server";
-
+// lib/auth.ts
 import { prisma } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { revalidatePath } from "next/cache";
+import {
+  auth,
+  currentUser,
+  type User as ClerkUser,
+} from "@clerk/nextjs/server";
 
-export async function syncUser() {
-  // should really be done using webhooks in production.. this is fine for now.
-
+export async function upsertClerkUser(clerkUser?: ClerkUser | null) {
   try {
-    const { userId } = await auth();
-    const user = await currentUser();
-    if (!userId || !user) return;
+    // Use provided Clerk user (webhook) or fetch from auth (dev/local flow)
+    let user = clerkUser;
+    let userId: string | null = clerkUser?.id ?? null;
 
-    //check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: {
-        clerkId: userId,
+    if (!user) {
+      const authData = await auth();
+      userId = authData.userId;
+      if (!userId) return null;
+      user = await currentUser();
+    }
+    if (!user) return null;
+
+    if (!userId || !user) return null;
+
+    return await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: {
+        // you can refresh fields here if Clerk user changes
+        name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+        image: user.imageUrl,
+        email: user.primaryEmailAddress?.emailAddress ?? "",
       },
-    });
-
-    if (existingUser) return existingUser;
-
-    const dbUser = await prisma.user.create({
-      data: {
+      create: {
         clerkId: userId,
-        name: `${user.firstName || ""} ${user.lastName || ""}`,
+        name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
         username:
-          user.username ?? user.emailAddresses[0].emailAddress.split("@")[0],
-        email: user.emailAddresses[0].emailAddress,
+          user.username ??
+          user.primaryEmailAddress?.emailAddress?.split("@")[0] ??
+          `user_${userId}`,
+        email: user.primaryEmailAddress?.emailAddress ?? "",
         image: user.imageUrl,
       },
     });
-
-    return dbUser;
-  } catch (error) {}
-}
-
-export async function getUserByClerkId(clerkId: string) {
-  return prisma.user.findUnique({
-    where: {
-      clerkId,
-    },
-    include: {
-      _count: {
-        select: {
-          followers: true,
-          following: true,
-          posts: true,
-        },
-      },
-    },
-  });
-}
-
-export async function getDbUserId() {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return null;
-
-  const user = await getUserByClerkId(clerkId);
-
-  if (!user) throw new Error("User not found");
-
-  return user.id;
-}
-
-export async function getRandomUsers() {
-  try {
-    const userId = await getDbUserId();
-    if (!userId) return [];
-    // get 3 random users exlcuing current user & users that the current user follows
-    const randomUsers = await prisma.user.findMany({
-      where: {
-        AND: [
-          { NOT: { id: userId } },
-          { NOT: { followers: { some: { followerId: userId } } } },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        image: true,
-        _count: {
-          select: {
-            followers: true,
-          },
-        },
-      },
-      take: 3,
-    });
-    return randomUsers;
   } catch (error) {
-    console.log("Error fetching random users:", error);
-    return [];
-  }
-}
-
-export async function toggleFollow(targetUserId: string) {
-  try {
-    const userId = await getDbUserId();
-    if (!userId) return;
-    if (userId === targetUserId) throw new Error("You cannot follow yourself");
-    const existingFollow = await prisma.follows.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId: userId,
-          followingId: targetUserId,
-        },
-      },
-    });
-    if (existingFollow) {
-      // unfollow
-      await prisma.follows.delete({
-        where: {
-          followerId_followingId: {
-            followerId: userId,
-            followingId: targetUserId,
-          },
-        },
-      });
-      return { following: false };
-    } else {
-      // follow
-      await prisma.$transaction([
-        prisma.follows.create({
-          data: {
-            followerId: userId,
-            followingId: targetUserId,
-          },
-        }),
-        prisma.notification.create({
-          data: {
-            type: "FOLLOW",
-            userId: targetUserId,
-            creatorId: userId,
-          },
-        }),
-      ]);
-    }
-    revalidatePath("/");
-    return { success: true };
-  } catch (error) {
-    console.log("Error in toggleFollow", error);
-    return { success: false };
+    console.error("Error upserting Clerk user:", error);
+    throw error;
   }
 }

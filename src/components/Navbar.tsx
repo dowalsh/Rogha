@@ -2,14 +2,14 @@ import Link from "next/link";
 import DesktopNavbar from "./DesktopNavbar";
 import MobileNavbar from "./MobileNavbar";
 import { getDbUser } from "@/lib/getDbUser";
-import { syncUser } from "@/actions/user.action";
+import { upsertClerkUser } from "@/actions/user.action";
 
 async function Navbar() {
   const { user, error } = await getDbUser();
 
   if (user) {
     // still keep your sync step
-    await syncUser();
+    await upsertClerkUser();
   }
 
   return (

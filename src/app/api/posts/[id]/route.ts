@@ -54,27 +54,42 @@ export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  console.log("[PUT] Update post by ID called");
   try {
     const { user, error } = await getDbUser();
-    if (error)
+    console.log("[PUT] getDbUser result:", { user, error });
+    if (error) {
+      console.log("[PUT] Auth error:", error);
       return NextResponse.json({ error: error.code }, { status: error.status });
+    }
 
     const body = await req.json();
+    console.log("[PUT] Request body:", body);
+
     const { id } = await context.params;
+    console.log("[PUT] Post ID from params:", id);
 
     const post = await prisma.post.findUnique({ where: { id } });
+    console.log("[PUT] Fetched post:", post);
+
     if (!post || post.authorId !== user.id) {
+      console.log("[PUT] Post not found or user not owner");
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
+    const updateData = {
+      content: body.content,
+      status: body.status,
+      title: body.title,
+      heroImageUrl: body.heroImageUrl,
+    };
+    console.log("[PUT] Update data:", updateData);
+
     const updatedPost = await prisma.post.update({
       where: { id },
-      data: {
-        content: body.content,
-        status: body.status,
-        title: body.title,
-      },
+      data: updateData,
     });
+    console.log("[PUT] Updated post:", updatedPost);
 
     return NextResponse.json(updatedPost, { status: 200 });
   } catch (error) {

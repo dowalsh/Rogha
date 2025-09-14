@@ -6,6 +6,7 @@ import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
 import { Send, Undo, Trash2, ChevronLeft } from "lucide-react";
+import { UploadButton } from "@/lib/uploadthing";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 
@@ -13,6 +14,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const router = useRouter();
 
   const [title, setTitle] = useState<string>("");
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [doc, setDoc] = useState<Content>("");
   const [status, setStatus] = useState<PostStatus>("DRAFT");
 
@@ -44,6 +46,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         if (data?.content !== undefined) setDoc(data.content);
         if (typeof data?.title === "string") setTitle(data.title);
         if (data?.status) setStatus(data.status as PostStatus);
+        if (typeof data?.heroImageUrl === "string")
+          setHeroImageUrl(data.heroImageUrl);
+        else setHeroImageUrl(null);
+
         setSaved(true);
       })
       .catch((err) => console.error("Failed to load post:", err));
@@ -67,7 +73,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       const res = await fetch(`/api/posts/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content: doc, status }),
+        body: JSON.stringify({ title, content: doc, status, heroImageUrl }),
       });
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
       setSaved(true);
@@ -161,6 +167,50 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
+      </div>
+      {/* HERO IMAGE */}
+      <div className="space-y-2">
+        <div className="relative w-full h-56 overflow-hidden rounded-lg border bg-muted/30 flex items-center justify-center">
+          {heroImageUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={heroImageUrl}
+                alt="Hero"
+                className="max-h-full max-w-full object-contain"
+              />
+              {!editorLocked && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeroImageUrl(null);
+                    setSaved(false);
+                  }}
+                  className="absolute right-2 top-2 rounded-full bg-white/80 p-1 shadow hover:bg-white"
+                  title="Remove image"
+                >
+                  ✕
+                </button>
+              )}
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground">No image</span>
+          )}
+        </div>
+
+        {!editorLocked && (
+          <UploadButton
+            endpoint="imageUploader"
+            onClientUploadComplete={(res) => {
+              const first = res?.[0];
+              if (first?.url) {
+                setHeroImageUrl(first.url);
+                setSaved(false);
+              }
+            }}
+            onUploadError={(err) => alert(`Upload failed: ${err.message}`)}
+          />
+        )}
       </div>
 
       {/* Title */}

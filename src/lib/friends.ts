@@ -1,6 +1,7 @@
 // src/lib/friends.ts
 
 export type FriendshipStatus = "PENDING" | "ACCEPTED";
+import { prisma } from "@/lib/prisma";
 
 export type FriendshipRow = {
   aId: string;
@@ -54,4 +55,40 @@ export function getOtherUserId(
   if (row.aId === meId) return row.bId;
   if (row.bId === meId) return row.aId;
   throw new Error("ME_NOT_IN_EDGE");
+}
+
+export type FriendRecipient = {
+  userId: string;
+  email: string;
+  name: string | null;
+};
+/**
+ * Return all accepted friends of a user with valid emails.
+ */
+export async function getAcceptedFriendRecipients(
+  userId: string
+): Promise<FriendRecipient[]> {
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [{ aId: userId }, { bId: userId }],
+    },
+    select: {
+      aId: true,
+      bId: true,
+      a: { select: { id: true, email: true, name: true } },
+      b: { select: { id: true, email: true, name: true } },
+    },
+  });
+
+  return friendships
+    .map((f) =>
+      f.aId === userId
+        ? { userId: f.b.id, email: f.b.email, name: f.b.name }
+        : { userId: f.a.id, email: f.a.email, name: f.a.name }
+    )
+    .filter(
+      (r): r is FriendRecipient =>
+        typeof r.email === "string" && r.email.includes("@")
+    );
 }

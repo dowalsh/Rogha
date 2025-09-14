@@ -49,6 +49,7 @@
     "@tiptap/react": "^3.3.0",
     "@tiptap/starter-kit": "^3.4.1",
     "@tiptap/static-renderer": "^3.4.1",
+    "@uploadthing/react": "^7.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -65,9 +66,11 @@
     "react-dom": "^18.3.1",
     "react-error-boundary": "^6.0.0",
     "react-hot-toast": "^2.5.2",
+    "resend": "^6.0.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.0",
     "tailwindcss-animate": "^1.0.7",
+    "uploadthing": "^7.7.4",
     "zod": "^4.0.17"
   },
   "devDependencies": {

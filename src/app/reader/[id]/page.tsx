@@ -100,6 +100,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   const title = post?.title ?? "Untitled Post";
   const authorName = post?.author?.name ?? "Unknown author";
   const rawContent = post?.content;
+  const heroImageUrl = post?.heroImageUrl;
 
   // Validate before rendering; only log + show diagnostics (no auto-fix here)
   const validation = useMemo(() => validateDocJSON(rawContent), [rawContent]);
@@ -169,6 +170,23 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
           <ChevronLeft className="h-4 w-4" />
           Back to edition
         </Button>
+      </div>
+      {/* HERO IMAGE */}
+      <div className="space-y-2">
+        <div className="relative w-full h-96 overflow-hidden rounded-lg flex items-center justify-center">
+          {heroImageUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={heroImageUrl}
+                alt="Hero"
+                className="max-h-full max-w-full object-contain"
+              />
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground">No image</span>
+          )}
+        </div>
       </div>
 
       {/* Header: title + author */}

@@ -70,6 +70,8 @@ model Post {
   image       String?
   status      PostStatus @default(DRAFT)
   version     Int        @default(1) // optimistic concurrency for autosave
+  heroImageUrl String?  // <-- add this
+
 
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt

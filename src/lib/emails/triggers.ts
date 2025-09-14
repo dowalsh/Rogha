@@ -1,7 +1,7 @@
 // lib/email/triggers.ts
 import { sendEmail } from "./sender";
 import { buildPostSubmittedEmail } from "./builders";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/generated/prisma";
 import { getAcceptedFriendRecipients } from "../friends";
 
 const db = new PrismaClient();

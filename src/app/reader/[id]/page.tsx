@@ -16,6 +16,7 @@ type PostDTO = {
   content?: unknown; // TipTap JSON
   status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
   editionId?: string | null;
+  heroImageUrl?: string | null;
   author?: {
     id: string;
     name?: string | null;

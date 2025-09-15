@@ -129,6 +129,15 @@ export async function getFilteredEditions(user: DbUser) {
           author: { select: { id: true, name: true, image: true } },
         },
       },
+      _count: {
+        select: {
+          posts: {
+            where: {
+              status: "PUBLISHED",
+            },
+          },
+        },
+      },
     },
   });
   console.debug("[getFilteredEditions] editions:", editions);

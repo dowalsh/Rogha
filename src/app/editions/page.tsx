@@ -4,7 +4,6 @@
 import Link from "next/link";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FriendsCarousel } from "@/components/FriendsCarousel";
 
@@ -25,7 +24,7 @@ export default function EditionsPage() {
 
   const { user, isLoaded } = useUser();
 
-  // Client-side admin check (for button visibility only)
+  // Client-side admin check
   const isAdmin = useMemo(() => {
     if (!isLoaded) return false;
     const email =
@@ -60,7 +59,6 @@ export default function EditionsPage() {
     fetchEditions();
   }, [fetchEditions]);
 
-  // ✅ Use the MANUAL ADMIN endpoint (Clerk session + ADMIN_EMAILS), not the cron path
   const handlePublishLastWeek = async () => {
     setPublishing(true);
     setMsg(null);
@@ -69,8 +67,8 @@ export default function EditionsPage() {
       const res = await fetch("/api/cron/publish-weekly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}", // default: publish last week
-        credentials: "include", // make sure Clerk session cookie is sent (helpful in local testing)
+        body: "{}",
+        credentials: "include",
       });
 
       const data = await res.json().catch(() => ({}));
@@ -109,60 +107,65 @@ export default function EditionsPage() {
       </SignedOut>
 
       <SignedIn>
-        {/* …inside <SignedIn> … */}
-        <div className="space-y-4">
+        <div className="space-y-8">
           <FriendsCarousel refreshKey={refreshFollows} />
-          {/* your existing Editions card(s) below */}
-        </div>
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle>Editions</CardTitle>
 
-                {/* Show publish button ONLY for admins */}
-                {isAdmin && (
-                  <Button onClick={handlePublishLastWeek} disabled={publishing}>
-                    {publishing ? "Publishing…" : "Publish last week"}
-                  </Button>
-                )}
+          {/* Header */}
+          <header className="border-b pb-4 text-center font-serif">
+            <h1 className="text-5xl font-black uppercase tracking-wide">
+              PUBLISHED Editions
+            </h1>
+            {isAdmin && (
+              <div className="mt-3">
+                <Button
+                  onClick={handlePublishLastWeek}
+                  disabled={publishing}
+                  variant="default"
+                >
+                  {publishing ? "Publishing…" : "Manually publish last week"}
+                </Button>
               </div>
-              {msg && (
-                <div className="pt-2 text-sm text-muted-foreground">{msg}</div>
-              )}
-            </CardHeader>
+            )}
+            {msg && (
+              <div className="pt-2 text-sm text-muted-foreground">{msg}</div>
+            )}
+          </header>
 
-            <CardContent className="p-4">
-              {loading ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
-              ) : !editions || editions.length === 0 ? (
-                <div className="text-sm text-muted-foreground">
-                  No published editions yet.
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {editions.map((ed) => {
-                    const label =
-                      ed.title ??
-                      `Week of ${new Date(ed.weekStart)
-                        .toISOString()
-                        .slice(0, 10)}`;
-                    const posts = ed._count?.posts ?? 0;
-                    return (
-                      <Link key={ed.id} href={`/editions/${ed.id}`}>
-                        <Button variant="secondary">
-                          {label}
-                          {posts > 0
-                            ? ` • ${posts} post${posts === 1 ? "" : "s"}`
-                            : ""}
-                        </Button>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Editions list */}
+          <div className="mx-auto max-w-3xl space-y-6 font-serif">
+            {loading ? (
+              <div className="text-center text-muted-foreground">Loading…</div>
+            ) : !editions || editions.length === 0 ? (
+              <div className="py-20 text-center text-2xl font-bold uppercase tracking-widest text-muted-foreground">
+                No editions published yet
+              </div>
+            ) : (
+              editions.map((ed) => {
+                const label =
+                  ed.title ??
+                  `Week of ${new Date(ed.weekStart)
+                    .toISOString()
+                    .slice(0, 10)}`;
+                const posts = ed._count?.posts ?? 0;
+                return (
+                  <Link
+                    key={ed.id}
+                    href={`/editions/${ed.id}`}
+                    className="block border-b pb-4 hover:bg-muted/40 transition"
+                  >
+                    <h2 className="text-2xl font-extrabold hover:underline">
+                      {label}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {posts > 0
+                        ? `${posts} stor${posts === 1 ? "y" : "ies"}`
+                        : "No stories"}
+                    </p>
+                  </Link>
+                );
+              })
+            )}
+          </div>
         </div>
       </SignedIn>
     </>

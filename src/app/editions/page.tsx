@@ -1,4 +1,3 @@
-// src/app/editions/page.tsx
 "use client";
 
 import Link from "next/link";
@@ -10,9 +9,9 @@ import { FriendsCarousel } from "@/components/FriendsCarousel";
 type EditionRow = {
   id: string;
   title?: string | null;
-  weekStart: string; // ISO from API
+  weekStart: string;
   publishedAt?: string | null;
-  _count?: { posts: number };
+  posts: { id: string }[]; // minimal typing
 };
 
 export default function EditionsPage() {
@@ -36,22 +35,31 @@ export default function EditionsPage() {
         .split(",")
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean) || [];
-    return email ? list.includes(email.toLowerCase()) : false;
+    const isAdminResult = email ? list.includes(email.toLowerCase()) : false;
+    console.debug("[EditionsPage] isAdmin?", isAdminResult, "email:", email);
+    return isAdminResult;
   }, [isLoaded, user]);
 
   const fetchEditions = useCallback(async () => {
     setLoading(true);
     setMsg(null);
     try {
+      console.debug("[EditionsPage] fetching /api/editions …");
       const res = await fetch("/api/editions", { cache: "no-store" });
+      console.debug(
+        "[EditionsPage] /api/editions response status:",
+        res.status
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: EditionRow[] = await res.json();
+      console.debug("[EditionsPage] editions data received:", data);
       setEditions(data);
     } catch (e: any) {
-      console.error("Failed to load editions:", e);
+      console.error("[EditionsPage] Failed to load editions:", e);
       setEditions([]);
     } finally {
       setLoading(false);
+      console.debug("[EditionsPage] fetchEditions complete");
     }
   }, []);
 
@@ -63,7 +71,7 @@ export default function EditionsPage() {
     setPublishing(true);
     setMsg(null);
     try {
-      console.log("[editions] publish button clicked");
+      console.log("[EditionsPage] publish button clicked");
       const res = await fetch("/api/cron/publish-weekly", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,7 +80,7 @@ export default function EditionsPage() {
       });
 
       const data = await res.json().catch(() => ({}));
-      console.log("[editions] publish response", res.status, data);
+      console.log("[EditionsPage] publish response", res.status, data);
 
       if (!res.ok) {
         throw new Error(data?.error || res.statusText || "Publish failed");
@@ -94,9 +102,11 @@ export default function EditionsPage() {
 
       await fetchEditions();
     } catch (e: any) {
+      console.error("[EditionsPage] publish error:", e);
       setMsg(e.message || "Publish failed.");
     } finally {
       setPublishing(false);
+      console.debug("[EditionsPage] handlePublishLastWeek complete");
     }
   };
 
@@ -146,7 +156,15 @@ export default function EditionsPage() {
                   `Week of ${new Date(ed.weekStart)
                     .toISOString()
                     .slice(0, 10)}`;
-                const posts = ed._count?.posts ?? 0;
+                const postCount = ed.posts?.length ?? 0;
+                console.debug(
+                  "[EditionsPage] rendering edition:",
+                  ed.id,
+                  "label:",
+                  label,
+                  "postCount:",
+                  postCount
+                );
                 return (
                   <Link
                     key={ed.id}
@@ -157,8 +175,8 @@ export default function EditionsPage() {
                       {label}
                     </h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {posts > 0
-                        ? `${posts} stor${posts === 1 ? "y" : "ies"}`
+                      {postCount > 0
+                        ? `${postCount} stor${postCount === 1 ? "y" : "ies"}`
                         : "No stories"}
                     </p>
                   </Link>

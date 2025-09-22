@@ -1,21 +1,25 @@
 // src/app/editions/[id]/page.tsx
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Frontpage } from "@/components/Frontpage";
-import { prisma } from "@/lib/prisma";
+import { getDbUser } from "@/lib/getDbUser";
+import { getPublishedEditionById } from "@/lib/editions";
 
 export const dynamic = "force-dynamic";
 
 type EditionResponse = {
   id: string;
   title?: string | null;
-  weekStart: string; // force string ISO
+  weekStart: string; // ISO string
+  publishedAt?: string | null;
   posts: {
     id: string;
     title?: string | null;
+    status: string;
+    updatedAt: string;
+    authorId: string;
     author?: { id: string; name?: string | null; image?: string | null } | null;
   }[];
 };
@@ -25,28 +29,22 @@ export default async function EditionPage({
 }: {
   params: { id: string };
 }) {
-  const edition = await prisma.edition.findUnique({
-    where: { id: params.id },
-    select: {
-      id: true,
-      title: true,
-      weekStart: true,
-      posts: {
-        where: { status: "PUBLISHED" },
-        select: {
-          id: true,
-          title: true,
-          author: { select: { id: true, name: true, image: true } },
-        },
-      },
-    },
-  });
+  const { user, error } = await getDbUser();
+  if (error) notFound();
 
+  const edition = await getPublishedEditionById({ id: user.id }, params.id);
   if (!edition) notFound();
 
+  // ✅ convert Dates -> strings
   const editionData: EditionResponse = {
     ...edition,
-    weekStart: edition.weekStart.toISOString(), // ensure string type
+    weekStart: edition.weekStart.toISOString(),
+    publishedAt: edition.publishedAt ? edition.publishedAt.toISOString() : null,
+    posts: edition.posts.map((p) => ({
+      ...p,
+      updatedAt: p.updatedAt.toISOString(),
+      status: p.status, // enum to string is fine
+    })),
   };
 
   const editionLabel =
@@ -54,8 +52,6 @@ export default async function EditionPage({
 
   return (
     <div className="space-y-4">
-      {/* Back button */}
-
       <Link href="/editions">
         <Button
           type="button"
@@ -67,7 +63,6 @@ export default async function EditionPage({
         </Button>
       </Link>
 
-      {/* Newspaper-style section */}
       <Frontpage edition={editionData} />
     </div>
   );

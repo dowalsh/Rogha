@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getDbUser } from "@/lib/getDbUser";
-import { getFilteredEditionById } from "@/lib/editions";
+import { getPublishedEditionById } from "@/lib/editions";
 
 export async function GET(
   _req: NextRequest,
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: error.code }, { status: error.status });
     }
 
-    const edition = await getFilteredEditionById(user, params.id);
+    const edition = await getPublishedEditionById(user, params.id);
     console.log("[DEBUG] getFilteredEditionById result:", edition);
     if (!edition) {
       console.log("[DEBUG] Edition not found for id:", params.id);

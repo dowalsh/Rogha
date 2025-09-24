@@ -26,7 +26,10 @@ export async function publishEditionForWeek(weekStart: Date) {
 
     // No edition for that week → nothing to do
     if (!edition) {
-      console.debug("[publishEditionForWeek] No edition found for weekStart");
+      console.debug(
+        "[publishEditionForWeek] No edition found for weekStart: ",
+        weekStart
+      );
       return {
         ok: true,
         published: false,

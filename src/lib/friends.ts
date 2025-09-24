@@ -1,14 +1,13 @@
 // src/lib/friends.ts
+import { prisma } from "@/lib/prisma";
 
 export type FriendshipStatus = "PENDING" | "ACCEPTED";
-import { prisma } from "@/lib/prisma";
 
 export type FriendshipRow = {
   aId: string;
   bId: string;
   requesterId: string;
   status: FriendshipStatus;
-  // optional fields you might select alongside:
   acceptedAt?: Date | null;
   createdAt?: Date;
 };
@@ -24,7 +23,6 @@ export function canonicalPair(
   if (meId === otherId) {
     throw new Error("SELF_NOT_ALLOWED");
   }
-  // Lexicographic ordering; if you want locale-aware, use localeCompare.
   return meId < otherId
     ? { aId: meId, bId: otherId }
     : { aId: otherId, bId: meId };
@@ -40,7 +38,6 @@ export function derivePerspectiveState(
 ): "NONE" | "PENDING_OUTGOING" | "PENDING_INCOMING" | "ACCEPTED" {
   if (!row) return "NONE";
   if (row.status === "ACCEPTED") return "ACCEPTED";
-  // PENDING
   return row.requesterId === meId ? "PENDING_OUTGOING" : "PENDING_INCOMING";
 }
 
@@ -62,6 +59,7 @@ export type FriendRecipient = {
   email: string;
   name: string | null;
 };
+
 /**
  * Return all accepted friends of a user with valid emails.
  */
@@ -91,4 +89,20 @@ export async function getAcceptedFriendRecipients(
       (r): r is FriendRecipient =>
         typeof r.email === "string" && r.email.includes("@")
     );
+}
+
+/**
+ * Return only the IDs of all accepted friends for a given user.
+ * Useful for filtering editions, comments, posts, etc.
+ */
+export async function getAcceptedFriendIds(userId: string): Promise<string[]> {
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [{ aId: userId }, { bId: userId }],
+    },
+    select: { aId: true, bId: true },
+  });
+
+  return friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
 }

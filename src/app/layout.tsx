@@ -4,10 +4,10 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
 import { Toaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
+import { currentUser } from "@clerk/nextjs/server";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -25,13 +25,18 @@ export const metadata: Metadata = {
   description: "Dylan's Playground",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  if (process.env.NODE_ENV === "production") {
-    upsertClerkUser().catch(console.error);
+}) {
+  // 👇 Only run this lazy sync in development
+  if (process.env.NODE_ENV === "development") {
+    const user = await currentUser();
+    if (user) {
+      // pass the Clerk user directly
+      await upsertClerkUser(user);
+    }
   }
 
   return (
@@ -49,17 +54,8 @@ export default function RootLayout({
             >
               <div className="min-h-screen">
                 <Navbar />
-
                 <main className="py-8">
-                  <div className="max-w-7xl mx-auto px-4">
-                    {children}
-                    {/* <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="hidden lg:block lg:col-span-3">
-                      <Sidebar />
-                    </div>
-                    <div className="lg:col-span-9">{children}</div>
-                  </div> */}
-                  </div>
+                  <div className="max-w-7xl mx-auto px-4">{children}</div>
                 </main>
               </div>
               <Toaster />

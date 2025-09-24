@@ -19,13 +19,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useState } from "react";
-import { useAuth, SignInButton, SignOutButton } from "@clerk/nextjs";
+import { SignInButton, SignOutButton } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import type { UserResource } from "@clerk/types";
 
-function MobileNavbar() {
+type MobileNavbarProps = {
+  isLoaded: boolean;
+  isSignedIn: boolean | undefined;
+  user: UserResource | null | undefined;
+};
+
+function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { isSignedIn } = useAuth();
   const { theme, setTheme } = useTheme();
 
   return (
@@ -63,14 +69,14 @@ function MobileNavbar() {
               </Link>
             </Button>
 
-            {isSignedIn ? (
+            {isLoaded && isSignedIn && user ? (
               <>
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
                   asChild
                 >
-                  <Link href="/notifications">
+                  <Link href="/editions">
                     <Newspaper className="w-4 h-4" />
                     Editions
                   </Link>

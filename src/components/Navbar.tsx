@@ -1,16 +1,11 @@
+"use client";
 import Link from "next/link";
 import DesktopNavbar from "./DesktopNavbar";
 import MobileNavbar from "./MobileNavbar";
-import { getDbUser } from "@/lib/getDbUser";
-import { upsertClerkUser } from "@/actions/user.action";
+import { useUser } from "@clerk/nextjs";
 
-async function Navbar() {
-  const { user, error } = await getDbUser();
-
-  if (user) {
-    // still keep your sync step
-    await upsertClerkUser();
-  }
+function Navbar() {
+  const { isSignedIn, user, isLoaded } = useUser();
 
   return (
     <nav className="sticky top-0 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
@@ -25,8 +20,17 @@ async function Navbar() {
             </Link>
           </div>
 
-          <DesktopNavbar />
-          <MobileNavbar />
+          {/* Pass down user state only */}
+          <DesktopNavbar
+            isLoaded={isLoaded}
+            isSignedIn={!!isSignedIn}
+            user={user}
+          />
+          <MobileNavbar
+            isLoaded={isLoaded}
+            isSignedIn={!!isSignedIn}
+            user={user}
+          />
         </div>
       </div>
     </nav>

@@ -112,12 +112,16 @@ model Comment {
   content   String
   authorId  String
   postId    String
+  parentCommentId  String?   //new: only set if this is a reply null if top level comment
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   notifications Notification[]
+
+  parent    Comment?   @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies   Comment[]  @relation("CommentReplies")
 
   @@index([authorId, postId])
 }

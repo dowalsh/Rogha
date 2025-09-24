@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
+import CommentsSection from "@/components/CommentsSection";
 
 type PostDTO = {
   id: string;
@@ -200,6 +201,8 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
       {/* Rendered content or diagnostics */}
       <div className="prose prose-neutral max-w-none">{contentNode}</div>
+      <hr className="my-8 border-t border-muted" />
+      <CommentsSection postId={post.id} />
     </div>
   );
 }

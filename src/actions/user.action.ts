@@ -6,43 +6,59 @@ import {
   currentUser,
   type User as ClerkUser,
 } from "@clerk/nextjs/server";
+import type { UserResource } from "@clerk/types";
 import { revalidatePath } from "next/cache";
 
 /**
- * Upsert Clerk user into DB
- * Works with both Clerk webhooks (pass ClerkUser) and
- * lazy sync (fallback to auth/currentUser).
+ * A normalized, Clerk-like user shape.
+ * Works for both Clerk webhooks and lazy sync.
  */
-export async function upsertClerkUser(clerkUser: ClerkUser | null = null) {
+type ClerkLike = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  imageUrl?: string | null;
+  primaryEmailAddress?: { emailAddress: string | null } | null;
+};
+
+/**
+ * Upsert Clerk user into DB.
+ * Accepts either a Clerk webhook payload, a UserResource, or nothing (falls back to auth()).
+ */
+export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
   try {
-    // Prefer passed user (webhook), fallback to auth flow
     let user = clerkUser;
     let userId: string | null = user?.id ?? null;
 
+    // If no user passed in, fall back to auth() + currentUser()
     if (!user) {
       const { userId: authId } = await auth();
       if (!authId) return null;
+
       userId = authId;
       user = await currentUser();
       if (!user) return null;
     }
 
+    // Normalize fields for DB
+    const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    const email = user.primaryEmailAddress?.emailAddress ?? "";
+    const username = user.username ?? email.split("@")[0] ?? `user_${userId}`;
+
     return await prisma.user.upsert({
       where: { clerkId: userId! },
       update: {
-        name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
-        image: user.imageUrl,
-        email: user.primaryEmailAddress?.emailAddress ?? "",
+        name,
+        image: user.imageUrl ?? null,
+        email,
       },
       create: {
         clerkId: userId!,
-        name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
-        username:
-          user.username ??
-          user.primaryEmailAddress?.emailAddress?.split("@")[0] ??
-          `user_${userId}`,
-        email: user.primaryEmailAddress?.emailAddress ?? "",
-        image: user.imageUrl,
+        name,
+        username,
+        email,
+        image: user.imageUrl ?? null,
       },
     });
   } catch (error) {

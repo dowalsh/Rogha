@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const data = evt.data;
 
   if (eventType === "user.created" || eventType === "user.updated") {
-    await upsertClerkUser(); // reuse your function
+    await upsertClerkUser(data); // reuse your function
   }
 
   return new Response("OK", { status: 200 });

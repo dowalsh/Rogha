@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const data = evt.data;
 
   if (eventType === "user.created" || eventType === "user.updated") {
-    console.log("Hit webhook");
+    console.log("Hit webhook: ", data);
     await upsertClerkUser(data); // reuse your function
   }
 

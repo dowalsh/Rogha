@@ -30,13 +30,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 👇 Only run this lazy sync in development
-  if (process.env.NODE_ENV === "development") {
-    const user = await currentUser();
-    if (user) {
-      // pass the Clerk user directly
-      await upsertClerkUser(user);
-    }
+  // // 👇 Only run this lazy sync in development
+  //   if (process.env.NODE_ENV === "development") {
+
+  const user = await currentUser();
+  if (user) {
+    // pass the Clerk user directly
+    await upsertClerkUser(user);
   }
 
   return (

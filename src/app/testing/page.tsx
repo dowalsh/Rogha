@@ -13,7 +13,7 @@ export default function TestingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "post_submitted",
+          type: "published_edition",
           postId: "cmfvwi9hj001tmwca28kyzrwq", // replace with a real postId from your DB
         }),
       });

@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { publishEditionForWeek } from "@/lib/editions";
 import { getWeekStartUTC } from "@/lib/utils";
 import { getDbUser } from "@/lib/getDbUser";
+import { triggerPublishedEditionEmail } from "@/lib/emails/triggers";
 
 function isAdminEmail(email?: string | null) {
   const list =
@@ -79,7 +80,7 @@ async function handlePublish(req: NextRequest) {
     // ── Target week selection ────────────────────────────────────────────────────
     let target = new Date(Date.now() - 24 * 60 * 60 * 1000); // default: "yesterday"
     if (req.method === "POST") {
-      const body = await req.json().catch(() => ({} as { weekISO?: string }));
+      const body = await req.json().catch(() => ({}) as { weekISO?: string });
       if (body?.weekISO) {
         const candidate = new Date(body.weekISO);
         if (isNaN(candidate.getTime())) {
@@ -109,6 +110,16 @@ async function handlePublish(req: NextRequest) {
       editionId: result["editionId"],
       postsPublished: result["postsPublished"],
     });
+
+    // 🔔 fire weekly edition email only if it actually published
+    if (result.ok && result.published) {
+      try {
+        const emailResult = await triggerPublishedEditionEmail();
+        console.log("[cron] weekly edition email blast sent", emailResult);
+      } catch (err) {
+        console.error("[cron] failed to send weekly edition email blast", err);
+      }
+    }
 
     return NextResponse.json(
       {

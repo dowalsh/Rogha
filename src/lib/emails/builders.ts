@@ -16,9 +16,9 @@ export function buildPostSubmittedEmail(
   return {
     subject: `${safeAuthor} just submitted a new post!`,
     html: `
-      <h1>${safeAuthor} has something cooking 🍳</h1>
+      <h1>${safeAuthor} has cooked ✍️🔥</h1>
       <p>They just submitted: <strong>${safeTitle}</strong></p>
-      <p>All posts will be published together this Sunday. We hope you’ve got one in the works too!</p>
+      <p>All posts will be published together this Sunday. Hope you’ve got one in the works too!</p>
       <p>
         <a href="${safeUrl}/posts"
            style="display:inline-block;padding:10px 16px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">

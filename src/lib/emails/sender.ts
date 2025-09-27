@@ -20,11 +20,14 @@ type AttemptResult = { ok: true; id?: string } | { ok: false; error: unknown };
 async function attemptSend(args: SendEmailArgs): Promise<AttemptResult> {
   try {
     const resp = await resend.emails.send({
-      from: args.from ?? "Your App <noreply@yourdomain.com>",
+      from:
+        args.from ??
+        "Rogha Newsboy <newsboy@notifications.rogha.dylanwalsh.ie>",
       to: args.to,
       subject: args.subject,
       html: args.html,
     });
+    console.log("email sent to: ", args.to);
     return { ok: true, id: (resp as any)?.id };
   } catch (error) {
     return { ok: false, error };

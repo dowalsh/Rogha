@@ -1,46 +1,45 @@
 // app/api/email/route.ts
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { triggerPostSubmittedEmails } from "@/lib/emails/triggers";
 
-// Keep API route skinny: validate -> delegate -> respond
-
-const BodySchema = z.object({
-  // currently supports only this trigger; extend as needed
-  type: z.literal("post_submitted"),
-  postId: z.string().min(1),
-});
-
 export async function POST(req: Request) {
+  console.log("📩 Incoming request to /api/email");
+
   try {
-    // Ensure server-only runtime; avoids accidental edge/client usage
-    if (typeof process === "undefined" || !process.env) {
+    if (!process.env.RESEND_API_KEY) {
+      console.error("❌ RESEND_API_KEY missing");
       return NextResponse.json(
-        { error: "Server environment required" },
+        { error: "RESEND_API_KEY is not set" },
         { status: 500 }
       );
     }
 
-    const json = await req.json().catch(() => ({}));
-    const parsed = BodySchema.safeParse(json);
-    if (!parsed.success) {
+    console.log(
+      "✅ Found RESEND_API_KEY (length:",
+      process.env.RESEND_API_KEY.length,
+      ")"
+    );
+
+    const body = await req.json().catch(() => null);
+    console.log("📥 Parsed request body:", body);
+
+    if (!body?.type || !body?.postId) {
+      console.error("❌ Missing type or postId in request body");
       return NextResponse.json(
-        { error: "Invalid payload", details: parsed.error.flatten() },
+        { error: "Missing type or postId" },
         { status: 400 }
       );
     }
 
-    const { type, postId } = parsed.data;
+    console.log(
+      `⚡ Triggering email flow: type=${body.type}, postId=${body.postId}`
+    );
+    const result = await triggerPostSubmittedEmails(body.postId);
 
-    if (type === "post_submitted") {
-      const result = await triggerPostSubmittedEmails(postId);
-      return NextResponse.json({ ok: true, ...result }, { status: 200 });
-    }
-
-    return NextResponse.json({ error: "Unsupported type" }, { status: 400 });
+    console.log("✅ Email trigger finished:", result);
+    return NextResponse.json({ success: true, result });
   } catch (err: any) {
-    // Do not leak secrets or provider internals
-    console.error("POST /api/email error", { message: err?.message });
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    console.error("🔥 Route crashed:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

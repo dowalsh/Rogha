@@ -51,6 +51,7 @@
     "@tiptap/starter-kit": "^3.4.1",
     "@tiptap/static-renderer": "^3.4.1",
     "@uploadthing/react": "^7.3.3",
+    "bottleneck": "^2.19.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

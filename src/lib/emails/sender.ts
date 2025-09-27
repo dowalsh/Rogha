@@ -1,5 +1,6 @@
 // lib/email/sender.ts
 import { Resend } from "resend";
+import Bottleneck from "bottleneck";
 
 if (!process.env.RESEND_API_KEY) {
   // Fail fast on boot in server contexts
@@ -38,7 +39,7 @@ async function attemptSend(args: SendEmailArgs): Promise<AttemptResult> {
  * sendEmail with small retry (2 retries, exponential backoff).
  * Keep this thin—central place for logging, metrics, provider swap/fallback.
  */
-export async function sendEmail(args: SendEmailArgs) {
+async function rawSendEmail(args: SendEmailArgs) {
   const maxRetries = 2;
   const baseDelayMs = 300;
 
@@ -57,3 +58,12 @@ export async function sendEmail(args: SendEmailArgs) {
   const msg = (last as any)?.error?.message ?? "Email send failed";
   throw new Error(`sendEmail: ${msg}`);
 }
+
+export const sendEmail = (opts: SendEmailArgs) =>
+  emailLimiter.schedule(() => rawSendEmail(opts));
+
+// 2 requests per second = 1 every 500ms
+export const emailLimiter = new Bottleneck({
+  minTime: 600, // spacing. needs to be 500, but 600 for margin of error.
+  maxConcurrent: 1, // no parallel sends
+});

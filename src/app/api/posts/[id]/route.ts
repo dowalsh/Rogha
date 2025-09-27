@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
+import { triggerPostSubmittedEmails } from "@/lib/emails/triggers";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -90,6 +91,16 @@ export async function PUT(
       data: updateData,
     });
     console.log("[PUT] Updated post:", updatedPost);
+
+    // 👇 only trigger email if status is SUBMITTED and was unsubmitted before. Could add some level of spam protection here as well...
+    if (updatedPost.status === "SUBMITTED" && post.status === "DRAFT") {
+      try {
+        await triggerPostSubmittedEmails(updatedPost.id);
+        console.log("[PUT] Email trigger sent");
+      } catch (err) {
+        console.error("[PUT] Failed to trigger email:", err);
+      }
+    }
 
     return NextResponse.json(updatedPost, { status: 200 });
   } catch (error) {

@@ -11,10 +11,13 @@ import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 import CommentsSection from "@/components/CommentsSection";
 
+import { LikeButton } from "@/components/LikeButton";
+import { useLike } from "@/hooks/useLike";
+
 type PostDTO = {
   id: string;
   title?: string | null;
-  content?: unknown; // TipTap JSON
+  content?: unknown;
   status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
   editionId?: string | null;
   heroImageUrl?: string | null;
@@ -23,6 +26,8 @@ type PostDTO = {
     name?: string | null;
     image?: string | null;
   } | null;
+  likeCount: number;
+  likedByMe: boolean;
 };
 
 // --- helpers: quick validator & explainer (diagnostics only) ---
@@ -104,6 +109,13 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   const rawContent = post?.content;
   const heroImageUrl = post?.heroImageUrl;
 
+  const { liked, count, toggle } = useLike({
+    id: post?.id ?? "", // fallback string, won’t be used until post loads
+    type: "post",
+    initialLiked: post?.likedByMe ?? false,
+    initialCount: post?.likeCount ?? 0,
+  });
+
   // Validate before rendering; only log + show diagnostics (no auto-fix here)
   const validation = useMemo(() => validateDocJSON(rawContent), [rawContent]);
 
@@ -174,24 +186,20 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
         </Button>
       </div>
       {/* HERO IMAGE */}
-      <div className="space-y-2">
-        <div className="relative w-full h-96 overflow-hidden rounded-lg flex items-center justify-center">
-          {heroImageUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={heroImageUrl}
-                alt="Hero"
-                className="max-h-full max-w-full object-contain"
-              />
-            </>
-          ) : (
-            <span className="text-sm text-muted-foreground">No image</span>
-          )}
+      {heroImageUrl && (
+        <div className="space-y-2">
+          <div className="relative w-full h-96 overflow-hidden rounded-lg flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroImageUrl}
+              alt="Hero"
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Header: title + author */}
+      {/* Header: title + likes + author */}
       <header className="space-y-3">
         <h1 className="text-2xl font-semibold leading-tight">{title}</h1>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -201,8 +209,20 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
       {/* Rendered content or diagnostics */}
       <div className="prose prose-neutral max-w-none">{contentNode}</div>
+      {/* Post Like Button */}
+      <div className="flex justify-center">
+        <LikeButton
+          liked={liked}
+          count={count}
+          onToggle={toggle}
+          fetchLikersUrl={`/api/posts/${post!.id}/likes`}
+        />
+      </div>
       <hr className="my-8 border-t border-muted" />
-      <CommentsSection postId={post.id} />
+      <CommentsSection
+        postId={post.id}
+        postAuthorName={post.author?.name ?? "post author"}
+      />
     </div>
   );
 }

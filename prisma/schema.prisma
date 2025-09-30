@@ -29,7 +29,8 @@ model User {
 
   posts     Post[]
   comments  Comment[]
-  likes     Like[]
+  postLikes PostLike[]
+  commentLikes CommentLike[]
   followers Follows[] @relation("following")
   following Follows[] @relation("follower")
   notifications         Notification[] @relation("userNotifications")
@@ -63,10 +64,10 @@ enum PostStatus {
 
 model Post {
   id          String     @id @default(cuid())
-  title      String?
+  title       String?
   authorId    String
   editionId   String?
-  content     Json?     // TipTap Json
+  content     Json?     
   image       String?
   status      PostStatus @default(DRAFT)
   version     Int        @default(1) // optimistic concurrency for autosave
@@ -79,7 +80,7 @@ model Post {
   author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   edition     Edition?   @relation(fields: [editionId], references: [id], onDelete: SetNull)
   comments    Comment[]
-  likes       Like[]
+  likes       PostLike[]
   notifications Notification[]
 }
 
@@ -93,11 +94,10 @@ model Friendship {
   bId          String
   requesterId  String
   status       FriendshipStatus
-  acceptedAt   DateTime?         // null until accepted
+  acceptedAt   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Relations
   a            User @relation("friendship_a", fields: [aId], references: [id], onDelete: Cascade)
   b            User @relation("friendship_b", fields: [bId], references: [id], onDelete: Cascade)
   requester    User @relation("friendship_requester", fields: [requesterId], references: [id], onDelete: Cascade)
@@ -106,13 +106,12 @@ model Friendship {
   @@index([requesterId])
 }
 
-
 model Comment {
   id        String   @id @default(cuid())
   content   String
   authorId  String
   postId    String
-  parentCommentId  String?   //new: only set if this is a reply null if top level comment
+  parentCommentId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -123,10 +122,12 @@ model Comment {
   parent    Comment?   @relation("CommentReplies", fields: [parentCommentId], references: [id])
   replies   Comment[]  @relation("CommentReplies")
 
+  likes     CommentLike[]
+
   @@index([authorId, postId])
 }
 
-model Like {
+model PostLike {
   id        String   @id @default(cuid())
   userId    String
   postId    String
@@ -138,6 +139,20 @@ model Like {
 
   @@index([userId, postId])
   @@unique([userId, postId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, commentId])
+  @@unique([userId, commentId])
 }
 
 model Follows {

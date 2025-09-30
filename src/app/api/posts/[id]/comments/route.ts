@@ -31,16 +31,32 @@ export async function GET(
       },
       include: {
         author: { select: { id: true, name: true, image: true } },
+        _count: { select: { likes: true } },
+        likes: { where: { userId: user.id }, select: { id: true } },
         replies: {
           include: {
             author: { select: { id: true, name: true, image: true } },
+            _count: { select: { likes: true } },
+            likes: { where: { userId: user.id }, select: { id: true } },
           },
+          orderBy: { createdAt: "asc" },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
     });
 
-    return NextResponse.json(comments, { status: 200 });
+    const normalize = (c: any) => ({
+      ...c,
+      likeCount: c._count.likes,
+      likedByMe: c.likes.length > 0,
+      replies: (c.replies ?? []).map((r: any) => ({
+        ...r,
+        likeCount: r._count.likes,
+        likedByMe: r.likes.length > 0,
+      })),
+    });
+
+    return NextResponse.json(comments.map(normalize), { status: 200 });
   } catch (e) {
     console.error("[COMMENTS_GET_ERROR]", e);
     return NextResponse.json(
@@ -72,7 +88,7 @@ export async function POST(
       return NextResponse.json({ error: "Missing content" }, { status: 400 });
     }
 
-    // if this is a reply, ensure nesting is only 2 levels deep
+    // prevent >2 levels deep
     if (parentId) {
       const parent = await prisma.comment.findUnique({
         where: { id: parentId },
@@ -104,7 +120,8 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(newComment, { status: 201 });
+    // always return replies array
+    return NextResponse.json({ ...newComment, replies: [] }, { status: 201 });
   } catch (e) {
     console.error("[COMMENTS_POST_ERROR]", e);
     return NextResponse.json(

@@ -13,34 +13,61 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
+    console.log("[GET] Fetching post with ID:", id);
 
-    // 1) Fetch first to decide if it can be public
     const post = await prisma.post.findUnique({
       where: { id },
       include: {
         author: { select: { id: true, name: true, image: true } },
+        _count: { select: { likes: true } },
+        likes: { select: { id: true, userId: true } }, // full likes array for debugging
       },
     });
 
+    console.log("[GET] Raw post from DB:", JSON.stringify(post, null, 2));
+
     if (!post) {
+      console.log("[GET] Post not found for ID:", id);
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    // 2) Public access for published posts
+    // Base response with counts
+    let baseResponse = {
+      ...post,
+      likeCount: post._count.likes,
+      likedByMe: false,
+    };
+    console.log("[GET] Initial baseResponse:", baseResponse);
+
+    // Try to resolve user (don't error if missing)
+    const { user } = await getDbUser().catch(() => ({ user: null }));
+    console.log("[GET] Current user:", user ? user.id : "none");
+
+    // If we have a user, check if they liked
+    if (user) {
+      const liked = await prisma.postLike.findUnique({
+        where: { userId_postId: { userId: user.id, postId: id } },
+      });
+      console.log("[GET] Liked by current user?", !!liked);
+      baseResponse = { ...baseResponse, likedByMe: !!liked };
+    }
+
+    console.log("[GET] Final baseResponse:", baseResponse);
+
+    // If published, return to anyone
     if (post.status === "PUBLISHED") {
-      return NextResponse.json(post, { status: 200 });
+      console.log("[GET] Post is PUBLISHED, returning to caller");
+      return NextResponse.json(baseResponse, { status: 200 });
     }
 
-    // 3) Otherwise require auth + ownership
-    const { user, error } = await getDbUser();
-    if (error)
-      return NextResponse.json({ error: error.code }, { status: error.status });
-
-    if (post.authorId !== user.id) {
+    // If not published, require ownership
+    if (!user || post.authorId !== user.id) {
+      console.log("[GET] Unauthorized to view this post");
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    return NextResponse.json(post, { status: 200 });
+    console.log("[GET] Returning unpublished post to owner");
+    return NextResponse.json(baseResponse, { status: 200 });
   } catch (error) {
     console.error("[POST_GET_BY_ID_ERROR]", error);
     return NextResponse.json(
@@ -49,7 +76,6 @@ export async function GET(
     );
   }
 }
-
 // UPDATE post by ID
 export async function PUT(
   req: NextRequest,

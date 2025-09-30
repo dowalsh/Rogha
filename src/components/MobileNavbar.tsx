@@ -9,6 +9,7 @@ import {
   SunIcon,
   UserIcon,
   Newspaper,
+  NotebookPen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,11 +88,11 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                   asChild
                 >
                   <Link href="/notifications">
-                    <BellIcon className="w-4 h-4" />
-                    Notifications
+                    <NotebookPen className="w-4 h-4" />
+                    Posts
                   </Link>
                 </Button>
-                <Button
+                {/* <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
                   asChild
@@ -100,7 +101,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                     <UserIcon className="w-4 h-4" />
                     Profile
                   </Link>
-                </Button>
+                </Button> */}
                 <SignOutButton>
                   <Button
                     variant="ghost"

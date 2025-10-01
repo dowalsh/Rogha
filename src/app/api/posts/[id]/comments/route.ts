@@ -12,21 +12,26 @@ export async function GET(
   context: { params: { id: string } }
 ) {
   try {
+    console.log("[COMMENTS_GET] start", { postId: context.params.id });
+
     const { user, error } = await getDbUser();
     if (error) {
+      console.warn("[COMMENTS_GET] auth error", error);
       return NextResponse.json({ error: error.code }, { status: error.status });
     }
+    console.log("[COMMENTS_GET] user", user.id);
 
     const { id: postId } = context.params;
 
     // find all friend IDs
     const friendIds = await getAcceptedFriendIds(user.id);
     const allowedIds = [user.id, ...friendIds];
+    console.log("[COMMENTS_GET] allowed authorIds", allowedIds);
 
     const comments = await prisma.comment.findMany({
       where: {
         postId,
-        parent: null, // only top-level
+        parentCommentId: null, // only top-level
         authorId: { in: allowedIds },
       },
       include: {
@@ -45,6 +50,11 @@ export async function GET(
       orderBy: { createdAt: "asc" },
     });
 
+    console.log(
+      "[COMMENTS_GET] raw comments",
+      JSON.stringify(comments, null, 2)
+    );
+
     const normalize = (c: any) => ({
       ...c,
       likeCount: c._count.likes,
@@ -56,7 +66,13 @@ export async function GET(
       })),
     });
 
-    return NextResponse.json(comments.map(normalize), { status: 200 });
+    const normalized = comments.map(normalize);
+    console.log(
+      "[COMMENTS_GET] normalized",
+      JSON.stringify(normalized, null, 2)
+    );
+
+    return NextResponse.json(normalized, { status: 200 });
   } catch (e) {
     console.error("[COMMENTS_GET_ERROR]", e);
     return NextResponse.json(
@@ -72,35 +88,46 @@ export async function POST(
   context: { params: { id: string } }
 ) {
   try {
+    console.log("[COMMENTS_POST] start", { postId: context.params.id });
+
     const { user, error } = await getDbUser();
     if (error) {
+      console.warn("[COMMENTS_POST] auth error", error);
       return NextResponse.json({ error: error.code }, { status: error.status });
     }
+    console.log("[COMMENTS_POST] user", user.id);
 
     const { id: postId } = context.params;
     const body = await req.json();
+    console.log("[COMMENTS_POST] raw body", body);
+
     const { content, parentId } = body as {
       content: string;
       parentId?: string | null;
     };
 
     if (!content) {
+      console.warn("[COMMENTS_POST] missing content");
       return NextResponse.json({ error: "Missing content" }, { status: 400 });
     }
 
     // prevent >2 levels deep
     if (parentId) {
+      console.log("[COMMENTS_POST] checking parent", parentId);
       const parent = await prisma.comment.findUnique({
         where: { id: parentId },
-        select: { parent: true },
+        select: { parentCommentId: true },
       });
+      console.log("[COMMENTS_POST] parent check result", parent);
+
       if (!parent) {
         return NextResponse.json(
           { error: "Parent not found" },
           { status: 404 }
         );
       }
-      if (parent.parent) {
+      if (parent.parentCommentId) {
+        console.warn("[COMMENTS_POST] nesting too deep", parentId);
         return NextResponse.json(
           { error: "Replies may only be nested two levels deep" },
           { status: 400 }
@@ -111,17 +138,27 @@ export async function POST(
     const newComment = await prisma.comment.create({
       data: {
         content,
-        author: { connect: { id: user.id } },
-        post: { connect: { id: postId } },
-        parent: parentId ? { connect: { id: parentId } } : undefined,
+        authorId: user.id,
+        postId,
+        ...(parentId ? { parentCommentId: parentId } : {}), // ✅ use FK directly
       },
       include: {
         author: { select: { id: true, name: true, image: true } },
       },
     });
 
-    // always return replies array
-    return NextResponse.json({ ...newComment, replies: [] }, { status: 201 });
+    console.log("[COMMENTS_POST] created", newComment);
+
+    // normalize response shape
+    const response = {
+      ...newComment,
+      likeCount: 0,
+      likedByMe: false,
+      replies: [],
+    };
+    console.log("[COMMENTS_POST] response", response);
+
+    return NextResponse.json(response, { status: 201 });
   } catch (e) {
     console.error("[COMMENTS_POST_ERROR]", e);
     return NextResponse.json(

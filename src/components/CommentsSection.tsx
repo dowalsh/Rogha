@@ -1,15 +1,7 @@
+import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Heart } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { useLike } from "@/hooks/useLike";
 import { LikeButton } from "./LikeButton";
 
@@ -32,14 +24,15 @@ interface CommentType {
 function CommentItem({
   comment,
   onReply,
+  depth = 0,
 }: {
   comment: CommentType;
   onReply: (parentId: string, content: string) => void;
+  depth?: number;
 }) {
-  const [showReplyBox, setShowReplyBox] = useState(false);
-  const [replyText, setReplyText] = useState("");
+  const [showReply, setShowReply] = useState(false);
+  const [reply, setReply] = useState("");
 
-  // 🔹 use shared hook for like state + API
   const { liked, count, toggle } = useLike({
     id: comment.id,
     type: "comment",
@@ -47,73 +40,92 @@ function CommentItem({
     initialCount: comment.likeCount,
   });
 
-  const handleDoubleTap = useDoubleTap(() => toggle());
-
-  async function handleReplySubmit() {
-    if (!replyText.trim()) return;
-    await onReply(comment.id, replyText);
-    setReplyText("");
-    setShowReplyBox(false);
+  async function handleSubmitReply() {
+    if (!reply.trim()) return;
+    await onReply(comment.id, reply);
+    setReply("");
+    setShowReply(false);
   }
 
   return (
     <div className="space-y-2">
-      {/* main comment */}
-      <div
-        className="flex items-start gap-4"
-        onClick={handleDoubleTap}
-        onTouchEnd={handleDoubleTap}
-      >
+      <div className="flex gap-4">
         <Avatar className="h-10 w-10 border">
           <AvatarImage src={comment.author.image ?? "/placeholder-user.jpg"} />
           <AvatarFallback>{comment.author.name?.[0] ?? "?"}</AvatarFallback>
         </Avatar>
         <div className="grid gap-1.5">
           <div className="flex items-center gap-2">
-            <div className="font-medium">
+            <span className="font-medium">
               {comment.author.name ?? "Unknown"}
-            </div>
-            <div className="text-xs text-muted-foreground">
+            </span>
+            <span className="text-xs text-muted-foreground">
               {timeAgo(new Date(comment.createdAt))}
-            </div>
+            </span>
           </div>
-          <div className="text-sm text-muted-foreground">{comment.content}</div>
-          <div className="flex items-center gap-4 mt-1">
-            <LikeButton
-              liked={liked}
-              count={count}
-              onToggle={toggle}
-              fetchLikersUrl={`/api/comments/${comment.id}/likes`}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={() => setShowReplyBox((prev) => !prev)}
-            >
-              {showReplyBox ? "Cancel" : "Reply"}
-            </Button>
-          </div>
+          <p className="text-sm text-muted-foreground">{comment.content}</p>
+          <LikeButton
+            liked={liked}
+            count={count}
+            onToggle={toggle}
+            fetchLikersUrl={`/api/comments/${comment.id}/likes`}
+          />
         </div>
       </div>
 
-      {/* reply box */}
-      {showReplyBox && (
+      {/* replies */}
+      {comment.replies?.length > 0 && (
+        <div className="ml-6 pl-4 border-l border-muted space-y-4">
+          {comment.replies.map((r) => (
+            <CommentItem
+              key={r.id}
+              comment={r}
+              onReply={onReply}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* reply button + box (top-level only) */}
+      {depth === 0 && (
         <div className="ml-12 mt-2 space-y-2">
-          <Textarea
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            placeholder="Write a reply..."
-            className="resize-none"
-          />
-          <Button size="sm" onClick={handleReplySubmit}>
-            Submit Reply
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => setShowReply((s) => !s)}
+          >
+            {showReply ? "Cancel" : "Reply"}
           </Button>
+          {showReply && (
+            <div className="mt-2 space-y-2">
+              <Textarea
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+                placeholder="Write a reply..."
+                className="resize-none text-sm"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSubmitReply}>
+                  Submit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowReply(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
 export default function CommentsSection({
   postId,
   postAuthorName,
@@ -137,14 +149,13 @@ export default function CommentsSection({
       );
   }, [postId]);
 
-  async function handleNewComment() {
+  async function addComment() {
     if (!newComment.trim()) return;
     const res = await fetch(`/api/posts/${postId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: newComment }),
     });
-
     if (res.ok) {
       const created = await res.json();
       setComments((prev) => [
@@ -155,13 +166,12 @@ export default function CommentsSection({
     }
   }
 
-  async function handleReply(parentId: string, content: string) {
+  async function addReply(parentId: string, content: string) {
     const res = await fetch(`/api/posts/${postId}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, parentId }),
     });
-
     if (res.ok) {
       const created = await res.json();
       setComments((prev) =>
@@ -180,57 +190,49 @@ export default function CommentsSection({
     }
   }
 
+  const totalComments = comments.reduce(
+    (acc, c) => acc + 1 + c.replies.length,
+    0
+  );
+
   return (
     <div className="mx-auto max-w-2xl space-y-8 py-8">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-bold">Comments</h2>
-          <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-            {comments.reduce((acc, c) => acc + 1 + c.replies.length, 0)}
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+            {totalComments}
           </span>
         </div>
         <p className="text-sm italic text-orange-500 mb-4">
           Comments are visible to all {postAuthorName}'s friends
         </p>
       </div>
+
       <div className="space-y-6">
         {comments.map((c) => (
-          <CommentItem key={c.id} comment={c} onReply={handleReply} />
+          <CommentItem key={c.id} comment={c} onReply={addReply} />
         ))}
       </div>
+
       <h2 className="text-2xl font-bold">Join the conversation</h2>
-      <div className="space-y-4">
-        <div className="grid gap-2">
-          <Textarea
-            placeholder="Write your comment..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-          />
-          <Button onClick={handleNewComment}>Submit</Button>
-        </div>
+      <div className="grid gap-2">
+        <Textarea
+          placeholder="Write your comment..."
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+        />
+        <Button onClick={addComment}>Submit</Button>
       </div>
     </div>
   );
 }
 
 function timeAgo(date: Date): string {
-  const now = new Date();
-  const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
   return date.toLocaleDateString();
-}
-
-function useDoubleTap(callback: () => void, timeout = 300) {
-  const lastTapRef = useRef<number>(0);
-
-  return () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < timeout) {
-      callback(); // fire on double tap
-    }
-    lastTapRef.current = now;
-  };
 }

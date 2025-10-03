@@ -48,7 +48,7 @@ function CommentItem({
   }
 
   return (
-    <div className="space-y-2">
+    <div id={`comment-${comment.id}`} className="space-y-2 scroll-mt-60">
       <div className="flex gap-4">
         <Avatar className="h-10 w-10 border">
           <AvatarImage src={comment.author.image ?? "/placeholder-user.jpg"} />
@@ -148,6 +148,18 @@ export default function CommentsSection({
         )
       );
   }, [postId]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const el = document.querySelector(window.location.hash);
+      if (el) {
+        // Delay to ensure DOM is ready
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
+      }
+    }
+  }, [comments]); // runs when comments state updates
 
   async function addComment() {
     if (!newComment.trim()) return;

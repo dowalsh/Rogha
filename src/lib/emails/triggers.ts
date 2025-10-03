@@ -1,6 +1,9 @@
 // lib/email/triggers.ts
 import { sendEmail } from "./sender";
-import { buildPostSubmittedEmail } from "./builders";
+import {
+  buildCommentNotificationEmail,
+  buildPostSubmittedEmail,
+} from "./builders";
 import { PrismaClient } from "@/generated/prisma";
 import { getAcceptedFriendRecipients } from "../friends";
 
@@ -121,4 +124,35 @@ export async function triggerPublishedEditionEmail() {
   }
 
   return { sent };
+}
+
+type CommentEmailInput = {
+  to: string; // recipient email
+  actorName: string; // who commented
+  commentText: string; // comment content
+  url: string; // link to the post/comment
+  postTitle?: string | null;
+  isReply?: boolean; // true = reply, false = comment on post
+};
+
+export async function triggerCommentNotificationEmail(
+  input: CommentEmailInput
+) {
+  const { to, actorName, commentText, url, postTitle, isReply } = input;
+
+  // use your builder
+  const email = buildCommentNotificationEmail(
+    actorName,
+    commentText,
+    url,
+    postTitle ?? undefined,
+    isReply ?? false
+  );
+
+  // send email
+  await sendEmail({
+    to,
+    subject: email.subject,
+    html: email.html,
+  });
 }

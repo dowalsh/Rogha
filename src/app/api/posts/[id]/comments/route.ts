@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { getAcceptedFriendIds } from "@/lib/friends";
+import { createCommentNotification } from "@/actions/notification.action";
 
 // GET top-level comments (with replies) for a post
 export async function GET(
@@ -148,6 +149,14 @@ export async function POST(
     });
 
     console.log("[COMMENTS_POST] created", newComment);
+
+    // 🔔 trigger a notification
+    await createCommentNotification({
+      commenterId: user.id,
+      postId: parentId ? undefined : postId, // top-level → notify post author
+      parentCommentId: parentId ?? undefined, // reply → notify parent comment author
+      newCommentId: newComment.id,
+    });
 
     // normalize response shape
     const response = {

@@ -28,3 +28,39 @@ export function buildPostSubmittedEmail(
     `,
   };
 }
+
+// lib/email/builders.ts
+export function buildCommentNotificationEmail(
+  actorName: string,
+  commentText: string,
+  appUrl: string,
+  postTitle?: string,
+  isReply?: boolean
+): BuiltEmail {
+  const safeActor = actorName?.trim() || "Someone";
+  const safeComment = commentText?.trim() || "";
+  const safeUrl = appUrl?.replace(/\/$/, "") || "";
+  const safeTitle = postTitle?.trim();
+
+  const subject = isReply
+    ? `${safeActor} replied to your comment`
+    : safeTitle
+      ? `${safeActor} commented on your post "${safeTitle}"`
+      : `${safeActor} commented on your post`;
+
+  const html = `
+    <h1>${safeActor} ${isReply ? "replied to your comment" : "left a comment"}</h1>
+    ${safeTitle ? `<p>On: <strong>${safeTitle}</strong></p>` : ""}
+    <blockquote style="margin:12px 0; padding:12px; background:#f9f9f9; border-left:4px solid #ccc;">
+      ${safeComment}
+    </blockquote>
+    <p>
+      <a href="${safeUrl}" 
+         style="display:inline-block;padding:10px 16px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">
+        View the conversation
+      </a>
+    </p>
+  `;
+
+  return { subject, html };
+}

@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
+import { createLikeNotification } from "@/actions/notification.action";
 
 export async function POST(
   _req: NextRequest,
@@ -32,6 +33,10 @@ export async function POST(
         data: { userId: user.id, postId },
       });
       console.log("[POST_LIKE] created like", newLike);
+
+      // create notification
+      await createLikeNotification({ likerId: user.id, postId });
+
       return NextResponse.json({ liked: true }, { status: 201 });
     }
   } catch (e) {

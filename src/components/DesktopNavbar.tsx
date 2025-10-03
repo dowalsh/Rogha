@@ -1,10 +1,12 @@
 "use client";
 
-import { Newspaper, HomeIcon, NotebookPen } from "lucide-react";
+import { Newspaper, HomeIcon, NotebookPen, BellIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import type { UserResource } from "@clerk/types";
+import { useEffect, useState } from "react";
+import { getUnreadCount } from "@/actions/notification.action";
 
 type DesktopNavbarProps = {
   isLoaded: boolean;
@@ -13,6 +15,14 @@ type DesktopNavbarProps = {
 };
 
 function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      getUnreadCount().then(setUnread).catch(console.error);
+    }
+  }, [isSignedIn]);
+
   return (
     <div className="hidden md:flex items-center space-x-4">
       <Button variant="ghost" className="flex items-center gap-2" asChild>
@@ -37,12 +47,17 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
             </Link>
           </Button>
           {/* Uncomment if you want notifications */}
-          {/* <Button variant="ghost" className="flex items-center gap-2" asChild>
-            <Link href="/notifications">
+          <Button variant="ghost" className="flex items-center gap-2" asChild>
+            <Link href="/notifications" className="flex items-center gap-2">
               <BellIcon className="w-4 h-4" />
+              {unread > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white text-xs font-medium">
+                  {unread}
+                </span>
+              )}
               <span className="hidden lg:inline">Notifications</span>
             </Link>
-          </Button> */}
+          </Button>
           <UserButton />
         </>
       ) : (

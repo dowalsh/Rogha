@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+// utils/notificationLinks.ts
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -26,4 +27,59 @@ export function formatWeekLabel(date: Date): string {
     date.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
   );
   return la.toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+type NotificationWithRelations = {
+  id: string;
+  type: "LIKE" | "COMMENT" | "SUBMIT";
+  postId?: string | null;
+  commentId?: string | null;
+  post?: { id: string | null } | null;
+  comment?: { id: string | null; postId?: string | null } | null; // ✅ add postId
+};
+
+export function getNotificationLink(n: NotificationWithRelations): string {
+  console.log("[getNotificationLink] full input:", JSON.stringify(n, null, 2));
+
+  if (n.type === "LIKE" || n.type === "COMMENT") {
+    console.log("[getNotificationLink] type is LIKE/COMMENT");
+
+    if (n.commentId) {
+      console.log("[getNotificationLink] found commentId:", n.commentId);
+      const basePostId = n.postId ?? n.comment?.postId ?? n.post?.id;
+      console.log("[getNotificationLink] resolved basePostId:", basePostId);
+
+      if (basePostId) {
+        const url = `/reader/${basePostId}#comment-${n.commentId}`;
+        console.log("[getNotificationLink] built comment URL:", url);
+        return url;
+      } else {
+        console.warn(
+          "[getNotificationLink] commentId exists but no basePostId!"
+        );
+        return `#comment-${n.commentId}`;
+      }
+    }
+
+    if (n.postId ?? n.post?.id) {
+      const url = `/reader/${n.postId ?? n.post?.id}`;
+      console.log("[getNotificationLink] built post URL:", url);
+      return url;
+    }
+
+    console.warn(
+      "[getNotificationLink] LIKE/COMMENT had no postId or commentId"
+    );
+  }
+
+  if (n.type === "SUBMIT" && (n.postId ?? n.post?.id)) {
+    const url = `/reader/${n.postId ?? n.post?.id}`;
+    console.log("[getNotificationLink] built SUBMIT URL:", url);
+    return url;
+  }
+
+  console.warn(
+    "[getNotificationLink] no matching type/postId/commentId, returning '/'"
+  );
+  return "/";
 }

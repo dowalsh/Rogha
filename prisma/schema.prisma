@@ -189,5 +189,5 @@ model Notification {
 enum NotificationType {
   LIKE
   COMMENT
-  FOLLOW
+  SUBMIT
 }

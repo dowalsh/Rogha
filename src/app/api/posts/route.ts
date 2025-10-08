@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
-import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
+// import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 
 // GET all posts for the signed-in user (most recent first)
 export async function GET(_req: NextRequest) {
@@ -36,7 +36,7 @@ export async function GET(_req: NextRequest) {
   }
 }
 
-// POST create a new draft post and link it to this week's edition
+// POST create a new draft post (edition assignment deferred to submit step)
 export async function POST(req: NextRequest) {
   try {
     const { user, error } = await getDbUser();
@@ -51,24 +51,25 @@ export async function POST(req: NextRequest) {
       // tolerate empty body
     }
 
-    const weekStartUTC = getWeekStartUTC();
-    const weekLabel = formatWeekLabel(weekStartUTC);
+    // const weekStartUTC = getWeekStartUTC();
+    // const weekLabel = formatWeekLabel(weekStartUTC);
 
     const { id } = await prisma.$transaction(async (tx) => {
-      const edition = await tx.edition.upsert({
-        where: { weekStart: weekStartUTC },
-        update: {},
-        create: {
-          weekStart: weekStartUTC,
-          title: `Week of ${weekLabel}`,
-        },
-        select: { id: true },
-      });
+      // Commented out: auto-edition linking (will handle at submit time)
+      // const edition = await tx.edition.upsert({
+      //   where: { weekStart: weekStartUTC },
+      //   update: {},
+      //   create: {
+      //     weekStart: weekStartUTC,
+      //     title: `Week of ${weekLabel}`,
+      //   },
+      //   select: { id: true },
+      // });
 
       const post = await tx.post.create({
         data: {
           authorId: user.id,
-          editionId: edition.id,
+          // editionId: edition.id, // assign later at submit
           title: (body.title as string | null) ?? null,
           status: "DRAFT",
         },

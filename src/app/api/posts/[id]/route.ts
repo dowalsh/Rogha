@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { triggerPostSubmittedEmails } from "@/lib/emails/triggers";
 import { createSubmitNotifications } from "@/actions/notification.action";
+import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -105,12 +106,32 @@ export async function PUT(
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    const updateData = {
+    const updateData: any = {
       content: body.content,
       status: body.status,
       title: body.title,
       heroImageUrl: body.heroImageUrl,
     };
+
+    // 🧩 Add edition logic only when submitting
+    if (body.status === "SUBMITTED" && !post.editionId) {
+      console.log("[PUT] Post submitted — linking to edition");
+      const weekStartUTC = getWeekStartUTC();
+      const weekLabel = formatWeekLabel(weekStartUTC);
+
+      const edition = await prisma.edition.upsert({
+        where: { weekStart: weekStartUTC },
+        update: {},
+        create: {
+          weekStart: weekStartUTC,
+          title: `Week of ${weekLabel}`,
+        },
+        select: { id: true },
+      });
+
+      updateData.editionId = edition.id;
+    }
+
     console.log("[PUT] Update data:", updateData);
 
     const updatedPost = await prisma.post.update({

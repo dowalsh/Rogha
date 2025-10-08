@@ -265,6 +265,7 @@ export async function createSubmitNotifications({
   userId: string;
   postId: string;
 }) {
+  // 🧩 1. Find all accepted friendships (two-way)
   const friendships = await prisma.friendship.findMany({
     where: { status: "ACCEPTED", OR: [{ aId: userId }, { bId: userId }] },
   });
@@ -272,8 +273,29 @@ export async function createSubmitNotifications({
   const friendIds = friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
   if (friendIds.length === 0) return;
 
+  // 🧩 2. Check if notifications already exist for this post + creator
+  const existing = await prisma.notification.findMany({
+    where: {
+      type: "SUBMIT",
+      creatorId: userId,
+      postId,
+    },
+    select: { userId: true },
+  });
+
+  const existingUserIds = new Set(existing.map((n) => n.userId));
+  const newFriendIds = friendIds.filter((fid) => !existingUserIds.has(fid));
+
+  if (newFriendIds.length === 0) {
+    console.log(
+      "[NOTIFICATIONS] All submission notifications already exist — skipping."
+    );
+    return;
+  }
+
+  // 🧩 3. Create notifications only for new friends
   await prisma.notification.createMany({
-    data: friendIds.map((fid) => ({
+    data: newFriendIds.map((fid) => ({
       userId: fid,
       creatorId: userId,
       type: "SUBMIT",
@@ -282,7 +304,7 @@ export async function createSubmitNotifications({
     skipDuplicates: true,
   });
 
-  // 🔔 Centralized email handling
+  // 🧩 4. Send emails (optional but centralized)
   try {
     await triggerPostSubmittedEmails(postId);
   } catch (err) {

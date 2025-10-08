@@ -63,7 +63,9 @@ function CommentItem({
               {timeAgo(new Date(comment.createdAt))}
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">{comment.content}</p>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+            {comment.content}
+          </p>
           <LikeButton
             liked={liked}
             count={count}

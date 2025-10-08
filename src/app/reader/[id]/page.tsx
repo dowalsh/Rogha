@@ -6,6 +6,7 @@ import { notFound, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser, SignInButton } from "@clerk/nextjs";
 
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
@@ -78,6 +79,31 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<PostDTO | null>(null);
+
+  const { isLoaded, isSignedIn } = useUser();
+
+  // Wait for Clerk to finish loading
+  if (!isLoaded) {
+    return (
+      <div className="mx-auto max-w-3xl p-6 text-sm text-muted-foreground">
+        Checking authentication...
+      </div>
+    );
+  }
+
+  // Require sign-in for reading posts (or just for comments)
+  if (!isSignedIn) {
+    return (
+      <div className="mx-auto max-w-3xl p-6 space-y-4 text-center">
+        <p className="text-muted-foreground">
+          Please sign in to view this post.
+        </p>
+        <SignInButton mode="modal">
+          <Button>Sign in</Button>
+        </SignInButton>
+      </div>
+    );
+  }
 
   useEffect(() => {
     let cancelled = false;

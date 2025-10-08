@@ -137,6 +137,7 @@ export default function CommentsSection({
 }) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetch(`/api/posts/${postId}/comments`)
@@ -164,40 +165,104 @@ export default function CommentsSection({
   }, [comments]); // runs when comments state updates
 
   async function addComment() {
-    if (!newComment.trim()) return;
-    const res = await fetch(`/api/posts/${postId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newComment }),
-    });
-    if (res.ok) {
+    if (!newComment.trim() || submitting) return;
+    setSubmitting(true);
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticComment: CommentType = {
+      id: tempId,
+      content: newComment,
+      createdAt: new Date().toISOString(),
+      author: { id: "me", name: "You", image: "/placeholder-user.jpg" },
+      replies: [],
+      likeCount: 0,
+      likedByMe: false,
+    };
+
+    // show comment immediately
+    setComments((prev) => [...prev, optimisticComment]);
+    setNewComment("");
+
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newComment }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const created = await res.json();
-      setComments((prev) => [
-        ...prev,
-        { ...created, likeCount: 0, likedByMe: false },
-      ]);
-      setNewComment("");
+
+      // ✅ Replace the optimistic one, don't append
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === tempId ? { ...created, likeCount: 0, likedByMe: false } : c
+        )
+      );
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+      setComments((prev) => prev.filter((c) => c.id !== tempId));
+      alert("Failed to post comment. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   }
-
   async function addReply(parentId: string, content: string) {
-    const res = await fetch(`/api/posts/${postId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, parentId }),
-    });
-    if (res.ok) {
+    if (!content.trim()) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticReply: CommentType = {
+      id: tempId,
+      content,
+      createdAt: new Date().toISOString(),
+      author: { id: "me", name: "You", image: "/placeholder-user.jpg" },
+      replies: [],
+      likeCount: 0,
+      likedByMe: false,
+    };
+
+    // 🟢 Show immediately
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === parentId
+          ? { ...c, replies: [...c.replies, optimisticReply] }
+          : c
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, parentId }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const created = await res.json();
+
+      // ✅ Replace temp reply with real one
       setComments((prev) =>
         prev.map((c) =>
           c.id === parentId
             ? {
                 ...c,
-                replies: [
-                  ...c.replies,
-                  { ...created, likeCount: 0, likedByMe: false },
-                ],
+                replies: c.replies.map((r) =>
+                  r.id === tempId
+                    ? { ...created, likeCount: 0, likedByMe: false }
+                    : r
+                ),
               }
+            : c
+        )
+      );
+    } catch (err) {
+      console.error("Failed to post reply:", err);
+
+      // ❌ Roll back on failure
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === parentId
+            ? { ...c, replies: c.replies.filter((r) => r.id !== tempId) }
             : c
         )
       );
@@ -236,7 +301,12 @@ export default function CommentsSection({
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
         />
-        <Button onClick={addComment}>Submit</Button>
+        <Button
+          onClick={addComment}
+          disabled={submitting || !newComment.trim()}
+        >
+          {submitting ? "Posting..." : "Submit"}
+        </Button>{" "}
       </div>
     </div>
   );

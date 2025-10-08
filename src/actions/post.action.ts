@@ -1,220 +1,222 @@
-"use server";
+//  not necessary at present - using API as single method. may refactor later
 
-import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-import { getDbUserId } from "./user.action";
-import { z } from "zod";
+// "use server";
 
-/** Minimal validator for Lexical SerializedEditorState (MVP).
- *  You can tighten this later with a full schema if you add custom nodes.
- */
-const SerializedEditorStateSchema = z.any();
+// import { prisma } from "@/lib/prisma";
+// import { revalidatePath } from "next/cache";
+// import { getDbUserId } from "./user.action";
+// import { z } from "zod";
 
-const EMPTY_LEXICAL_STATE = {
-  root: {
-    type: "root",
-    version: 1,
-    indent: 0,
-    format: "",
-    direction: "ltr",
-    children: [
-      {
-        type: "paragraph",
-        version: 1,
-        indent: 0,
-        format: "",
-        direction: "ltr",
-        children: [],
-      },
-    ],
-  },
-} as const;
+// /** Minimal validator for Lexical SerializedEditorState (MVP).
+//  *  You can tighten this later with a full schema if you add custom nodes.
+//  */
+// const SerializedEditorStateSchema = z.any();
 
-/** CREATE */
-export async function createPost(input: {
-  content?: unknown; // SerializedEditorState JSON
-  image?: string | null;
-  editionId?: string | null;
-  status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
-}) {
-  try {
-    const userId = await getDbUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
+// const EMPTY_LEXICAL_STATE = {
+//   root: {
+//     type: "root",
+//     version: 1,
+//     indent: 0,
+//     format: "",
+//     direction: "ltr",
+//     children: [
+//       {
+//         type: "paragraph",
+//         version: 1,
+//         indent: 0,
+//         format: "",
+//         direction: "ltr",
+//         children: [],
+//       },
+//     ],
+//   },
+// } as const;
 
-    const parsed =
-      input.content !== undefined
-        ? SerializedEditorStateSchema.parse(input.content)
-        : EMPTY_LEXICAL_STATE;
+// /** CREATE */
+// export async function createPost(input: {
+//   content?: unknown; // SerializedEditorState JSON
+//   image?: string | null;
+//   editionId?: string | null;
+//   status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
+// }) {
+//   try {
+//     const userId = await getDbUserId();
+//     if (!userId) return { success: false, error: "Unauthorized" };
 
-    const post = await prisma.post.create({
-      data: {
-        authorId: userId,
-        editionId: input.editionId ?? null,
-        image: input.image ?? null,
-        status: (input.status as any) ?? "DRAFT",
-        content: parsed, // JSON
-        // version defaults to 1 in the DB
-      },
-    });
+//     const parsed =
+//       input.content !== undefined
+//         ? SerializedEditorStateSchema.parse(input.content)
+//         : EMPTY_LEXICAL_STATE;
 
-    revalidatePath("/");
-    return { success: true, post };
-  } catch (error) {
-    console.error("Failed to create post:", error);
-    return { success: false, error: "Failed to create post" };
-  }
-}
+//     const post = await prisma.post.create({
+//       data: {
+//         authorId: userId,
+//         editionId: input.editionId ?? null,
+//         image: input.image ?? null,
+//         status: (input.status as any) ?? "DRAFT",
+//         content: parsed, // JSON
+//         // version defaults to 1 in the DB
+//       },
+//     });
 
-/** READ LIST */
-export async function getPosts() {
-  try {
-    const posts = await prisma.post.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        author: {
-          select: { id: true, name: true, image: true, username: true },
-        },
-        comments: {
-          include: {
-            author: {
-              select: { id: true, username: true, image: true, name: true },
-            },
-          },
-          orderBy: { createdAt: "asc" },
-        },
-        likes: { select: { userId: true } },
-        _count: { select: { likes: true, comments: true } },
-      },
-    });
-    return posts;
-  } catch (error) {
-    console.log("Error in getPosts", error);
-    throw new Error("Failed to get posts");
-  }
-}
+//     revalidatePath("/");
+//     return { success: true, post };
+//   } catch (error) {
+//     console.error("Failed to create post:", error);
+//     return { success: false, error: "Failed to create post" };
+//   }
+// }
 
-/** AUTOSAVE / UPDATE with optimistic concurrency
- *  - Pass the Post.id, new content JSON, and the current version you loaded.
- *  - If someone else saved first, you’ll get { conflict: true } and should refetch.
- */
-export async function updatePost(input: {
-  id: string;
-  content?: unknown; // SerializedEditorState JSON
-  image?: string | null;
-  editionId?: string | null;
-  status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
-  version: number; // client-side version you last loaded
-}) {
-  try {
-    const userId = await getDbUserId();
-    if (!userId) return { success: false, error: "Unauthorized" };
+// /** READ LIST */
+// export async function getPosts() {
+//   try {
+//     const posts = await prisma.post.findMany({
+//       orderBy: { createdAt: "desc" },
+//       include: {
+//         author: {
+//           select: { id: true, name: true, image: true, username: true },
+//         },
+//         comments: {
+//           include: {
+//             author: {
+//               select: { id: true, username: true, image: true, name: true },
+//             },
+//           },
+//           orderBy: { createdAt: "asc" },
+//         },
+//         likes: { select: { userId: true } },
+//         _count: { select: { likes: true, comments: true } },
+//       },
+//     });
+//     return posts;
+//   } catch (error) {
+//     console.log("Error in getPosts", error);
+//     throw new Error("Failed to get posts");
+//   }
+// }
 
-    // Ownership check
-    const existing = await prisma.post.findUnique({
-      where: { id: input.id },
-      select: { authorId: true },
-    });
-    if (!existing) return { success: false, error: "Post not found" };
-    if (existing.authorId !== userId)
-      return { success: false, error: "Unauthorized - no edit permission" };
+// /** AUTOSAVE / UPDATE with optimistic concurrency
+//  *  - Pass the Post.id, new content JSON, and the current version you loaded.
+//  *  - If someone else saved first, you’ll get { conflict: true } and should refetch.
+//  */
+// export async function updatePost(input: {
+//   id: string;
+//   content?: unknown; // SerializedEditorState JSON
+//   image?: string | null;
+//   editionId?: string | null;
+//   status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
+//   version: number; // client-side version you last loaded
+// }) {
+//   try {
+//     const userId = await getDbUserId();
+//     if (!userId) return { success: false, error: "Unauthorized" };
 
-    const parsedContent =
-      input.content !== undefined
-        ? SerializedEditorStateSchema.parse(input.content)
-        : undefined;
+//     // Ownership check
+//     const existing = await prisma.post.findUnique({
+//       where: { id: input.id },
+//       select: { authorId: true },
+//     });
+//     if (!existing) return { success: false, error: "Post not found" };
+//     if (existing.authorId !== userId)
+//       return { success: false, error: "Unauthorized - no edit permission" };
 
-    // Optimistic concurrency: update where id AND version match
-    const res = await prisma.post.updateMany({
-      where: { id: input.id, version: input.version },
-      data: {
-        ...(parsedContent !== undefined ? { content: parsedContent } : {}),
-        ...(input.image !== undefined ? { image: input.image } : {}),
-        ...(input.editionId !== undefined
-          ? { editionId: input.editionId }
-          : {}),
-        ...(input.status ? { status: input.status as any } : {}),
-        version: { increment: 1 },
-      },
-    });
+//     const parsedContent =
+//       input.content !== undefined
+//         ? SerializedEditorStateSchema.parse(input.content)
+//         : undefined;
 
-    if (res.count === 0) {
-      // Either not found, or version mismatch (someone else updated first)
-      return { success: false, conflict: true };
-    }
+//     // Optimistic concurrency: update where id AND version match
+//     const res = await prisma.post.updateMany({
+//       where: { id: input.id, version: input.version },
+//       data: {
+//         ...(parsedContent !== undefined ? { content: parsedContent } : {}),
+//         ...(input.image !== undefined ? { image: input.image } : {}),
+//         ...(input.editionId !== undefined
+//           ? { editionId: input.editionId }
+//           : {}),
+//         ...(input.status ? { status: input.status as any } : {}),
+//         version: { increment: 1 },
+//       },
+//     });
 
-    const updated = await prisma.post.findUnique({
-      where: { id: input.id },
-      select: { id: true, version: true, updatedAt: true },
-    });
+//     if (res.count === 0) {
+//       // Either not found, or version mismatch (someone else updated first)
+//       return { success: false, conflict: true };
+//     }
 
-    revalidatePath("/");
-    return { success: true, post: updated };
-  } catch (error) {
-    console.error("Failed to update post:", error);
-    return { success: false, error: "Failed to update post" };
-  }
-}
+//     const updated = await prisma.post.findUnique({
+//       where: { id: input.id },
+//       select: { id: true, version: true, updatedAt: true },
+//     });
 
-/** COMMENT (unchanged except types) */
-export async function createComment(postId: string, content: string) {
-  try {
-    const userId = await getDbUserId();
-    if (!userId) return;
-    if (!content) throw new Error("Content is required");
+//     revalidatePath("/");
+//     return { success: true, post: updated };
+//   } catch (error) {
+//     console.error("Failed to update post:", error);
+//     return { success: false, error: "Failed to update post" };
+//   }
+// }
 
-    const post = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { authorId: true },
-    });
-    if (!post) throw new Error("Post not found");
+// /** COMMENT (unchanged except types) */
+// export async function createComment(postId: string, content: string) {
+//   try {
+//     const userId = await getDbUserId();
+//     if (!userId) return;
+//     if (!content) throw new Error("Content is required");
 
-    const [comment] = await prisma.$transaction(async (tx) => {
-      const newComment = await tx.comment.create({
-        data: { content, authorId: userId, postId },
-      });
+//     const post = await prisma.post.findUnique({
+//       where: { id: postId },
+//       select: { authorId: true },
+//     });
+//     if (!post) throw new Error("Post not found");
 
-      if (post.authorId !== userId) {
-        await tx.notification.create({
-          data: {
-            type: "COMMENT",
-            userId: post.authorId,
-            creatorId: userId,
-            postId,
-            commentId: newComment.id,
-          },
-        });
-      }
+//     const [comment] = await prisma.$transaction(async (tx) => {
+//       const newComment = await tx.comment.create({
+//         data: { content, authorId: userId, postId },
+//       });
 
-      return [newComment];
-    });
+//       if (post.authorId !== userId) {
+//         await tx.notification.create({
+//           data: {
+//             type: "COMMENT",
+//             userId: post.authorId,
+//             creatorId: userId,
+//             postId,
+//             commentId: newComment.id,
+//           },
+//         });
+//       }
 
-    revalidatePath("/");
-    return { success: true, comment };
-  } catch (error) {
-    console.error("Failed to create comment:", error);
-    return { success: false, error: "Failed to create comment" };
-  }
-}
+//       return [newComment];
+//     });
 
-/** DELETE (unchanged) */
-export async function deletePost(postId: string) {
-  try {
-    const userId = await getDbUserId();
+//     revalidatePath("/");
+//     return { success: true, comment };
+//   } catch (error) {
+//     console.error("Failed to create comment:", error);
+//     return { success: false, error: "Failed to create comment" };
+//   }
+// }
 
-    const post = await prisma.post.findUnique({
-      where: { id: postId },
-      select: { authorId: true },
-    });
+// /** DELETE (unchanged) */
+// export async function deletePost(postId: string) {
+//   try {
+//     const userId = await getDbUserId();
 
-    if (!post) throw new Error("Post not found");
-    if (post.authorId !== userId)
-      throw new Error("Unauthorized - no delete permission");
+//     const post = await prisma.post.findUnique({
+//       where: { id: postId },
+//       select: { authorId: true },
+//     });
 
-    await prisma.post.delete({ where: { id: postId } });
-    revalidatePath("/");
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to delete post:", error);
-    return { success: false, error: "Failed to delete post" };
-  }
-}
+//     if (!post) throw new Error("Post not found");
+//     if (post.authorId !== userId)
+//       throw new Error("Unauthorized - no delete permission");
+
+//     await prisma.post.delete({ where: { id: postId } });
+//     revalidatePath("/");
+//     return { success: true };
+//   } catch (error) {
+//     console.error("Failed to delete post:", error);
+//     return { success: false, error: "Failed to delete post" };
+//   }
+// }

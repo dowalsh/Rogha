@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { FriendsCarousel } from "@/components/FriendsCarousel";
 
 type EditionRow = {
   id: string;
@@ -118,8 +117,6 @@ export default function EditionsPage() {
 
       <SignedIn>
         <div className="space-y-8">
-          <FriendsCarousel refreshKey={refreshFollows} />
-
           {/* Header */}
           <header className="border-b pb-4 text-center font-serif">
             <h1 className="text-5xl font-black uppercase tracking-wide">

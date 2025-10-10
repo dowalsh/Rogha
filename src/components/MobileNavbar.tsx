@@ -1,13 +1,11 @@
 "use client";
 
 import {
-  BellIcon,
   HomeIcon,
   LogOutIcon,
   MenuIcon,
-  MoonIcon,
-  SunIcon,
-  UserIcon,
+  BellIcon,
+  Blend,
   Newspaper,
   NotebookPen,
 } from "lucide-react";
@@ -19,11 +17,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SignInButton, SignOutButton } from "@clerk/nextjs";
-import { useTheme } from "next-themes";
 import Link from "next/link";
 import type { UserResource } from "@clerk/types";
+import { getUnreadCount } from "@/actions/notification.action";
 
 type MobileNavbarProps = {
   isLoaded: boolean;
@@ -33,11 +31,17 @@ type MobileNavbarProps = {
 
 function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      getUnreadCount().then(setUnread).catch(console.error);
+    }
+  }, [isSignedIn]);
 
   return (
     <div className="flex md:hidden items-center space-x-2">
-      <Button
+      {/* <Button
         variant="ghost"
         size="icon"
         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -46,7 +50,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
         <SunIcon className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
         <MoonIcon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
         <span className="sr-only">Toggle theme</span>
-      </Button>
+      </Button> */}
 
       <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
         <SheetTrigger asChild>
@@ -87,9 +91,34 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                   className="flex items-center gap-3 justify-start"
                   asChild
                 >
-                  <Link href="/notifications">
+                  <Link href="/circles">
+                    <Blend className="w-4 h-4" />
+                    Circles
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-3 justify-start"
+                  asChild
+                >
+                  <Link href="/posts">
                     <NotebookPen className="w-4 h-4" />
                     Posts
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-3 justify-start"
+                  asChild
+                >
+                  <Link href="/notifications">
+                    <BellIcon className="w-4 h-4" />
+                    {unread > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white text-xs font-medium">
+                        {unread}
+                      </span>
+                    )}
+                    Notifications
                   </Link>
                 </Button>
                 {/* <Button

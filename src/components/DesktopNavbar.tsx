@@ -1,6 +1,12 @@
 "use client";
 
-import { Newspaper, HomeIcon, NotebookPen, BellIcon } from "lucide-react";
+import {
+  Newspaper,
+  HomeIcon,
+  NotebookPen,
+  BellIcon,
+  Blend,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
@@ -38,6 +44,12 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
             <Link href="/editions">
               <Newspaper className="w-4 h-4" />
               <span className="hidden lg:inline">Editions</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" className="flex items-center gap-2" asChild>
+            <Link href="/circles">
+              <Blend className="w-4 h-4" />
+              <span className="hidden lg:inline">Circles</span>
             </Link>
           </Button>
           <Button variant="ghost" className="flex items-center gap-2" asChild>

@@ -349,8 +349,8 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
                       {item.state === "ACCEPTED"
                         ? "Friend"
                         : item.state === "PENDING_INCOMING"
-                        ? "Wants to be friends!"
-                        : "Pending"}
+                          ? "Wants to be friends!"
+                          : "Pending"}
                     </span>
                   </div>
                 </Link>

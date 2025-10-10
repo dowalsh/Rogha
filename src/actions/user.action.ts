@@ -42,7 +42,10 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
     }
 
     // Normalize fields for DB
-    const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    const name =
+      `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+      user.username ||
+      "Unknown";
     const email = user.primaryEmailAddress?.emailAddress ?? "";
     const username = user.username ?? email.split("@")[0] ?? `user_${userId}`;
 

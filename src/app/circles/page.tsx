@@ -2,6 +2,7 @@
 
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { FriendsCarousel } from "@/components/FriendsCarousel";
+import { CirclesCarousel } from "@/components/CirclesCarousel";
 
 export default function CirclesPage() {
   return (
@@ -12,6 +13,7 @@ export default function CirclesPage() {
 
       <SignedIn>
         <FriendsCarousel />
+        {/* <CirclesCarousel /> */}
       </SignedIn>
     </>
   );

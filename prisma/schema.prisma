@@ -39,7 +39,33 @@ model User {
   friendshipsA          Friendship[] @relation("friendship_a")
   friendshipsB          Friendship[] @relation("friendship_b")
   friendshipsRequested  Friendship[] @relation("friendship_requester")
+
+  circleMemberships CircleMember[]
 }
+
+model Circle {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+
+  members     CircleMember[]
+  posts       Post[] @relation("PostCircle")
+}
+
+model CircleMember {
+  circleId   String
+  userId     String
+  status     CircleMemberStatus @default(JOINED)
+  joinedAt   DateTime @default(now())
+
+  circle     Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([circleId, userId])
+}
+
+
 
 model Edition {
   id          String    @id @default(cuid())
@@ -82,11 +108,20 @@ model Post {
   comments    Comment[]
   likes       PostLike[]
   notifications Notification[]
+
+ circleId String?  
+ circle   Circle? @relation("PostCircle", fields: [circleId], references: [id], onDelete: SetNull)
 }
 
 enum FriendshipStatus {
   PENDING
   ACCEPTED
+}
+enum CircleMemberStatus {
+  JOINED     // Active member
+  PENDING    // Awaiting approval (future use)
+  LEFT       // Voluntarily left
+  REMOVED    // Kicked or removed
 }
 
 model Friendship {

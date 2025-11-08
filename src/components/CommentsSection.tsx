@@ -296,6 +296,11 @@ export default function CommentsSection({
             Comments are visible to all Rogha users
           </p>
         )}
+        {postAudienceType === "CIRCLE" && (
+          <p className="text-sm italic text-orange-500 mb-4">
+            Comments are visible to all members of this circle
+          </p>
+        )}
       </div>
 
       <div className="space-y-6">

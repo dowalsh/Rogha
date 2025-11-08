@@ -23,6 +23,19 @@ export function CirclesCarousel() {
     setCircles((prev) => [newCircle, ...prev]);
   };
 
+  // When the dialog reports membership changed, update circles + selected
+  const handleMembersChanged = (nextMembers: { user: any }[]) => {
+    if (!selected) return;
+    setCircles((prev) =>
+      prev.map((c) =>
+        c.id === selected.id ? { ...c, members: nextMembers } : c
+      )
+    );
+    setSelected((prev: any) =>
+      prev ? { ...prev, members: nextMembers } : prev
+    );
+  };
+
   return (
     <section className="mt-6">
       <h2 className="text-lg font-semibold mb-3 px-2">Your Circles</h2>
@@ -56,9 +69,11 @@ export function CirclesCarousel() {
       </div>
 
       <CircleDialog
+        key={selected?.id ?? "none"} // keep open after mutations
         circle={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
+        onMembersChanged={handleMembersChanged} // renamed prop
       />
       <NewCircleDialog
         open={newDialogOpen}

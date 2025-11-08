@@ -33,27 +33,40 @@ export function CircleDialog({
   circle,
   open,
   onClose,
+  onMembersChanged, // renamed
 }: {
   circle: any;
   open: boolean;
   onClose: () => void;
+  onMembersChanged?: (members: { user: any }[]) => void;
 }) {
-  if (!circle?.members || circle.members.length === 0) return null;
+  // ❌ remove this early return — allow empty-members circles
+  // if (!circle?.members || circle.members.length === 0) return null;
 
-  const [members, setMembers] = useState<{ user: any }[]>(circle.members);
+  const [members, setMembers] = useState<{ user: any }[]>(
+    circle?.members ?? []
+  );
   const [friends, setFriends] = useState<any[]>([]);
   const [isAdding, setIsAdding] = useState(false);
-
-  // 🧩 new state just for Popover
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
+  // keep members in sync when a new circle is selected
   useEffect(() => {
-    getFriends().then(setFriends);
-  }, []);
+    setMembers(circle?.members ?? []);
+  }, [circle?.id]); // re-run when switching circles
+
+  // load friends only when dialog opens (saves a fetch)
+  useEffect(() => {
+    if (open) getFriends().then(setFriends);
+  }, [open]);
 
   const handleRemove = async (memberId: string) => {
     await removeMemberFromCircle(circle.id, memberId);
-    setMembers((prev) => prev.filter((m) => m.user.id !== memberId));
+    setMembers((prev) => {
+      const next = prev.filter((m) => m.user.id !== memberId);
+      onMembersChanged?.(next);
+      return next;
+    });
   };
 
   const handleAdd = async (friendId: string) => {
@@ -61,18 +74,23 @@ export function CircleDialog({
     try {
       await addMemberToCircle({ circleId: circle.id, friendId });
       const friend = friends.find((f) => f.id === friendId);
-      setMembers((prev) => [...prev, { user: friend }]);
-      setIsPopoverOpen(false); // ✅ close just the popover, not the dialog
+      setMembers((prev) => {
+        const next = [...prev, { user: friend }];
+        onMembersChanged?.(next);
+        return next;
+      });
+      setIsPopoverOpen(false);
     } finally {
       setIsAdding(false);
     }
   };
 
-  const handleLeave = async () => {
-    if (!confirm("Leave this circle?")) return;
-    await leaveCircle(circle.id);
-    onClose();
-  };
+  // const handleLeave = async () => {
+  //   if (!confirm("Leave this circle?")) return;
+  //   await leaveCircle(circle.id);
+  //   onClose();
+  //   onChanged?.();
+  // };
 
   const currentMemberIds = members.map((m) => m.user.id);
   const addableFriends = friends.filter(
@@ -80,19 +98,21 @@ export function CircleDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose(); // only close if the user actually closes it
+      }}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{circle.name}</DialogTitle>
+          <DialogTitle>{circle?.name ?? "Circle"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* Members */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-medium">Members</h3>
-
-              {/* 🧩 friend picker popover now has its own open state */}
               <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm">
@@ -137,7 +157,7 @@ export function CircleDialog({
                   <div className="flex items-center gap-2">
                     <Avatar className="w-6 h-6">
                       <AvatarImage src={m.user.image} />
-                      <AvatarFallback>{m.user.name?.[0]}</AvatarFallback>
+                      <AvatarFallback>{m.user.name?.[0] ?? "?"}</AvatarFallback>
                     </Avatar>
                     <span>{m.user.name || "Unknown"}</span>
                   </div>

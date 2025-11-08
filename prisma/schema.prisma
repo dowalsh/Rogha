@@ -14,6 +14,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role { 
+  USER 
+  ADMIN
+ }
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -39,6 +44,8 @@ model User {
   friendshipsA          Friendship[] @relation("friendship_a")
   friendshipsB          Friendship[] @relation("friendship_b")
   friendshipsRequested  Friendship[] @relation("friendship_requester")
+  
+  role Role @default(USER)
 
   circleMemberships CircleMember[]
 }
@@ -88,6 +95,12 @@ enum PostStatus {
   ARCHIVED
 }
 
+enum AudienceType {
+  CIRCLE     // needs circleId
+  FRIENDS    // author’s accepted friends
+  ALL_USERS  // admin-only
+}
+
 model Post {
   id          String     @id @default(cuid())
   title       String?
@@ -109,6 +122,7 @@ model Post {
   likes       PostLike[]
   notifications Notification[]
 
+  audienceType  AudienceType @default(CIRCLE)
  circleId String?  
  circle   Circle? @relation("PostCircle", fields: [circleId], references: [id], onDelete: SetNull)
 }

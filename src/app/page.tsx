@@ -15,7 +15,10 @@ export default function Home() {
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl font-serif text-center">Welcome to Rogha</h1>
 
-          <p>Rogha is Irish for "choice".</p>
+          <p>
+            Rogha, pronounced r-ow-ah (rhymes with powah), is the Irish word for
+            "choice".
+          </p>
           <p>
             It is a simple social media for friends by friends. No ads. No
             bullshit. Actually social — in the way that matters. Just the people

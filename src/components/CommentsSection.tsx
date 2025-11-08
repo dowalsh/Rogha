@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useLike } from "@/hooks/useLike";
 import { LikeButton } from "./LikeButton";
+import type { AudienceType } from "@/types/index";
 
 interface Author {
   id: string;
@@ -131,9 +132,11 @@ function CommentItem({
 export default function CommentsSection({
   postId,
   postAuthorName,
+  postAudienceType,
 }: {
   postId: string;
   postAuthorName: string;
+  postAudienceType: AudienceType; // <- type
 }) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -284,8 +287,18 @@ export default function CommentsSection({
           </span>
         </div>
         <p className="text-sm italic text-orange-500 mb-4">
-          Comments are visible to all {postAuthorName}'s friends
+          test! {postAudienceType}
         </p>
+        {postAudienceType === "FRIENDS" && (
+          <p className="text-sm italic text-orange-500 mb-4">
+            Comments are visible to all {postAuthorName}'s friends
+          </p>
+        )}
+        {postAudienceType === "ALL_USERS" && (
+          <p className="text-sm italic text-orange-500 mb-4">
+            Comments are visible to all Rogha users
+          </p>
+        )}
       </div>
 
       <div className="space-y-6">

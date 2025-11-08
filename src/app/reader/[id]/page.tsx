@@ -14,6 +14,7 @@ import CommentsSection from "@/components/CommentsSection";
 
 import { LikeButton } from "@/components/LikeButton";
 import { useLike } from "@/hooks/useLike";
+import type { AudienceType } from "@/types/index";
 
 type PostDTO = {
   id: string;
@@ -29,6 +30,7 @@ type PostDTO = {
   } | null;
   likeCount: number;
   likedByMe: boolean;
+  audienceType: AudienceType;
 };
 
 // --- helpers: quick validator & explainer (diagnostics only) ---
@@ -126,7 +128,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     if (!validation.ok) {
       console.groupCollapsed("[TipTap render] invalid content");
       console.warn(validation);
-      console.log("Raw content:", rawContent);
+      // console.log("Raw content:", rawContent);
       console.groupEnd();
       return (
         <div className="text-sm text-muted-foreground">
@@ -148,7 +150,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     } catch (e) {
       console.groupCollapsed("[TipTap render] threw");
       console.error(e);
-      console.log("Raw content:", rawContent);
+      // console.log("Raw content:", rawContent);
       console.groupEnd();
       return (
         <p className="text-sm text-muted-foreground">
@@ -195,6 +197,8 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
+  // // focus debug output on audience type only
+  // console.log("post.audienceType:", post?.audienceType ?? "undefined");
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
@@ -248,6 +252,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       <CommentsSection
         postId={post.id}
         postAuthorName={post.author?.name ?? "post author"}
+        postAudienceType={post.audienceType}
       />
     </div>
   );

@@ -42,12 +42,15 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
     }
 
     // Normalize fields for DB
-    const name =
-      `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+    const email = user.primaryEmailAddress?.emailAddress || "";
+    const computedUsername =
       user.username ||
-      "Unknown";
-    const email = user.primaryEmailAddress?.emailAddress ?? "";
-    const username = user.username ?? email.split("@")[0] ?? `user_${userId}`;
+      (email ? email.split("@")[0] : "") ||
+      (userId ? `user_${userId.slice(-6)}` : "user");
+
+    const first = user.firstName || "";
+    const last = user.lastName || "";
+    const name = `${first} ${last}`.trim() || computedUsername || "Unknown";
 
     return await prisma.user.upsert({
       where: { clerkId: userId! },
@@ -59,7 +62,7 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
       create: {
         clerkId: userId!,
         name,
-        username,
+        username: computedUsername,
         email,
         image: user.imageUrl ?? null,
       },

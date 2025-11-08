@@ -286,9 +286,6 @@ export default function CommentsSection({
             {totalComments}
           </span>
         </div>
-        <p className="text-sm italic text-orange-500 mb-4">
-          test! {postAudienceType}
-        </p>
         {postAudienceType === "FRIENDS" && (
           <p className="text-sm italic text-orange-500 mb-4">
             Comments are visible to all {postAuthorName}'s friends

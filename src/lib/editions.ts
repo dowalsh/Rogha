@@ -1,5 +1,6 @@
 // src/lib/editions.ts
 import { prisma } from "@/lib/prisma";
+
 type DbUser = { id: string };
 
 export function plannedPublishAt(weekStart: Date): Date {
@@ -178,34 +179,53 @@ export async function getPublishedEditions(user: DbUser) {
 }
 
 export async function getPublishedEditionById(user: DbUser, id: string) {
+  // 1) Friendships for FRIENDS audience
   const friendships = await prisma.friendship.findMany({
     where: { OR: [{ aId: user.id }, { bId: user.id }] },
-    select: { aId: true, bId: true, status: true, acceptedAt: true },
+    select: { aId: true, bId: true, status: true },
   });
+  const validFriendIds = friendships
+    .filter((f) => f.status === "ACCEPTED")
+    .map((f) => (f.aId === user.id ? f.bId : f.aId));
 
+  // 2) Edition shell
   const edition = await prisma.edition.findUnique({
     where: { id },
     select: { id: true, title: true, weekStart: true, publishedAt: true },
   });
-
   if (!edition) return null;
 
-  const cutoff = edition.publishedAt ?? plannedPublishAt(edition.weekStart);
-  // const validFriendIds = friendships
-  //   .filter(
-  //     (f) => f.status === "ACCEPTED" && f.acceptedAt && f.acceptedAt < cutoff
-  //   )
-  //   .map((f) => (f.aId === user.id ? f.bId : f.aId));
-  // Friends that are fully accepted, no cutoff check
-  const validFriendIds = friendships
-    .filter((f) => f.status === "ACCEPTED")
-    .map((f) => (f.aId === user.id ? f.bId : f.aId));
+  // 3) Circles the viewer is part of (for CIRCLE audience)
+  const myCircleIds = await prisma.circleMember
+    .findMany({
+      where: { userId: user.id, status: "JOINED" },
+      select: { circleId: true },
+    })
+    .then((rows) => rows.map((r) => r.circleId));
+
+  // 4) Audience filter
+  // - Author can see their own posts
+  // - ALL_USERS is open to everyone
+  // - FRIENDS requires accepted friendship with author
+  // - CIRCLE requires viewer to be JOINED in that circle
 
   const posts = await prisma.post.findMany({
     where: {
       editionId: edition.id,
       status: "PUBLISHED",
-      OR: [{ authorId: user.id }, { authorId: { in: validFriendIds } }],
+      OR: [
+        { authorId: user.id },
+        { audienceType: "ALL_USERS" },
+        {
+          AND: [
+            { audienceType: "FRIENDS" },
+            { authorId: { in: validFriendIds } },
+          ],
+        },
+        {
+          AND: [{ audienceType: "CIRCLE" }, { circleId: { in: myCircleIds } }],
+        },
+      ],
     },
     orderBy: { updatedAt: "desc" },
     select: {
@@ -214,6 +234,9 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       status: true,
       updatedAt: true,
       authorId: true,
+      audienceType: true,
+      circleId: true,
+      circle: { select: { id: true, name: true } },
       author: { select: { id: true, name: true, image: true } },
     },
   });

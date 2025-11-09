@@ -122,7 +122,7 @@ model Post {
   likes       PostLike[]
   notifications Notification[]
 
-  audienceType  AudienceType @default(CIRCLE)
+  audienceType  AudienceType @default(FRIENDS)
  circleId String?  
  circle   Circle? @relation("PostCircle", fields: [circleId], references: [id], onDelete: SetNull)
 }

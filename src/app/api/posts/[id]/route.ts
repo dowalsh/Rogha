@@ -81,7 +81,7 @@ export async function GET(
 // UPDATE post by ID
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } } // ✅ params is NOT a Promise
 ) {
   console.log("[PUT] Update post by ID called");
   try {
@@ -95,7 +95,7 @@ export async function PUT(
     const body = await req.json();
     console.log("[PUT] Request body:", body);
 
-    const { id } = await context.params;
+    const { id } = params;
     console.log("[PUT] Post ID from params:", id);
 
     const post = await prisma.post.findUnique({ where: { id } });
@@ -106,14 +106,38 @@ export async function PUT(
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
+    // ---- Audience normalization ----
+    const allowedAudience = new Set(["CIRCLE", "FRIENDS", "ALL_USERS"]);
+    const incomingAudience = body.audienceType as string | undefined;
+    const incomingCircleId =
+      (body.circleId as string | null | undefined) ?? null;
+
+    if (!incomingAudience || !allowedAudience.has(incomingAudience)) {
+      return NextResponse.json(
+        { error: "Invalid audienceType" },
+        { status: 400 }
+      );
+    }
+    if (incomingAudience === "CIRCLE" && !incomingCircleId) {
+      return NextResponse.json(
+        { error: "circleId required for CIRCLE" },
+        { status: 400 }
+      );
+    }
+
+    // If you want to enforce membership on CIRCLE, you can add this later:
+    // if (incomingAudience === "CIRCLE") { ... validate user is a member ... }
+
     const updateData: any = {
+      title: body.title,
       content: body.content,
       status: body.status,
-      title: body.title,
       heroImageUrl: body.heroImageUrl,
+      audienceType: incomingAudience,
+      circleId: incomingAudience === "CIRCLE" ? incomingCircleId : null,
     };
 
-    // 🧩 Add edition logic only when submitting
+    // ---- Edition linking on SUBMITTED (unchanged) ----
     if (body.status === "SUBMITTED" && !post.editionId) {
       console.log("[PUT] Post submitted — linking to edition");
       const weekStartUTC = getWeekStartUTC();
@@ -140,7 +164,7 @@ export async function PUT(
     });
     console.log("[PUT] Updated post:", updatedPost);
 
-    // 👇 only trigger email if status is SUBMITTED and was unsubmitted before. Could add some level of spam protection here as well...
+    // Notify on first submit from DRAFT (unchanged)
     if (updatedPost.status === "SUBMITTED" && post.status === "DRAFT") {
       await createSubmitNotifications({
         userId: user.id,

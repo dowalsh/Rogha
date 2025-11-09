@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Undo, Trash2, ChevronLeft } from "lucide-react";
 import { UploadButton } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
+import { AudienceType } from "@/types";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 
@@ -18,6 +19,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [doc, setDoc] = useState<Content>("");
   const [status, setStatus] = useState<PostStatus>("DRAFT");
+  const [audienceType, setAudienceType] = useState<AudienceType>("FRIENDS");
+  const [circleId, setCircleId] = useState<string | null>(null);
+  const [myCircles, setMyCircles] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
@@ -50,11 +56,22 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         if (typeof data?.heroImageUrl === "string")
           setHeroImageUrl(data.heroImageUrl);
         else setHeroImageUrl(null);
+        if (data?.audienceType)
+          setAudienceType(data.audienceType as AudienceType);
+        setCircleId(data?.circleId ?? null);
 
         setSaved(true);
       })
       .catch((err) => console.error("Failed to load post:", err));
   }, [params.id]);
+
+  // Load my circles
+  useEffect(() => {
+    fetch("/api/circles")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setMyCircles)
+      .catch(() => setMyCircles([]));
+  }, []);
 
   // Change handlers
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +91,14 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       const res = await fetch(`/api/posts/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content: doc, status, heroImageUrl }),
+        body: JSON.stringify({
+          title,
+          content: doc,
+          status,
+          heroImageUrl,
+          audienceType,
+          circleId: audienceType === "CIRCLE" ? circleId : null,
+        }),
       });
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
       setSaved(true);
@@ -88,23 +112,35 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   // Toggle DRAFT ⇄ SUBMITTED
   // Note: allow Unsubmit even when editorLocked (because SUBMITTED locks the editor)
   const handleToggleSubmit = async () => {
-    // Block only when truly locked-out states (PUBLISHED/ARCHIVED)
     if (status === "PUBLISHED" || status === "ARCHIVED") return;
 
     const next: PostStatus = status === "SUBMITTED" ? "DRAFT" : "SUBMITTED";
+
+    // guard: if circle is selected audience, require a circleId
+    if (audienceType === "CIRCLE" && !circleId) {
+      alert("Please select a circle before submitting.");
+      console.log("Submit blocked: no circle selected for CIRCLE audience");
+      return;
+    }
+
     try {
       setIsSaving(true);
-
       const res = await fetch(`/api/posts/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content: doc, status: next }),
+        body: JSON.stringify({
+          title,
+          content: doc,
+          status: next,
+          heroImageUrl,
+          audienceType,
+          circleId: audienceType === "CIRCLE" ? circleId : null,
+        }),
       });
       if (!res.ok) throw new Error(`Toggle failed: ${res.status}`);
-      setSaved(true);
       setStatus(next);
-      await res.json();
       setSaved(true);
+      await res.json();
     } catch (err) {
       console.error("Failed to toggle submit:", err);
     } finally {
@@ -244,6 +280,80 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         placeholder="Write your post…"
         editable={!editorLocked}
       />
+      {/* Audience selection */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Audience</label>
+
+        <div className="flex flex-wrap gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="audience"
+              value="FRIENDS"
+              checked={audienceType === "FRIENDS"}
+              onChange={() => {
+                setAudienceType("FRIENDS");
+                setCircleId(null);
+                setSaved(false);
+              }}
+              disabled={editorLocked}
+            />
+            All Friends
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="audience"
+              value="ALL_USERS"
+              checked={audienceType === "ALL_USERS"}
+              onChange={() => {
+                setAudienceType("ALL_USERS");
+                setCircleId(null);
+                setSaved(false);
+              }}
+              disabled={editorLocked}
+            />
+            All Rogha Users
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="audience"
+              value="CIRCLE"
+              checked={audienceType === "CIRCLE"}
+              onChange={() => {
+                setAudienceType("CIRCLE");
+                setSaved(false);
+              }}
+              disabled={editorLocked}
+            />
+            Circle
+          </label>
+        </div>
+
+        {audienceType === "CIRCLE" && (
+          <div className="flex items-center gap-2">
+            <select
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              value={circleId ?? ""}
+              onChange={(e) => {
+                setCircleId(e.target.value || null);
+                setSaved(false);
+              }}
+              disabled={editorLocked}
+            >
+              <option value="">Select a circle…</option>
+              {myCircles.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* Actions */}
       <div className="flex items-center justify-between gap-2">

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 type EditionResponse = {
   id: string;
   title?: string | null;
-  weekStart: string; // ISO string
+  weekStart: string;
   publishedAt?: string | null;
   posts: {
     id: string;
@@ -20,6 +20,9 @@ type EditionResponse = {
     status: string;
     updatedAt: string;
     authorId: string;
+    circleId?: string | null;
+    audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
+    circle?: { id: string; name: string } | null;
     author?: { id: string; name?: string | null; image?: string | null } | null;
   }[];
 };

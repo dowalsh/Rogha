@@ -176,7 +176,7 @@ export async function createCommentNotification({
         to: post.author.email,
         actorName: commenter.name ?? commenter.username,
         commentText: newComment.content,
-        url: `${process.env.APP_URL}/posts/${post.id}#comment-${newComment.id}`,
+        url: `${process.env.APP_URL}/reader/${post.id}#comment-${newComment.id}`,
         postTitle: post.title,
         isReply: false,
       });

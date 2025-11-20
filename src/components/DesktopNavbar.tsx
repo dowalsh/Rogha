@@ -41,7 +41,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
       {isLoaded && isSignedIn && user ? (
         <>
           <Button variant="ghost" className="flex items-center gap-2" asChild>
-            <Link href="/editions">
+            <Link href="/editions/latest">
               <Newspaper className="w-4 h-4" />
               <span className="hidden lg:inline">Editions</span>
             </Link>

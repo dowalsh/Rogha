@@ -56,17 +56,16 @@ export default async function EditionPage({
 
   const editionLabel =
     editionData.title ?? `Week of ${editionData.weekStart.slice(0, 10)}`;
-
   return (
     <div className="space-y-4">
       <Link href="/editions">
         <Button
-          type="button"
           variant="ghost"
-          size="icon"
+          className="text-muted-foreground"
           title="Back to editions"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          all editions
         </Button>
       </Link>
 

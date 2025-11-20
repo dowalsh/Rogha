@@ -81,7 +81,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                   className="flex items-center gap-3 justify-start"
                   asChild
                 >
-                  <Link href="/editions">
+                  <Link href="/editions/latest">
                     <Newspaper className="w-4 h-4" />
                     Editions
                   </Link>

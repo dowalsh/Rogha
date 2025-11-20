@@ -251,3 +251,17 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
   );
   return { ...edition, posts };
 }
+
+export async function getMostRecentPublishedEditionForUser() {
+  return prisma.edition.findFirst({
+    where: {
+      publishedAt: { not: null },
+    },
+    orderBy: {
+      weekStart: "desc",
+    },
+    select: {
+      id: true,
+    },
+  });
+}

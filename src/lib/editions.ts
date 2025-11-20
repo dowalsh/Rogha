@@ -238,6 +238,8 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       circleId: true,
       circle: { select: { id: true, name: true } },
       author: { select: { id: true, name: true, image: true } },
+      heroImageUrl: true,
+      content: true,
     },
   });
 

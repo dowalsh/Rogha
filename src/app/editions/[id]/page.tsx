@@ -24,6 +24,8 @@ type EditionResponse = {
     audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
     circle?: { id: string; name: string } | null;
     author?: { id: string; name?: string | null; image?: string | null } | null;
+    heroImageUrl?: string | null;
+    // content?: string | null;
   }[];
 };
 
@@ -47,6 +49,8 @@ export default async function EditionPage({
       ...p,
       updatedAt: p.updatedAt.toISOString(),
       status: p.status, // enum to string is fine
+      heroImageUrl: p.heroImageUrl ?? undefined,
+      // content: p.content ? tiptapExcerpt(p.content) : null,
     })),
   };
 

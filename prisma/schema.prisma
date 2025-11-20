@@ -107,7 +107,7 @@ model Post {
   authorId    String
   editionId   String?
   content     Json?     
-  image       String? // TODO ; check if this image or heroImageURL is redundant?
+  image       String? // TODO ; DEPRECATED!!! DO NOT USE
   status      PostStatus @default(DRAFT)
   version     Int        @default(1) // optimistic concurrency for autosave
   heroImageUrl String?  // <-- add this

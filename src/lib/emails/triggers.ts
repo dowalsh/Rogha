@@ -83,10 +83,13 @@ export async function triggerPublishedEditionEmail() {
 
   if (recipients.length === 0) return { sent: 0 };
 
+  // <h1>The weekly edition has dropped 📰🔥</h1>
+
   // Build email (simple text version for now)
   const subject = "This Week’s Rogha Edition is Live!";
   const html = `
-    <h1>The weekly edition has dropped 📰🔥</h1>
+    <h1>Another week, another weekly edition full of beautiful content from your friends 📰🔥</h1>
+    
     <p>All the posts from this week are now live.</p>
     <p>Come check them out and join the convo!</p>
     <p>

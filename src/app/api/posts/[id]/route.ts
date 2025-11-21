@@ -81,30 +81,17 @@ export async function GET(
 // UPDATE post by ID
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } } // ✅ params is NOT a Promise
+  { params }: { params: { id: string } }
 ) {
   console.log("[PUT] Update post by ID called");
   try {
     const { user, error } = await getDbUser();
-    console.log("[PUT] getDbUser result:", { user, error });
     if (error) {
-      console.log("[PUT] Auth error:", error);
       return NextResponse.json({ error: error.code }, { status: error.status });
     }
 
     const body = await req.json();
-    console.log("[PUT] Request body:", body);
-
     const { id } = params;
-    console.log("[PUT] Post ID from params:", id);
-
-    const post = await prisma.post.findUnique({ where: { id } });
-    console.log("[PUT] Fetched post:", post);
-
-    if (!post || post.authorId !== user.id) {
-      console.log("[PUT] Post not found or user not owner");
-      return NextResponse.json({ error: "Not Found" }, { status: 404 });
-    }
 
     // ---- Audience normalization ----
     const allowedAudience = new Set(["CIRCLE", "FRIENDS", "ALL_USERS"]);
@@ -125,10 +112,7 @@ export async function PUT(
       );
     }
 
-    // If you want to enforce membership on CIRCLE, you can add this later:
-    // if (incomingAudience === "CIRCLE") { ... validate user is a member ... }
-
-    const updateData: any = {
+    const baseUpdate: any = {
       title: body.title,
       content: body.content,
       status: body.status,
@@ -137,35 +121,53 @@ export async function PUT(
       circleId: incomingAudience === "CIRCLE" ? incomingCircleId : null,
     };
 
-    // ---- Edition linking on SUBMITTED (unchanged) ----
-    if (body.status === "SUBMITTED" && !post.editionId) {
-      console.log("[PUT] Post submitted — linking to edition");
-      const weekStartUTC = getWeekStartUTC();
-      const weekLabel = formatWeekLabel(weekStartUTC);
+    const { previousPost, updatedPost, firstTimeSubmitFromDraft } =
+      await prisma.$transaction(async (tx) => {
+        const post = await tx.post.findUnique({ where: { id } });
+        if (!post || post.authorId !== user.id) {
+          throw new Error("NOT_FOUND_OR_NOT_OWNER");
+        }
 
-      const edition = await prisma.edition.upsert({
-        where: { weekStart: weekStartUTC },
-        update: {},
-        create: {
-          weekStart: weekStartUTC,
-          title: `Week of ${weekLabel}`,
-        },
-        select: { id: true },
+        // status transition detection
+        const isSubmittingNow =
+          body.status === "SUBMITTED" && post.status !== "SUBMITTED";
+
+        let updateData = { ...baseUpdate };
+
+        // ---- Edition linking on SUBMITTED (fixed logic) ----
+        if (isSubmittingNow) {
+          const weekStartUTC = getWeekStartUTC();
+          const weekLabel = formatWeekLabel(weekStartUTC);
+
+          const edition = await tx.edition.upsert({
+            where: { weekStart: weekStartUTC },
+            update: {},
+            create: {
+              weekStart: weekStartUTC,
+              title: `Week of ${weekLabel}`,
+            },
+            select: { id: true },
+          });
+
+          // Always point to the current week on (re)submit
+          updateData.editionId = edition.id;
+        }
+
+        const updated = await tx.post.update({
+          where: { id },
+          data: updateData,
+        });
+
+        return {
+          previousPost: post,
+          updatedPost: updated,
+          firstTimeSubmitFromDraft:
+            updated.status === "SUBMITTED" && post.status === "DRAFT",
+        };
       });
 
-      updateData.editionId = edition.id;
-    }
-
-    console.log("[PUT] Update data:", updateData);
-
-    const updatedPost = await prisma.post.update({
-      where: { id },
-      data: updateData,
-    });
-    console.log("[PUT] Updated post:", updatedPost);
-
-    // Notify on first submit from DRAFT (unchanged)
-    if (updatedPost.status === "SUBMITTED" && post.status === "DRAFT") {
+    // Outside transaction: side effects
+    if (firstTimeSubmitFromDraft) {
       await createSubmitNotifications({
         userId: user.id,
         postId: updatedPost.id,
@@ -173,8 +175,11 @@ export async function PUT(
     }
 
     return NextResponse.json(updatedPost, { status: 200 });
-  } catch (error) {
-    console.error("[POST_UPDATE_ERROR]", error);
+  } catch (err: any) {
+    if (err instanceof Error && err.message === "NOT_FOUND_OR_NOT_OWNER") {
+      return NextResponse.json({ error: "Not Found" }, { status: 404 });
+    }
+    console.error("[POST_UPDATE_ERROR]", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

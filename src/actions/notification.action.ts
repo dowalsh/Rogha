@@ -317,22 +317,45 @@ export async function createSubmitNotifications({
 
   if (uniqueRecipientIds.length === 0) return;
 
-  // 5. Create notifications (DB handles duplicates)
+  // 5. Check who already has a SUBMIT notification for this post+creator
+  const existing = await prisma.notification.findMany({
+    where: {
+      type: "SUBMIT",
+      creatorId: userId,
+      postId,
+      userId: { in: uniqueRecipientIds },
+    },
+    select: { userId: true },
+  });
+
+  const existingUserIds = new Set(existing.map((n) => n.userId));
+  const newRecipientIds = uniqueRecipientIds.filter(
+    (id) => !existingUserIds.has(id)
+  );
+
+  // If no new recipients, bail early (no new notifs, no duplicate emails)
+  if (newRecipientIds.length === 0) {
+    console.log(
+      "[NOTIFICATIONS] All submission notifications already exist — skipping.",
+      { postId, creatorId: userId }
+    );
+    return;
+  }
+
+  // 6. Create notifications only for new recipients
   await prisma.notification.createMany({
-    data: uniqueRecipientIds.map((rid) => ({
+    data: newRecipientIds.map((rid) => ({
       userId: rid,
       creatorId: userId,
       type: "SUBMIT",
       postId,
     })),
-    skipDuplicates: true,
+    skipDuplicates: true, // belt-and-braces
   });
 
-  // 6. Send emails to the same recipients
+  // 7. Send emails only to new recipients
   try {
-    // You’ll need to update triggerPostSubmittedEmails to accept the recipient list:
-    //   triggerPostSubmittedEmails(postId: string, recipientIds: string[])
-    await triggerPostSubmittedEmails(postId, uniqueRecipientIds);
+    await triggerPostSubmittedEmails(postId, newRecipientIds);
   } catch (err) {
     console.error("[NOTIFICATION_SUBMIT_EMAIL_ERROR]", err);
   }

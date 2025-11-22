@@ -9,13 +9,16 @@ import { getAcceptedFriendRecipients } from "../friends";
 
 const db = new PrismaClient();
 
-export async function triggerPostSubmittedEmails(postId: string) {
+export async function triggerPostSubmittedEmails(
+  postId: string,
+  recipientIds: string[]
+) {
   if (!postId) throw new Error("postId required");
+  if (!recipientIds?.length) return { sent: 0 };
 
-  const appUrl = process.env.APP_URL || "";
+  const appUrl = process.env.APP_URL;
   if (!appUrl) throw new Error("APP_URL is not set");
 
-  // Fetch only what we need
   const post = await db.post.findUnique({
     where: { id: postId },
     select: {
@@ -25,12 +28,21 @@ export async function triggerPostSubmittedEmails(postId: string) {
     },
   });
 
-  if (!post) throw new Error(`Post not found: ${postId}`);
-  if (!post.author) throw new Error(`Post ${postId} has no author`);
+  if (!post || !post.author) return { sent: 0 };
 
-  // New: pull accepted friends with valid emails via helper
-  const recipients = await getAcceptedFriendRecipients(post.author.id);
-  if (recipients.length === 0) return { sent: 0 };
+  // Only send to the explicit recipients we were given
+  const users = await db.user.findMany({
+    where: {
+      id: { in: recipientIds },
+    },
+    select: { email: true },
+  });
+
+  const recipients = users
+    .map((u) => u.email)
+    .filter((email): email is string => !!email);
+
+  if (!recipients.length) return { sent: 0 };
 
   const email = buildPostSubmittedEmail(
     post.author.name ?? "",
@@ -45,24 +57,25 @@ export async function triggerPostSubmittedEmails(postId: string) {
     const batch = recipients.slice(i, i + batchSize);
 
     const results = await Promise.allSettled(
-      batch.map((r) =>
+      batch.map((to) =>
         sendEmail({
-          to: r.email,
+          to,
           subject: email.subject,
           html: email.html,
         })
       )
     );
 
-    for (const r of results) {
-      if (r.status === "fulfilled") sent++;
-      else {
-        console.error("email fan-out failure", {
+    sent += results.filter((r) => r.status === "fulfilled").length;
+
+    results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .forEach((r) => {
+        console.error("[EMAIL_FAN_OUT_ERROR]", {
           postId,
-          error: (r as any)?.reason?.message ?? r,
+          error: r.reason,
         });
-      }
-    }
+      });
   }
 
   return { sent };

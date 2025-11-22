@@ -258,6 +258,7 @@ export async function createCommentNotification({
     return notifications;
   }
 }
+
 export async function createSubmitNotifications({
   userId,
   postId,
@@ -265,38 +266,61 @@ export async function createSubmitNotifications({
   userId: string;
   postId: string;
 }) {
-  // 🧩 1. Find all accepted friendships (two-way)
-  const friendships = await prisma.friendship.findMany({
-    where: { status: "ACCEPTED", OR: [{ aId: userId }, { bId: userId }] },
-  });
-
-  const friendIds = friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
-  if (friendIds.length === 0) return;
-
-  // 🧩 2. Check if notifications already exist for this post + creator
-  const existing = await prisma.notification.findMany({
-    where: {
-      type: "SUBMIT",
-      creatorId: userId,
-      postId,
+  // 1. Load post audience info
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      audienceType: true, // "ALL_USERS" | "FRIENDS" | "CIRCLE"
+      circleId: true,
     },
-    select: { userId: true },
   });
 
-  const existingUserIds = new Set(existing.map((n) => n.userId));
-  const newFriendIds = friendIds.filter((fid) => !existingUserIds.has(fid));
+  if (!post) return;
 
-  if (newFriendIds.length === 0) {
-    console.log(
-      "[NOTIFICATIONS] All submission notifications already exist — skipping."
-    );
+  // 2. ALL ROGHA USERS => no notifications, no emails
+  if (post.audienceType === "ALL_USERS") {
     return;
   }
 
-  // 🧩 3. Create notifications only for new friends
+  let recipientIds: string[] = [];
+
+  // 3. FRIENDS => all accepted friends
+  if (post.audienceType === "FRIENDS") {
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        status: "ACCEPTED",
+        OR: [{ aId: userId }, { bId: userId }],
+      },
+      select: { aId: true, bId: true },
+    });
+
+    recipientIds = friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
+  }
+
+  // 4. CIRCLE => only circle members
+  if (post.audienceType === "CIRCLE" && post.circleId) {
+    const members = await prisma.circleMember.findMany({
+      where: {
+        circleId: post.circleId,
+        status: "JOINED",
+      },
+      select: { userId: true },
+    });
+
+    recipientIds = members.map((m) => m.userId);
+  }
+
+  // Remove self + dedupe
+  const uniqueRecipientIds = Array.from(
+    new Set(recipientIds.filter((id) => id !== userId))
+  );
+
+  if (uniqueRecipientIds.length === 0) return;
+
+  // 5. Create notifications (DB handles duplicates)
   await prisma.notification.createMany({
-    data: newFriendIds.map((fid) => ({
-      userId: fid,
+    data: uniqueRecipientIds.map((rid) => ({
+      userId: rid,
       creatorId: userId,
       type: "SUBMIT",
       postId,
@@ -304,9 +328,11 @@ export async function createSubmitNotifications({
     skipDuplicates: true,
   });
 
-  // 🧩 4. Send emails (optional but centralized)
+  // 6. Send emails to the same recipients
   try {
-    await triggerPostSubmittedEmails(postId);
+    // You’ll need to update triggerPostSubmittedEmails to accept the recipient list:
+    //   triggerPostSubmittedEmails(postId: string, recipientIds: string[])
+    await triggerPostSubmittedEmails(postId, uniqueRecipientIds);
   } catch (err) {
     console.error("[NOTIFICATION_SUBMIT_EMAIL_ERROR]", err);
   }

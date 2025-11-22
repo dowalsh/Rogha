@@ -52,6 +52,11 @@ export default async function RootLayout({
               disableTransitionOnChange
             >
               <div className="min-h-screen">
+                {process.env.NODE_ENV === "development" && (
+                  <div className="w-full bg-red-600 text-white text-center py-2 text-sm font-bold z-50">
+                    DEVELOPMENT ENVIRONMENT
+                  </div>
+                )}
                 <Navbar />
                 <main className="py-8">
                   <div className="max-w-7xl mx-auto px-4">{children}</div>

@@ -54,7 +54,7 @@ export default async function RootLayout({
               <div className="min-h-screen">
                 {process.env.NODE_ENV === "development" && (
                   <div className="w-full bg-red-600 text-white text-center py-2 text-sm font-bold z-50">
-                    DEVELOPMENT ENVIRONMENT
+                    DEV
                   </div>
                 )}
                 <Navbar />

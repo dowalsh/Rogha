@@ -24,16 +24,12 @@ export async function GET(
 
     const { id: postId } = context.params;
 
-    // find all friend IDs
-    const friendIds = await getAcceptedFriendIds(user.id);
-    const allowedIds = [user.id, ...friendIds];
-    console.log("[COMMENTS_GET] allowed authorIds", allowedIds);
-
+    // 🔓 No friend / audience filtering here.
+    // We assume post-level access control has already run.
     const comments = await prisma.comment.findMany({
       where: {
         postId,
-        parentCommentId: null, // only top-level
-        authorId: { in: allowedIds },
+        parentCommentId: null, // only top-level comments
       },
       include: {
         author: { select: { id: true, name: true, image: true } },

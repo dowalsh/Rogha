@@ -247,7 +247,7 @@ export async function createCommentNotification({
           to: participant.email,
           actorName: commenter.name ?? commenter.username,
           commentText: newComment.content,
-          url: `${process.env.APP_URL}/posts/${newComment.postId}#comment-${newComment.id}`,
+          url: `${process.env.APP_URL}/reader/${newComment.postId}#comment-${newComment.id}`,
           isReply: true,
         });
       } catch (err) {

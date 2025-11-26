@@ -29,6 +29,25 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
     }
   }, [isSignedIn]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !isSignedIn) return;
+
+    const handler = (event: Event) => {
+      // cast to CustomEvent
+      const customEvent = event as CustomEvent<{ unread: number }>;
+
+      if (customEvent.detail && typeof customEvent.detail.unread === "number") {
+        setUnread(customEvent.detail.unread);
+      }
+    };
+
+    window.addEventListener("notifications:unreadCountChanged", handler);
+
+    return () => {
+      window.removeEventListener("notifications:unreadCountChanged", handler);
+    };
+  }, [isSignedIn]);
+
   return (
     <div className="hidden md:flex items-center space-x-4">
       <Button variant="ghost" className="flex items-center gap-2" asChild>

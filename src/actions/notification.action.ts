@@ -55,13 +55,11 @@ export async function getNotifications() {
   }
 }
 
-export async function markNotificationsAsRead(notificationIds: string[]) {
+export async function markNotificationsAsRead(userId: string) {
   try {
     await prisma.notification.updateMany({
       where: {
-        id: {
-          in: notificationIds,
-        },
+        userId,
       },
       data: {
         read: true,

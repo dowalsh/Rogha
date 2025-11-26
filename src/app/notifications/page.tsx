@@ -43,12 +43,20 @@ function NotificationsPage() {
         const data = await getNotifications();
         setNotifications(data);
 
-        const unreadIds = data.filter((n) => !n.read).map((n) => n.id);
-        if (unreadIds.length > 0) await markNotificationsAsRead(unreadIds);
+        // const unreadIds = data.filter((n) => !n.read).map((n) => n.id);
+        // if (unreadIds.length > 0) await markNotificationsAsRead(unreadIds);
+        await markNotificationsAsRead(data[0].userId);
       } catch (error) {
         toast.error("Failed to fetch notifications");
       } finally {
         setIsLoading(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("notifications:unreadCountChanged", {
+              detail: { unread: 0 },
+            })
+          );
+        }
       }
     };
 

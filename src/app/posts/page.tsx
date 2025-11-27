@@ -13,6 +13,7 @@ type PostRowData = {
   title?: string | null;
   status: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
   updatedAt: string; // from JSON
+  heroImageUrl?: string | null;
   edition?: { id: string; title: string | null } | null; // ✅ now has id + title
 };
 
@@ -68,7 +69,9 @@ export default function PostsPage() {
       <SignedIn>
         <div className="mx-auto max-w-4xl p-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">My Posts</h1>
+            <h1 className="font-serif text-3xl font-medium tracking-tight">
+              My Posts
+            </h1>{" "}
             <Button onClick={handleCreate} disabled={creating}>
               {creating ? "Creating..." : "New Post"}
             </Button>
@@ -85,12 +88,11 @@ export default function PostsPage() {
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left">
+                <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
                   <tr>
                     <th className="p-3 font-medium">Post</th>
-                    <th className="p-3 font-medium">Status</th>
-                    <th className="p-3 font-medium">Edition</th>
-                    <th className="p-3 font-medium">Updated</th>
+                    <th className="p-3 font-medium text-center">Status</th>
+                    <th className="p-3 font-medium text-center">Updated</th>
                     <th className="p-3 font-medium"></th>
                   </tr>
                 </thead>
@@ -102,14 +104,7 @@ export default function PostsPage() {
                       title={p.title ?? "Untitled Post"}
                       status={p.status}
                       updatedAt={new Date(p.updatedAt)}
-                      edition={
-                        p.edition
-                          ? {
-                              id: p.edition.id,
-                              title: p.edition.title ?? "Untitled Edition",
-                            }
-                          : undefined
-                      }
+                      heroImageUrl={p.heroImageUrl ?? undefined}
                     />
                   ))}
                 </tbody>

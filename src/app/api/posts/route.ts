@@ -22,6 +22,7 @@ export async function GET(_req: NextRequest) {
         title: true,
         status: true,
         updatedAt: true,
+        heroImageUrl: true,
         edition: { select: { id: true, title: true } },
       },
     });

@@ -1,5 +1,8 @@
 // src/components/PostRow.tsx
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
+import { ConfirmDelete } from "@/components/ui/confirm-delete";
+import { Button } from "@/components/ui/button";
 
 const statusStyles = {
   DRAFT: "border-dashed",
@@ -8,7 +11,6 @@ const statusStyles = {
   ARCHIVED: "bg-slate-50 text-slate-500 border-slate-200",
 };
 
-import { Button } from "@/components/ui/button";
 type PostRowProps = {
   title: string;
   id: string;
@@ -16,6 +18,8 @@ type PostRowProps = {
   edition?: { id: string; title: string }; // Update edition type
   updatedAt: Date;
   heroImageUrl?: string;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 };
 
 export function PostRow({
@@ -24,6 +28,8 @@ export function PostRow({
   status,
   updatedAt,
   heroImageUrl,
+  onDelete,
+  isDeleting,
 }: PostRowProps) {
   return (
     <tr className="border-t align-middle">
@@ -91,6 +97,18 @@ export function PostRow({
               {status === "PUBLISHED" ? "View" : "Edit"}
             </Link>
           </Button>
+
+          <ConfirmDelete
+            trigger={
+              <Button variant="ghost" size="icon" disabled={isDeleting}>
+                <Trash2 className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            }
+            onConfirm={onDelete!}
+            isLoading={isDeleting}
+            title="Delete post?"
+            description="This action cannot be undone."
+          />
         </div>
       </td>
     </tr>

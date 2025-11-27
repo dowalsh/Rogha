@@ -22,6 +22,7 @@ export default function PostsPage() {
   const [posts, setPosts] = useState<PostRowData[] | null>(null); // ✅ use PostRowData
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +60,20 @@ export default function PostsPage() {
       setCreating(false);
     }
   };
+
+  async function handleDeletePost(id: string) {
+    try {
+      setDeletingId(id);
+
+      await fetch(`/api/posts/${id}`, {
+        method: "DELETE",
+      });
+
+      setPosts((prev) => prev?.filter((p) => p.id !== id) ?? null);
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <>
@@ -105,6 +120,8 @@ export default function PostsPage() {
                       status={p.status}
                       updatedAt={new Date(p.updatedAt)}
                       heroImageUrl={p.heroImageUrl ?? undefined}
+                      onDelete={() => handleDeletePost(p.id)}
+                      isDeleting={deletingId === p.id}
                     />
                   ))}
                 </tbody>

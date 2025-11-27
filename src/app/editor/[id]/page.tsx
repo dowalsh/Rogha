@@ -9,6 +9,7 @@ import { Send, Undo, Trash2, ChevronLeft } from "lucide-react";
 import { UploadButton } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
 import { AudienceType } from "@/types";
+import { ConfirmDelete } from "@/components/ui/confirm-delete";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 
@@ -27,6 +28,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // LOCK: editor locked in SUBMITTED / PUBLISHED / ARCHIVED (your current rule)
   const editorLocked = useMemo(
@@ -148,18 +150,25 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // Delete
   async function handleDelete() {
-    if (!confirm("Delete this post? This cannot be undone.")) return;
-    const res = await fetch(`/api/posts/${params.id}`, { method: "DELETE" });
-    if (!res.ok) {
-      console.error("Delete failed:", res.status);
-      alert("Failed to delete");
-      return;
+    try {
+      setIsDeleting(true);
+
+      const res = await fetch(`/api/posts/${params.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        console.error("Delete failed:", res.status);
+        alert("Failed to delete");
+        return;
+      }
+
+      router.prefetch("/posts?deleted=1");
+      router.replace("/posts?deleted=1");
+    } finally {
+      setIsDeleting(false);
     }
-    // Optional: prefetch for snappy nav
-    router.prefetch("/posts?deleted=1");
-    router.replace("/posts?deleted=1");
   }
 
   // Cmd/Ctrl+S to save (only when editable and dirty)
@@ -193,16 +202,24 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           {editorLocked ? `Status: ${status} (read-only)` : `Status: ${status}`}
         </div>
         <div className="ml-auto">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleDelete}
-            className="text-muted-foreground hover:text-destructive"
-            title="Delete post"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <ConfirmDelete
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive"
+                disabled={isDeleting}
+                title="Delete post"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            }
+            onConfirm={handleDelete}
+            isLoading={isDeleting}
+            title="Delete post?"
+            description="This action cannot be undone."
+          />
         </div>
       </div>
       {/* HERO IMAGE */}

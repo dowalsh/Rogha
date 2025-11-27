@@ -38,7 +38,9 @@ type NotificationWithRelations = {
   comment?: { id: string | null; postId?: string | null } | null; // ✅ add postId
 };
 
-export function getNotificationLink(n: NotificationWithRelations): string {
+export function getNotificationLink(
+  n: NotificationWithRelations
+): string | null {
   console.log("[getNotificationLink] full input:", JSON.stringify(n, null, 2));
 
   if (n.type === "LIKE" || n.type === "COMMENT") {
@@ -72,10 +74,8 @@ export function getNotificationLink(n: NotificationWithRelations): string {
     );
   }
 
-  if (n.type === "SUBMIT" && (n.postId ?? n.post?.id)) {
-    const url = `/reader/${n.postId ?? n.post?.id}`;
-    console.log("[getNotificationLink] built SUBMIT URL:", url);
-    return url;
+  if (n.type === "SUBMIT") {
+    return null;
   }
 
   console.warn(

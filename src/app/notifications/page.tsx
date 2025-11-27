@@ -83,20 +83,20 @@ function NotificationsPage() {
                 No notifications yet
               </div>
             ) : (
-              notifications.map((notification) => (
-                <Link
-                  key={notification.id}
-                  href={getNotificationLink(notification)}
-                  className={`flex items-start gap-4 p-4 border-b hover:bg-muted/25 transition-colors ${
-                    !notification.read ? "bg-muted/50" : ""
-                  }`}
-                >
-                  <div
-                    key={notification.id}
-                    className={`flex items-start gap-4 p-4 border-b hover:bg-muted/25 transition-colors ${
-                      !notification.read ? "bg-muted/50" : ""
-                    }`}
-                  >
+              notifications.map((notification) => {
+                const link = getNotificationLink(notification);
+                const isUnread = !notification.read;
+
+                const rowBaseClasses =
+                  "flex items-start gap-4 p-4 border-b transition-colors";
+                const hoverClasses = link ? " hover:bg-muted/25" : "";
+                const unreadClasses = isUnread ? " bg-muted/50" : "";
+
+                const rowClasses =
+                  rowBaseClasses + hoverClasses + unreadClasses;
+
+                const content = (
+                  <>
                     <Avatar className="mt-1">
                       <AvatarImage
                         src={notification.creator.image ?? "/avatar.png"}
@@ -168,9 +168,29 @@ function NotificationsPage() {
                         })}
                       </p>
                     </div>
+                  </>
+                );
+
+                // CLICKABLE: LIKE / COMMENT (and any type with a link)
+                if (link) {
+                  return (
+                    <Link
+                      key={notification.id}
+                      href={link}
+                      className={rowClasses}
+                    >
+                      {content}
+                    </Link>
+                  );
+                }
+
+                // NON-CLICKABLE: SUBMIT (and any type with no link)
+                return (
+                  <div key={notification.id} className={rowClasses}>
+                    {content}
                   </div>
-                </Link>
-              ))
+                );
+              })
             )}
           </ScrollArea>
         </CardContent>

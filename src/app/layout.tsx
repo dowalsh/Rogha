@@ -22,7 +22,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Rogha",
-  description: "Dylan's Playground",
+  description: "Social media by friends, for friends.",
 };
 
 export default async function RootLayout({

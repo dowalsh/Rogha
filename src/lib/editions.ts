@@ -1,5 +1,6 @@
 // src/lib/editions.ts
 import { prisma } from "@/lib/prisma";
+import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 
 type DbUser = { id: string };
 
@@ -12,90 +13,97 @@ export function plannedPublishAt(weekStart: Date): Date {
 }
 
 /**
- * Publishes the edition for the given weekStart (LA Monday 00:00 stored in UTC).
- * Idempotent for the "publishedAt" stamp. Subsequent runs will still promote any
- * newly SUBMITTED posts to PUBLISHED.
+ * Publishes the edition for the given weekStart.
+ *
+ * New model:
+ *  - Posts do NOT carry editionId until PUBLISHED.
+ *  - When publishing a week:
+ *      1. Upsert edition for that week.
+ *      2. Find *all* SUBMITTED posts (no date filter).
+ *      3. Force-assign them to this edition and mark them PUBLISHED.
+ *      4. If this is the first publish, stamp publishedAt.
+ *      5. If already published, still promote new SUBMITTED posts.
+ *
+ * NOTE: Because cron only calls this for the *most recent week*,
+ *       this effectively means: "every SUBMITTED post is included
+ *       in the next edition".
  */
 export async function publishEditionForWeek(weekStart: Date) {
   console.debug("[publishEditionForWeek] weekStart:", weekStart);
+
   return prisma.$transaction(async (tx) => {
-    const edition = await tx.edition.findUnique({
+    // 1. Upsert edition (always exists in new model)
+    const edition = await tx.edition.upsert({
       where: { weekStart },
+      update: {},
+      create: {
+        weekStart,
+        title: `Week of ${formatWeekLabel(weekStart)}`,
+      },
       select: { id: true, publishedAt: true },
     });
+
     console.debug("[publishEditionForWeek] edition:", edition);
 
-    // No edition for that week → nothing to do
-    if (!edition) {
-      console.debug(
-        "[publishEditionForWeek] No edition found for weekStart: ",
-        weekStart
-      );
+    // 2. Find *all* submitted posts (no date filtering)
+    const submittedPosts = await tx.post.findMany({
+      where: { status: "SUBMITTED" },
+      select: { id: true },
+    });
+
+    console.debug(
+      "[publishEditionForWeek] submitted posts found:",
+      submittedPosts.map((p) => p.id)
+    );
+
+    if (submittedPosts.length === 0) {
       return {
         ok: true,
         published: false,
-        reason: "NO_EDITION" as const,
+        reason: "NO_SUBMITTED_POSTS",
+        editionId: edition.id,
         postsPublished: 0,
       };
     }
 
-    // If already published: still promote any SUBMITTED posts now
-    if (edition.publishedAt) {
-      console.debug(
-        "[publishEditionForWeek] Edition already published at",
-        edition.publishedAt
-      );
-      const { count: promotedNow } = await tx.post.updateMany({
-        where: { editionId: edition.id, status: "SUBMITTED" },
-        data: { status: "PUBLISHED" },
-      });
-      console.debug(
-        "[publishEditionForWeek] Promoted SUBMITTED posts to PUBLISHED:",
-        promotedNow
-      );
-
-      return {
-        ok: true,
-        published: false,
-        reason: "ALREADY_PUBLISHED" as const,
+    // 3. Promote them + overwrite stale editionId
+    const { count: promotedCount } = await tx.post.updateMany({
+      where: {
+        id: { in: submittedPosts.map((p) => p.id) },
+      },
+      data: {
+        status: "PUBLISHED",
         editionId: edition.id,
-        postsPublished: promotedNow,
-      };
+      },
+    });
+
+    console.debug(
+      "[publishEditionForWeek] promoted SUBMITTED posts:",
+      promotedCount
+    );
+
+    // 4. Stamp publishedAt if first time publishing
+    let becamePublishedNow = false;
+
+    if (!edition.publishedAt) {
+      await tx.edition.update({
+        where: { id: edition.id },
+        data: { publishedAt: new Date() },
+      });
+      becamePublishedNow = true;
+
+      console.debug(
+        "[publishEditionForWeek] stamped publishedAt for edition",
+        edition.id
+      );
     }
-
-    // First-time publish: stamp publishedAt, publish SUBMITTED, archive remaining DRAFT
-    await tx.edition.update({
-      where: { id: edition.id },
-      data: { publishedAt: new Date() },
-    });
-    console.debug(
-      "[publishEditionForWeek] Stamped publishedAt for edition",
-      edition.id
-    );
-
-    const { count: publishedCount } = await tx.post.updateMany({
-      where: { editionId: edition.id, status: "SUBMITTED" },
-      data: { status: "PUBLISHED" },
-    });
-    console.debug(
-      "[publishEditionForWeek] Published SUBMITTED posts:",
-      publishedCount
-    );
-
-    await tx.post.updateMany({
-      where: { editionId: edition.id, status: "DRAFT" },
-      data: { status: "ARCHIVED" },
-    });
-    console.debug(
-      "[publishEditionForWeek] Archived DRAFT posts for edition",
-      edition.id
-    );
 
     return {
       ok: true,
-      published: true,
+      published: becamePublishedNow,
+      reason: becamePublishedNow ? "FIRST_PUBLISH" : "ALREADY_PUBLISHED",
       editionId: edition.id,
-      postsPublished: publishedCount,
+      postsPublished: promotedCount,
     };
   });
 }

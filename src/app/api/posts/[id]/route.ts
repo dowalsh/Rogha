@@ -127,30 +127,7 @@ export async function PUT(
           throw new Error("NOT_FOUND_OR_NOT_OWNER");
         }
 
-        // status transition detection
-        const isSubmittingNow =
-          body.status === "SUBMITTED" && post.status !== "SUBMITTED";
-
         let updateData = { ...baseUpdate };
-
-        // ---- Edition linking on SUBMITTED (fixed logic) ----
-        if (isSubmittingNow) {
-          const weekStartUTC = getWeekStartUTC();
-          const weekLabel = formatWeekLabel(weekStartUTC);
-
-          const edition = await tx.edition.upsert({
-            where: { weekStart: weekStartUTC },
-            update: {},
-            create: {
-              weekStart: weekStartUTC,
-              title: `Week of ${weekLabel}`,
-            },
-            select: { id: true },
-          });
-
-          // Always point to the current week on (re)submit
-          updateData.editionId = edition.id;
-        }
 
         const updated = await tx.post.update({
           where: { id },

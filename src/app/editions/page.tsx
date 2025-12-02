@@ -122,7 +122,7 @@ export default function EditionsPage() {
             <h1 className="text-5xl font-black uppercase tracking-wide">
               PUBLISHED Editions
             </h1>
-            {isAdmin && (
+            {(isAdmin || process.env.NODE_ENV === "development") && (
               <div className="mt-3">
                 <Button
                   onClick={handlePublishLastWeek}

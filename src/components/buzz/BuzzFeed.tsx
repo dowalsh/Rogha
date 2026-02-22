@@ -37,8 +37,8 @@ export function BuzzFeed({
           <BuzzSkeleton />
         ) : items.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            No buzz yet. Add some friends and start posting to see what they’re
-            up to.
+            No buzz yet. Friends' activities show up here as they do stuff in
+            Rogha.
           </div>
         ) : (
           <ul className="space-y-2">

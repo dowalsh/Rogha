@@ -6,8 +6,11 @@ function createPrismaClient() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
 
+  let client: PrismaClient;
+
   if (url.startsWith("prisma://") || url.startsWith("prisma+postgres://")) {
-    return new PrismaClient({ accelerateUrl: url }).$extends(withAccelerate());
+    client = new PrismaClient({ accelerateUrl: url }) as PrismaClient;
+    return client.$extends(withAccelerate()) as unknown as PrismaClient;
   }
 
   const adapter = new PrismaPg({ connectionString: url });
@@ -15,7 +18,7 @@ function createPrismaClient() {
 }
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: ReturnType<typeof createPrismaClient> | undefined;
+  prisma: PrismaClient | undefined;
 };
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

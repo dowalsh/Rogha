@@ -537,7 +537,7 @@
   resolved "https://registry.npmjs.org/@prisma/client-runtime-utils/-/client-runtime-utils-7.1.0.tgz"
   integrity sha512-39xmeBrNTN40FzF34aJMjfX1PowVCqoT3UKUWBBSP3aXV05NRqGBC3x2wCDs96ti6ZgdiVzqnRDHtbzU8X+lPQ==
 
-"@prisma/client@^7.1.0":
+"@prisma/client@^7.1.0", "@prisma/client@>=4.16.1":
   version "7.1.0"
   resolved "https://registry.npmjs.org/@prisma/client/-/client-7.1.0.tgz"
   integrity sha512-qf7GPYHmS/xybNiSOpzv9wBo+UwqfL2PeyX+08v+KVHDI0AlSCQIh5bBySkH3alu06NX9wy98JEnckhMHoMFfA==
@@ -608,6 +608,11 @@
     "@prisma/engines-version" "7.1.0-6.ab635e6b9d606fa5c8fb8b1a7f909c3c3c1c98ba"
     "@prisma/fetch-engine" "7.1.0"
     "@prisma/get-platform" "7.1.0"
+
+"@prisma/extension-accelerate@^3.0.1":
+  version "3.0.1"
+  resolved "https://registry.npmjs.org/@prisma/extension-accelerate/-/extension-accelerate-3.0.1.tgz"
+  integrity sha512-xc+kn4AjjTzS9jsdD1JWCebB09y0Aj+C8GjjG7oUm81PF9psvmJOw5rxpl7tOEBz/8hmuNX996XL28ys/OLxVA==
 
 "@prisma/fetch-engine@7.1.0":
   version "7.1.0"

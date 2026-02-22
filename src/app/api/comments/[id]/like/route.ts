@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { createLikeNotification } from "@/actions/notification.action";
+import { recordActivityEvent } from "@/actions/activityEvent.action";
+import { ActivityEventType } from "@/generated/prisma/enums";
 
 export async function POST(
   _req: NextRequest,
@@ -33,6 +35,19 @@ export async function POST(
       });
 
       await createLikeNotification({ likerId: user.id, commentId });
+      // just before recordActivityEvent
+      const comment = await prisma.comment.findUnique({
+        where: { id: commentId },
+        select: { postId: true },
+      });
+      if (comment) {
+        await recordActivityEvent({
+          actorId: user.id,
+          eventType: ActivityEventType.COMMENT_LIKED,
+          postId: comment.postId,
+          commentId,
+        });
+      }
 
       return NextResponse.json({ liked: true }, { status: 201 });
     }

@@ -1,8 +1,8 @@
-import React from "react";
+// src/app/about/page.tsx
+"use client";
 
-function AboutPage() {
-  console.log("hi from AboutPage");
-  return <div>AboutPage</div>;
+import { About } from "@/components/about";
+
+export default function Home() {
+  return <About />;
 }
-
-export default AboutPage;

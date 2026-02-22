@@ -46,6 +46,8 @@ model User {
   
   role Role @default(USER)
 
+  activityEvents ActivityEvent[] @relation("userActivityEvent")
+
   circleMemberships CircleMember[]
 }
 
@@ -124,6 +126,8 @@ model Post {
   audienceType  AudienceType @default(FRIENDS)
  circleId String?  
  circle   Circle? @relation("PostCircle", fields: [circleId], references: [id], onDelete: SetNull)
+  activityEvents ActivityEvent[] @relation("PostActivityEvents")
+
 }
 
 enum FriendshipStatus {
@@ -171,6 +175,8 @@ model Comment {
   replies   Comment[]  @relation("CommentReplies")
 
   likes     CommentLike[]
+
+  activityEvents ActivityEvent[] @relation("CommentActivityEvents")
 
   @@index([authorId, postId])
 }
@@ -238,4 +244,29 @@ enum NotificationType {
   LIKE
   COMMENT
   SUBMIT
+}
+
+enum ActivityEventType {
+  POST_LIKED
+  COMMENT_LIKED
+  POST_COMMENTED
+  COMMENT_REPLIED
+  POST_SUBMITTED
+  POST_PUBLISHED
+}
+
+model ActivityEvent {
+  id         String   @id @default(cuid())
+  actorId     String
+  eventType ActivityEventType
+
+  actor User @relation("userActivityEvent", fields: [actorId], references: [id], onDelete: NoAction)
+  postId String 
+  commentId String?
+  createdAt  DateTime @default(now())
+
+  post Post @relation("PostActivityEvents", fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment? @relation("CommentActivityEvents", fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, createdAt])
 }

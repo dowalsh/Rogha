@@ -8,6 +8,7 @@ import {
   Blend,
   Newspaper,
   NotebookPen,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,10 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
       getUnreadCount().then(setUnread).catch(console.error);
     }
   }, [isSignedIn]);
+
+  const handleNavClick = () => {
+    setShowMobileMenu(false);
+  };
 
   return (
     <div className="flex md:hidden items-center space-x-2">
@@ -89,6 +94,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
+                  onClick={handleNavClick}
                   asChild
                 >
                   <Link href="/circles">
@@ -99,6 +105,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
+                  onClick={handleNavClick}
                   asChild
                 >
                   <Link href="/posts">
@@ -109,6 +116,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
+                  onClick={handleNavClick}
                   asChild
                 >
                   <Link href="/notifications">
@@ -119,6 +127,17 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                       </span>
                     )}
                     Notifications
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-3 justify-start"
+                  onClick={handleNavClick}
+                  asChild
+                >
+                  <Link href="/about">
+                    <Info className="w-4 h-4" />
+                    About
                   </Link>
                 </Button>
                 {/* <Button

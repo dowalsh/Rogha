@@ -4,10 +4,8 @@ import {
   buildCommentNotificationEmail,
   buildPostSubmittedEmail,
 } from "./builders";
-import { PrismaClient } from "@/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import { getAcceptedFriendRecipients } from "../friends";
-
-const db = new PrismaClient();
 
 export async function triggerPostSubmittedEmails(
   postId: string,
@@ -19,7 +17,7 @@ export async function triggerPostSubmittedEmails(
   const appUrl = process.env.APP_URL;
   if (!appUrl) throw new Error("APP_URL is not set");
 
-  const post = await db.post.findUnique({
+  const post = await prisma.post.findUnique({
     where: { id: postId },
     select: {
       id: true,
@@ -31,7 +29,7 @@ export async function triggerPostSubmittedEmails(
   if (!post || !post.author) return { sent: 0 };
 
   // Only send to the explicit recipients we were given
-  const users = await db.user.findMany({
+  const users = await prisma.user.findMany({
     where: {
       id: { in: recipientIds },
     },
@@ -89,7 +87,7 @@ export async function triggerPublishedEditionEmail() {
   // const edition = await db.edition.findUnique({ ... });
 
   // Get all users with a valid email
-  const recipients = await db.user.findMany({
+  const recipients = await prisma.user.findMany({
     where: { email: { not: undefined } },
     select: { email: true },
   });

@@ -4,8 +4,10 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
-import { getAcceptedFriendIds } from "@/lib/friends";
+// import { getAcceptedFriendIds } from "@/lib/friends";
 import { createCommentNotification } from "@/actions/notification.action";
+import { recordActivityEvent } from "@/actions/activityEvent.action";
+import { ActivityEventType } from "@/generated/prisma/enums";
 
 // GET top-level comments (with replies) for a post
 export async function GET(
@@ -152,6 +154,14 @@ export async function POST(
       postId: parentId ? undefined : postId, // top-level → notify post author
       parentCommentId: parentId ?? undefined, // reply → notify parent comment author
       newCommentId: newComment.id,
+    });
+    await recordActivityEvent({
+      actorId: user.id,
+      eventType: parentId
+        ? ActivityEventType.COMMENT_REPLIED
+        : ActivityEventType.POST_COMMENTED,
+      postId,
+      commentId: newComment.id,
     });
 
     // normalize response shape

@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { createLikeNotification } from "@/actions/notification.action";
+import { recordActivityEvent } from "@/actions/activityEvent.action";
+import { ActivityEventType } from "@/generated/prisma/enums";
 
 export async function POST(
   _req: NextRequest,
@@ -36,6 +38,11 @@ export async function POST(
 
       // create notification
       await createLikeNotification({ likerId: user.id, postId });
+      await recordActivityEvent({
+        actorId: user.id,
+        eventType: ActivityEventType.POST_LIKED,
+        postId,
+      });
 
       return NextResponse.json({ liked: true }, { status: 201 });
     }

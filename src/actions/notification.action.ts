@@ -6,6 +6,8 @@ import {
   triggerCommentNotificationEmail,
   triggerPostSubmittedEmails,
 } from "@/lib/emails/triggers";
+import { recordActivityEvent } from "@/actions/activityEvent.action";
+import { ActivityEventType } from "@/generated/prisma/enums";
 
 export async function getNotifications() {
   try {
@@ -354,6 +356,12 @@ export async function createSubmitNotifications({
   // 7. Send emails only to new recipients
   try {
     await triggerPostSubmittedEmails(postId, newRecipientIds);
+
+    await recordActivityEvent({
+      actorId: userId,
+      eventType: ActivityEventType.POST_SUBMITTED,
+      postId,
+    });
   } catch (err) {
     console.error("[NOTIFICATION_SUBMIT_EMAIL_ERROR]", err);
   }

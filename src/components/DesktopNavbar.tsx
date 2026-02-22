@@ -6,13 +6,14 @@ import {
   NotebookPen,
   BellIcon,
   Blend,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import type { UserResource } from "@clerk/types";
 import { useEffect, useState } from "react";
-import { getUnreadCount } from "@/actions/notification.action";
+// import { getUnreadCount } from "@/actions/notification.action";
 
 type DesktopNavbarProps = {
   isLoaded: boolean;
@@ -23,30 +24,30 @@ type DesktopNavbarProps = {
 function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
   const [unread, setUnread] = useState(0);
 
-  useEffect(() => {
-    if (isSignedIn) {
-      getUnreadCount().then(setUnread).catch(console.error);
-    }
-  }, [isSignedIn]);
+  // useEffect(() => {
+  //   if (isSignedIn) {
+  //     getUnreadCount().then(setUnread).catch(console.error);
+  //   }
+  // }, [isSignedIn]);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !isSignedIn) return;
+  // useEffect(() => {
+  //   if (typeof window === "undefined" || !isSignedIn) return;
 
-    const handler = (event: Event) => {
-      // cast to CustomEvent
-      const customEvent = event as CustomEvent<{ unread: number }>;
+  //   const handler = (event: Event) => {
+  //     // cast to CustomEvent
+  //     const customEvent = event as CustomEvent<{ unread: number }>;
 
-      if (customEvent.detail && typeof customEvent.detail.unread === "number") {
-        setUnread(customEvent.detail.unread);
-      }
-    };
+  //     if (customEvent.detail && typeof customEvent.detail.unread === "number") {
+  //       setUnread(customEvent.detail.unread);
+  //     }
+  //   };
 
-    window.addEventListener("notifications:unreadCountChanged", handler);
+  //   window.addEventListener("notifications:unreadCountChanged", handler);
 
-    return () => {
-      window.removeEventListener("notifications:unreadCountChanged", handler);
-    };
-  }, [isSignedIn]);
+  //   return () => {
+  //     window.removeEventListener("notifications:unreadCountChanged", handler);
+  //   };
+  // }, [isSignedIn]);
 
   return (
     <div className="hidden md:flex items-center space-x-4">
@@ -77,8 +78,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
               <span className="hidden lg:inline">Posts</span>
             </Link>
           </Button>
-          {/* Uncomment if you want notifications */}
-          <Button variant="ghost" className="flex items-center gap-2" asChild>
+          {/* <Button variant="ghost" className="flex items-center gap-2" asChild>
             <Link href="/notifications" className="flex items-center gap-2">
               <BellIcon className="w-4 h-4" />
               {unread > 0 && (
@@ -87,6 +87,12 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
                 </span>
               )}
               <span className="hidden lg:inline">Notifications</span>
+            </Link>
+          </Button> */}
+          <Button variant="ghost" className="flex items-center gap-2" asChild>
+            <Link href="/about">
+              <Info className="w-4 h-4" />
+              <span className="hidden lg:inline">About</span>
             </Link>
           </Button>
           <UserButton />

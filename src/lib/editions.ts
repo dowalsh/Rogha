@@ -1,6 +1,8 @@
 // src/lib/editions.ts
 import { prisma } from "@/lib/prisma";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
+import { recordActivityEvent } from "@/actions/activityEvent.action";
+import { ActivityEventType } from "@/generated/prisma/enums";
 
 type DbUser = { id: string };
 
@@ -48,7 +50,7 @@ export async function publishEditionForWeek(weekStart: Date) {
     // 2. Find *all* submitted posts (no date filtering)
     const submittedPosts = await tx.post.findMany({
       where: { status: "SUBMITTED" },
-      select: { id: true },
+      select: { id: true, authorId: true },
     });
 
     console.debug(
@@ -81,6 +83,23 @@ export async function publishEditionForWeek(weekStart: Date) {
       "[publishEditionForWeek] promoted SUBMITTED posts:",
       promotedCount
     );
+
+    for (const post of submittedPosts) {
+      try {
+        await recordActivityEvent({
+          actorId: post.authorId, // the post's author
+          eventType: ActivityEventType.POST_PUBLISHED,
+          postId: post.id,
+          // no commentId for publish events
+        });
+      } catch (err) {
+        console.error("[PUBLISH_EDITION] ActivityEvent error", {
+          postId: post.id,
+          authorId: post.authorId,
+          err,
+        });
+      }
+    }
 
     // 4. Stamp publishedAt if first time publishing
     let becamePublishedNow = false;

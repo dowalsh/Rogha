@@ -125,3 +125,31 @@ export async function canViewPost(viewerId: string | null, post: MinimalPost) {
 
   return visible.length > 0;
 }
+
+export async function requirePostAccess(
+  viewerId: string | null,
+  postId: string,
+) {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      authorId: true,
+      status: true,
+      audienceType: true,
+      circleId: true,
+    },
+  });
+
+  if (!post) {
+    return null;
+  }
+
+  const allowed = await canViewPost(viewerId, post);
+
+  if (!allowed) {
+    return null;
+  }
+
+  return post;
+}

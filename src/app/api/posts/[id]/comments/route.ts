@@ -8,35 +8,7 @@ import { getDbUser } from "@/lib/getDbUser";
 import { createCommentNotification } from "@/actions/notification.action";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
-import { canViewPost } from "@/lib/access/postAccess";
-
-export async function requirePostAccess(
-  viewerId: string | null,
-  postId: string,
-) {
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      id: true,
-      authorId: true,
-      status: true,
-      audienceType: true,
-      circleId: true,
-    },
-  });
-
-  if (!post) {
-    return null;
-  }
-
-  const allowed = await canViewPost(viewerId, post);
-
-  if (!allowed) {
-    return null;
-  }
-
-  return post;
-}
+import { requirePostAccess } from "@/lib/access/postAccess";
 
 // GET top-level comments (with replies) for a post
 export async function GET(

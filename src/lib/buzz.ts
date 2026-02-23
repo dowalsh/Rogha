@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendIds } from "@/lib/friends";
 import type { BuzzItemProps, BuzzKind } from "@/components/buzz/BuzzItem";
+import { canViewPostPolicy } from "@/lib/access/postAccess";
 
 type GetBuzzArgs = {
   userId: string;
@@ -119,6 +120,10 @@ export async function getBuzz({
           id: true,
           title: true,
           content: true,
+          authorId: true, // ADD
+          status: true, // ADD
+          audienceType: true, // ADD
+          circleId: true, // ADD
           author: {
             select: {
               id: true,
@@ -141,45 +146,58 @@ export async function getBuzz({
     take: limit,
   });
 
-  // 3) Normalize → BuzzItemProps
-  const items: BuzzItemProps[] = events
-    .filter((e) => !!e.post) // skip events with missing/deleted post
-    .map((e) => {
-      const kind = mapKind(e.eventType);
-      const verbLabel = mapVerbLabel(e.eventType);
+  const visibleEvents = events.filter((e) => {
+    if (!e.post) return false;
 
-      const actorName = e.actor.name ?? e.actor.username ?? "Someone";
-
-      const postTitle =
-        e.post!.title ?? truncate(e.post!.content) ?? "Untitled post";
-
-      const postAuthorName =
-        e.post!.author.name ?? e.post!.author.username ?? "Someone";
-
-      // Only show commentText when the event is on a comment
-      const commentText = isCommentTargetEvent(e.eventType)
-        ? (truncate(e.comment?.content, 160) ?? null)
-        : null;
-
-      const href = buildHref({
-        post: e.post!,
-        comment: e.comment,
-        eventType: e.eventType,
-      });
-
-      return {
-        id: e.id,
-        kind,
-        actorName,
-        actorAvatarUrl: e.actor.image,
-        verbLabel,
-        postTitle,
-        postAuthorName,
-        commentText,
-        createdAt: e.createdAt.toISOString(),
-        href,
-      };
+    return canViewPostPolicy({
+      viewerId: userId,
+      post: {
+        authorId: e.post.authorId,
+        status: e.post.status,
+        audienceType: e.post.audienceType,
+        circleId: e.post.circleId,
+      },
+      isFriendOfAuthor: friendIds.includes(e.post.authorId),
+      isInCircle: false, // OPTIONAL: implement batch circle check later
     });
+  });
+
+  const items: BuzzItemProps[] = visibleEvents.map((e) => {
+    const kind = mapKind(e.eventType);
+    const verbLabel = mapVerbLabel(e.eventType);
+
+    const actorName = e.actor.name ?? e.actor.username ?? "Someone";
+
+    const postTitle =
+      e.post!.title ?? truncate(e.post!.content) ?? "Untitled post";
+
+    const postAuthorName =
+      e.post!.author.name ?? e.post!.author.username ?? "Someone";
+
+    // Only show commentText when the event is on a comment
+    const commentText = isCommentTargetEvent(e.eventType)
+      ? (truncate(e.comment?.content, 160) ?? null)
+      : null;
+
+    const href = buildHref({
+      post: e.post!,
+      comment: e.comment,
+      eventType: e.eventType,
+    });
+
+    return {
+      id: e.id,
+      kind,
+      actorName,
+      actorAvatarUrl: e.actor.image,
+      verbLabel,
+      postTitle,
+      postAuthorName,
+      commentText,
+      createdAt: e.createdAt.toISOString(),
+      href,
+    };
+  });
 
   return items;
 }

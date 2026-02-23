@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendIds } from "@/lib/friends";
 import type { BuzzItemProps, BuzzKind } from "@/components/buzz/BuzzItem";
-import { canViewPostPolicy } from "@/lib/access/postAccess";
+import { resolveVisiblePosts } from "@/lib/access/postAccess";
 
 type GetBuzzArgs = {
   userId: string;
@@ -146,21 +146,30 @@ export async function getBuzz({
     take: limit,
   });
 
-  const visibleEvents = events.filter((e) => {
-    if (!e.post) return false;
+  // Extract posts for access resolution
+  const postsForAccess = events
+    .filter((e) => !!e.post)
+    .map((e) => ({
+      id: e.post!.id,
+      authorId: e.post!.authorId,
+      status: e.post!.status,
+      audienceType: e.post!.audienceType,
+      circleId: e.post!.circleId,
+    }));
 
-    return canViewPostPolicy({
-      viewerId: userId,
-      post: {
-        authorId: e.post.authorId,
-        status: e.post.status,
-        audienceType: e.post.audienceType,
-        circleId: e.post.circleId,
-      },
-      isFriendOfAuthor: friendIds.includes(e.post.authorId),
-      isInCircle: false, // OPTIONAL: implement batch circle check later
-    });
+  // Ask access layer which posts are visible
+  const visiblePosts = await resolveVisiblePosts({
+    viewerId: userId,
+    posts: postsForAccess,
   });
+
+  // Create lookup set
+  const visiblePostIds = new Set(visiblePosts.map((p) => p.id));
+
+  // Filter events by visible post ids
+  const visibleEvents = events.filter(
+    (e) => e.post && visiblePostIds.has(e.post.id),
+  );
 
   const items: BuzzItemProps[] = visibleEvents.map((e) => {
     const kind = mapKind(e.eventType);

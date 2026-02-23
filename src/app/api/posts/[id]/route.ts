@@ -6,11 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { createSubmitNotifications } from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
+import { canViewPost } from "@/lib/access/postAccess";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
@@ -18,10 +19,21 @@ export async function GET(
 
     const post = await prisma.post.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        status: true,
+        authorId: true,
+        audienceType: true,
+        circleId: true,
+        heroImageUrl: true,
+        createdAt: true,
+        updatedAt: true,
+
         author: { select: { id: true, name: true, image: true } },
         _count: { select: { likes: true } },
-        likes: { select: { id: true, userId: true } }, // full likes array for debugging
+        likes: { select: { id: true, userId: true } },
       },
     });
 
@@ -55,32 +67,33 @@ export async function GET(
 
     console.log("[GET] Final baseResponse:", baseResponse);
 
-    // If published, return to anyone
-    if (post.status === "PUBLISHED") {
-      console.log("[GET] Post is PUBLISHED, returning to caller");
-      return NextResponse.json(baseResponse, { status: 200 });
-    }
+    const allowed = await canViewPost(user?.id ?? null, {
+      id: post.id,
+      authorId: post.authorId,
+      status: post.status,
+      audienceType: post.audienceType,
+      circleId: post.circleId,
+    });
 
-    // If not published, require ownership
-    if (!user || post.authorId !== user.id) {
+    if (!allowed) {
       console.log("[GET] Unauthorized to view this post");
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    console.log("[GET] Returning unpublished post to owner");
+    console.log("[GET] Returning post to authorized viewer");
     return NextResponse.json(baseResponse, { status: 200 });
   } catch (error) {
     console.error("[POST_GET_BY_ID_ERROR]", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 // UPDATE post by ID
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   console.log("[PUT] Update post by ID called");
   try {
@@ -101,13 +114,13 @@ export async function PUT(
     if (!incomingAudience || !allowedAudience.has(incomingAudience)) {
       return NextResponse.json(
         { error: "Invalid audienceType" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (incomingAudience === "CIRCLE" && !incomingCircleId) {
       return NextResponse.json(
         { error: "circleId required for CIRCLE" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -158,7 +171,7 @@ export async function PUT(
     console.error("[POST_UPDATE_ERROR]", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -166,7 +179,7 @@ export async function PUT(
 // DELETE post by ID
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: { id: string } },
 ) {
   try {
     const { user, error } = await getDbUser();
@@ -191,7 +204,7 @@ export async function DELETE(
     console.error("[POST_DELETE_ERROR]", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

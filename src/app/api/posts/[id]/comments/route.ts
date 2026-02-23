@@ -8,11 +8,40 @@ import { getDbUser } from "@/lib/getDbUser";
 import { createCommentNotification } from "@/actions/notification.action";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
+import { canViewPost } from "@/lib/access/postAccess";
+
+export async function requirePostAccess(
+  viewerId: string | null,
+  postId: string,
+) {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      authorId: true,
+      status: true,
+      audienceType: true,
+      circleId: true,
+    },
+  });
+
+  if (!post) {
+    return null;
+  }
+
+  const allowed = await canViewPost(viewerId, post);
+
+  if (!allowed) {
+    return null;
+  }
+
+  return post;
+}
 
 // GET top-level comments (with replies) for a post
 export async function GET(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: { id: string } },
 ) {
   try {
     console.log("[COMMENTS_GET] start", { postId: context.params.id });
@@ -26,8 +55,12 @@ export async function GET(
 
     const { id: postId } = context.params;
 
-    // 🔓 No friend / audience filtering here.
-    // We assume post-level access control has already run.
+    const post = await requirePostAccess(user?.id ?? null, postId);
+
+    if (!post) {
+      return NextResponse.json({ error: "Not Found" }, { status: 404 });
+    }
+
     const comments = await prisma.comment.findMany({
       where: {
         postId,
@@ -51,7 +84,7 @@ export async function GET(
 
     console.log(
       "[COMMENTS_GET] raw comments",
-      JSON.stringify(comments, null, 2)
+      JSON.stringify(comments, null, 2),
     );
 
     const normalize = (c: any) => ({
@@ -68,7 +101,7 @@ export async function GET(
     const normalized = comments.map(normalize);
     console.log(
       "[COMMENTS_GET] normalized",
-      JSON.stringify(normalized, null, 2)
+      JSON.stringify(normalized, null, 2),
     );
 
     return NextResponse.json(normalized, { status: 200 });
@@ -76,7 +109,7 @@ export async function GET(
     console.error("[COMMENTS_GET_ERROR]", e);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -84,7 +117,7 @@ export async function GET(
 // POST create new comment (top-level or reply)
 export async function POST(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: { id: string } },
 ) {
   try {
     console.log("[COMMENTS_POST] start", { postId: context.params.id });
@@ -97,6 +130,13 @@ export async function POST(
     console.log("[COMMENTS_POST] user", user.id);
 
     const { id: postId } = context.params;
+
+    const post = await requirePostAccess(user.id, postId);
+
+    if (!post) {
+      return NextResponse.json({ error: "Not Found" }, { status: 404 });
+    }
+
     const body = await req.json();
     console.log("[COMMENTS_POST] raw body", body);
 
@@ -122,14 +162,14 @@ export async function POST(
       if (!parent) {
         return NextResponse.json(
           { error: "Parent not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
       if (parent.parentCommentId) {
         console.warn("[COMMENTS_POST] nesting too deep", parentId);
         return NextResponse.json(
           { error: "Replies may only be nested two levels deep" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -178,7 +218,7 @@ export async function POST(
     console.error("[COMMENTS_POST_ERROR]", e);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

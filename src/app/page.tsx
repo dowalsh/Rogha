@@ -51,13 +51,7 @@ export default function Home() {
         </SignedOut>
 
         <SignedIn>
-          {/* <BuzzSection /> */}
-          <div className="text-center py-8">
-            <p className="text-gray-600">
-              Buzz section temporarily offline for maintenance. We'll be back
-              soon!
-            </p>
-          </div>
+          <BuzzSection />
         </SignedIn>
       </div>
     </div>

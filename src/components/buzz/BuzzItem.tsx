@@ -73,61 +73,65 @@ export function BuzzItem({
         className,
       )}
     >
-      {/* 1. POST AT THE TOP */}
-      {/* <p className="mb-2 text-xs text-muted-foreground">
+      <div className="flex flex-col gap-2">
+        {" "}
+        {/* 1. POST AT THE TOP */}
+        {/* <p className="mb-2 text-xs text-muted-foreground">
         <span className="italic font-serif">“{postTitle}”</span>{" "}
         <span className="text-[11px]">— {postAuthorName}</span>
       </p> */}
+        {/* 2. ACTOR ROW: avatar, icon, name + verb, time */}
+        <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+          {/* LEFT SIDE */}
+          <div className="flex items-center gap-2">
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={actorAvatarUrl ?? undefined} />
+              <AvatarFallback>
+                {actorName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
 
-      {/* 2. ACTOR ROW: avatar, icon, name + verb, time */}
-      <div className="flex items-start justify-between gap-4">
-        {/* LEFT SIDE */}
-        <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={actorAvatarUrl ?? undefined} />
-            <AvatarFallback>{actorName.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
+            <div
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem]",
+                iconBgByKind[kind],
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </div>
 
-          <div
-            className={cn(
-              "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem]",
-              iconBgByKind[kind],
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
+            <p className="text-sm leading-tight">
+              <span className="font-medium">{actorName}</span>{" "}
+              <span className="text-muted-foreground">{verbLabel}</span>
+            </p>
           </div>
 
-          <p className="text-sm leading-tight">
-            <span className="font-medium">{actorName}</span>{" "}
-            <span className="text-muted-foreground">{verbLabel}</span>
-          </p>
-        </div>
+          {/* RIGHT SIDE */}
 
-        {/* RIGHT SIDE */}
-        <div className="flex flex-col items-end text-right">
-          <div className="inline-flex items-baseline gap-2 bg-zinc-100 dark:bg-zinc-900 px-3 py-1.5 rounded-sm border border-zinc-200 dark:border-zinc-800">
-            <span className="font-serif text-[15px] tracking-tight">
+          <div className="inline-flex items-baseline gap-2 bg-zinc-100/50 dark:bg-zinc-900/40 px-3 py-1.5 rounded-sm border border-zinc-200/60 dark:border-zinc-800/60">
+            <span className="font-serif text-sm tracking-tight text-muted-foreground/90">
               “{postTitle}”
             </span>
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              by {postAuthorName}
+            <span className="text-xs uppercase tracking-wide text-muted-foreground/70">
+              {postAuthorName}
             </span>
           </div>
-
-          <p className="mt-1 text-xs text-muted-foreground">{timeText}</p>
         </div>
+        {/* 3. COMMENT BUBBLE (if relevant) */}
+        {commentText && (
+          <div className="mt-3 flex gap-2">
+            {/* Optionally repeat avatar here; if you don't want double avatars, remove this block */}
+            <div className="h-6 w-6 shrink-0" />
+
+            <p className="flex-1 rounded-3xl rounded-tl-none bg-sky-50 dark:bg-sky-900/40 px-3 py-2 text-sm leading-snug border border-sky-100 dark:border-sky-800 whitespace-pre-wrap">
+              {commentText}
+            </p>
+          </div>
+        )}
+        <div className="flex justify-start">
+          <p className="text-xs text-muted-foreground/50">{timeText}</p>
+        </div>{" "}
       </div>
-      {/* 3. COMMENT BUBBLE (if relevant) */}
-      {commentText && (
-        <div className="mt-3 flex gap-2">
-          {/* Optionally repeat avatar here; if you don't want double avatars, remove this block */}
-          <div className="h-6 w-6 shrink-0" />
-
-          <p className="flex-1 rounded-md bg-sky-50 dark:bg-sky-900/40 px-3 py-2 text-sm leading-snug border border-sky-100 dark:border-sky-800 whitespace-pre-wrap">
-            {commentText}
-          </p>
-        </div>
-      )}
     </div>
   );
 

@@ -105,6 +105,9 @@ export async function getBuzz({
   const events = await prisma.activityEvent.findMany({
     where: {
       actorId: { in: friendIds },
+      eventType: {
+        notIn: [ActivityEventType.POST_LIKED, ActivityEventType.COMMENT_LIKED],
+      },
     },
     include: {
       actor: {

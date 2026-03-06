@@ -23,6 +23,11 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Rogha",
   description: "Social media by friends, for friends.",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+  },
 };
 
 export default async function RootLayout({

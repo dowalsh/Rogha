@@ -9,7 +9,8 @@ function Navbar() {
   const { isSignedIn, user, isLoaded } = useUser();
 
   return (
-    <nav className="sticky top-0 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
+    <nav className="sticky top-0 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50 pt-[env(safe-area-inset-top)]">
+      {" "}
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">

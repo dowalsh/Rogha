@@ -6,6 +6,9 @@
   .text-balance {
     text-wrap: balance;
   }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 @layer base {

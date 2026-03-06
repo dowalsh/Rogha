@@ -9,6 +9,7 @@ const config: CapacitorConfig = {
   server: {
     url: serverUrl,
     cleartext: false,
+    allowNavigation: ["*"], // TODO: update to be a real limited list
   },
 };
 

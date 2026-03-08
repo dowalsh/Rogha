@@ -3,7 +3,7 @@ import { App } from "@capacitor/app";
 function handleDeepLink(url: string) {
   if (!url.startsWith("rogha://")) return;
 
-  window.location.href = "/";
+  window.location.reload();
 }
 
 export async function initDeepLinks() {

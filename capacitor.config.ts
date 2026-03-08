@@ -9,7 +9,13 @@ const config: CapacitorConfig = {
   server: {
     url: serverUrl,
     cleartext: false,
-    allowNavigation: ["*"], // TODO: update to be a real limited list
+    allowNavigation: [
+      "rogha.dylanwalsh.ie",
+      "*.vercel.app",
+      "*.clerk.accounts.dev",
+      "*.clerk.dev",
+      "*.clerk.com",
+    ],
   },
 };
 

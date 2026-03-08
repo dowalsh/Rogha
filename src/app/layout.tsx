@@ -8,6 +8,8 @@ import { Toaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
+import { useEffect } from "react";
+import { initDeepLinks } from "@/lib/mobile/deep-links";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -43,6 +45,10 @@ export default async function RootLayout({
     // pass the Clerk user directly
     await upsertClerkUser(user);
   }
+
+  useEffect(() => {
+    initDeepLinks();
+  }, []);
 
   return (
     <ClerkProvider>

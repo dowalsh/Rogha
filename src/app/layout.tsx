@@ -8,8 +8,7 @@ import { Toaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
-import { useEffect } from "react";
-import { initDeepLinks } from "@/lib/mobile/deep-links";
+import DeepLinkInit from "@/components/DeepLinkInit";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -46,10 +45,6 @@ export default async function RootLayout({
     await upsertClerkUser(user);
   }
 
-  useEffect(() => {
-    initDeepLinks();
-  }, []);
-
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
@@ -75,6 +70,7 @@ export default async function RootLayout({
                 </main>
               </div>
               <Toaster />
+              <DeepLinkInit />
             </ThemeProvider>
           </TooltipProvider>
         </body>

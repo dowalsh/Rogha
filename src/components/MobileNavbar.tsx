@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sheet";
 import { useEffect, useState } from "react";
 import { SignInButton, SignOutButton } from "@clerk/nextjs";
+import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import type { UserResource } from "@clerk/types";
 import { getUnreadCount } from "@/actions/notification.action";
@@ -33,12 +34,17 @@ type MobileNavbarProps = {
 function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [isNative, setIsNative] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
       getUnreadCount().then(setUnread).catch(console.error);
     }
   }, [isSignedIn]);
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
   const handleNavClick = () => {
     setShowMobileMenu(false);
@@ -161,7 +167,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 </SignOutButton>
               </>
             ) : (
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}>
                 <Button variant="default" className="w-full">
                   Sign In
                 </Button>

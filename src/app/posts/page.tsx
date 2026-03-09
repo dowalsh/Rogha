@@ -78,7 +78,7 @@ export default function PostsPage() {
   return (
     <>
       <SignedOut>
-        <RedirectToSignIn redirectUrl="/posts" />
+        <RedirectToSignIn signInFallbackRedirectUrl="/posts" />
       </SignedOut>
 
       <SignedIn>

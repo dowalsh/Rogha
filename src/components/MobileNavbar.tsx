@@ -69,7 +69,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
             <MenuIcon className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-[300px]">
+        <SheetContent side="right" className="w-[300px] pt-safe pb-safe">
           <SheetHeader>
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
@@ -119,7 +119,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                     Posts
                   </Link>
                 </Button>
-                <Button
+                {/* <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
                   onClick={handleNavClick}
@@ -134,7 +134,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                     )}
                     Notifications
                   </Link>
-                </Button>
+                </Button> */}
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
@@ -167,7 +167,10 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 </SignOutButton>
               </>
             ) : (
-              <SignInButton mode="modal" forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}>
+              <SignInButton
+                mode="modal"
+                forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+              >
                 <Button variant="default" className="w-full">
                   Sign In
                 </Button>

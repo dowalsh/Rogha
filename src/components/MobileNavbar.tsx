@@ -158,7 +158,11 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 mode="modal"
                 forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
               >
-                <Button variant="default" className="w-full">
+                <Button
+                  variant="default"
+                  className="w-full"
+                  onClick={() => setShowMobileMenu(false)}
+                >
                   Sign In
                 </Button>
               </SignInButton>

@@ -4,7 +4,6 @@ import {
   HomeIcon,
   LogOutIcon,
   MenuIcon,
-  BellIcon,
   Blend,
   Newspaper,
   NotebookPen,
@@ -18,11 +17,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SignInButton, SignOutButton } from "@clerk/nextjs";
+import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import type { UserResource } from "@clerk/types";
-import { getUnreadCount } from "@/actions/notification.action";
 
 type MobileNavbarProps = {
   isLoaded: boolean;
@@ -32,13 +31,7 @@ type MobileNavbarProps = {
 
 function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [unread, setUnread] = useState(0);
-
-  useEffect(() => {
-    if (isSignedIn) {
-      getUnreadCount().then(setUnread).catch(console.error);
-    }
-  }, [isSignedIn]);
+  const [isNative] = useState(() => Capacitor.isNativePlatform());
 
   const handleNavClick = () => {
     setShowMobileMenu(false);
@@ -63,7 +56,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
             <MenuIcon className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-[300px]">
+        <SheetContent side="right" className="w-[300px] pt-safe-6 pb-safe-6">
           <SheetHeader>
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
@@ -113,7 +106,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                     Posts
                   </Link>
                 </Button>
-                <Button
+                {/* <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
                   onClick={handleNavClick}
@@ -128,7 +121,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                     )}
                     Notifications
                   </Link>
-                </Button>
+                </Button> */}
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
@@ -161,8 +154,15 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 </SignOutButton>
               </>
             ) : (
-              <SignInButton mode="modal">
-                <Button variant="default" className="w-full">
+              <SignInButton
+                mode="modal"
+                forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+              >
+                <Button
+                  variant="default"
+                  className="w-full"
+                  onClick={() => setShowMobileMenu(false)}
+                >
                   Sign In
                 </Button>
               </SignInButton>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
+import DeepLinkInit from "@/components/DeepLinkInit";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -19,6 +20,12 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
   weight: "100 900",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Rogha",
@@ -57,12 +64,18 @@ export default async function RootLayout({
                     DEV
                   </div>
                 )}
+                {process.env.VERCEL_ENV === "preview" && (
+                  <div className="w-full bg-yellow-400 text-black text-center py-2 text-sm font-bold z-50">
+                    PREVIEW
+                  </div>
+                )}
                 <Navbar />
                 <main className="py-8">
                   <div className="max-w-7xl mx-auto px-4">{children}</div>
                 </main>
               </div>
               <Toaster />
+              <DeepLinkInit />
             </ThemeProvider>
           </TooltipProvider>
         </body>

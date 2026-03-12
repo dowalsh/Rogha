@@ -14,7 +14,7 @@ export default function CirclesPage() {
   return (
     <>
       <SignedOut>
-        <RedirectToSignIn redirectUrl="/circles" />
+        <RedirectToSignIn signInFallbackRedirectUrl="/circles" />
       </SignedOut>
 
       <SignedIn>

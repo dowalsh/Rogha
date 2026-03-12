@@ -6,6 +6,20 @@
   .text-balance {
     text-wrap: balance;
   }
+  /* Flush elements (navbar): only safe area, no minimum */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Overlay panels with p-6 base (Sheet, modals): safe area OR p-6, whichever is larger */
+  .pt-safe-6 {
+    padding-top: max(env(safe-area-inset-top), 1.5rem);
+  }
+  .pb-safe-6 {
+    padding-bottom: max(env(safe-area-inset-bottom), 1.5rem);
+  }
 }
 
 @layer base {

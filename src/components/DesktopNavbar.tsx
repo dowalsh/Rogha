@@ -4,7 +4,6 @@ import {
   Newspaper,
   HomeIcon,
   NotebookPen,
-  BellIcon,
   Blend,
   Info,
 } from "lucide-react";
@@ -12,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import type { UserResource } from "@clerk/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
 // import { getUnreadCount } from "@/actions/notification.action";
 
 type DesktopNavbarProps = {
@@ -22,7 +22,7 @@ type DesktopNavbarProps = {
 };
 
 function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
-  const [unread, setUnread] = useState(0);
+  const [isNative] = useState(() => Capacitor.isNativePlatform());
 
   // useEffect(() => {
   //   if (isSignedIn) {
@@ -98,7 +98,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
           <UserButton />
         </>
       ) : (
-        <SignInButton mode="modal">
+        <SignInButton mode="modal" forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}>
           <Button variant="default">Sign In</Button>
         </SignInButton>
       )}

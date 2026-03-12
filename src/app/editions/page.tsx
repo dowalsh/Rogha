@@ -112,7 +112,7 @@ export default function EditionsPage() {
   return (
     <>
       <SignedOut>
-        <RedirectToSignIn redirectUrl="/editions" />
+        <RedirectToSignIn signInFallbackRedirectUrl="/editions" />
       </SignedOut>
 
       <SignedIn>

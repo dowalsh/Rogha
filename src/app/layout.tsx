@@ -64,6 +64,11 @@ export default async function RootLayout({
                     DEV
                   </div>
                 )}
+                {process.env.VERCEL_ENV === "preview" && (
+                  <div className="w-full bg-yellow-400 text-black text-center py-2 text-sm font-bold z-50">
+                    PREVIEW
+                  </div>
+                )}
                 <Navbar />
                 <main className="py-8">
                   <div className="max-w-7xl mx-auto px-4">{children}</div>

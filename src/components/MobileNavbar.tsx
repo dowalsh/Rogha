@@ -4,7 +4,6 @@ import {
   HomeIcon,
   LogOutIcon,
   MenuIcon,
-  BellIcon,
   Blend,
   Newspaper,
   NotebookPen,
@@ -18,12 +17,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SignInButton, SignOutButton } from "@clerk/nextjs";
 import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import type { UserResource } from "@clerk/types";
-import { getUnreadCount } from "@/actions/notification.action";
 
 type MobileNavbarProps = {
   isLoaded: boolean;
@@ -33,18 +31,7 @@ type MobileNavbarProps = {
 
 function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [unread, setUnread] = useState(0);
-  const [isNative, setIsNative] = useState(false);
-
-  useEffect(() => {
-    if (isSignedIn) {
-      getUnreadCount().then(setUnread).catch(console.error);
-    }
-  }, [isSignedIn]);
-
-  useEffect(() => {
-    setIsNative(Capacitor.isNativePlatform());
-  }, []);
+  const [isNative] = useState(() => Capacitor.isNativePlatform());
 
   const handleNavClick = () => {
     setShowMobileMenu(false);

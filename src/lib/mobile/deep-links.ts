@@ -1,4 +1,6 @@
 import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
+import type { PluginListenerHandle } from "@capacitor/core";
 
 function handleDeepLink(url: string) {
   if (!url.startsWith("rogha://")) return;
@@ -6,8 +8,10 @@ function handleDeepLink(url: string) {
   window.location.href = "/";
 }
 
-export async function initDeepLinks() {
-  App.addListener("appUrlOpen", ({ url }) => {
+export async function initDeepLinks(): Promise<PluginListenerHandle | null> {
+  if (!Capacitor.isNativePlatform()) return null;
+
+  const handle = await App.addListener("appUrlOpen", ({ url }) => {
     if (url) handleDeepLink(url);
   });
 
@@ -17,4 +21,6 @@ export async function initDeepLinks() {
   if (launchUrl?.url && launchUrl.url !== "rogha://auth") {
     handleDeepLink(launchUrl.url);
   }
+
+  return handle;
 }

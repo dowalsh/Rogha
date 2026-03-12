@@ -4,7 +4,6 @@ import {
   Newspaper,
   HomeIcon,
   NotebookPen,
-  BellIcon,
   Blend,
   Info,
 } from "lucide-react";
@@ -12,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import type { UserResource } from "@clerk/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 // import { getUnreadCount } from "@/actions/notification.action";
 
@@ -23,11 +22,7 @@ type DesktopNavbarProps = {
 };
 
 function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
-  const [isNative, setIsNative] = useState(false);
-
-  useEffect(() => {
-    setIsNative(Capacitor.isNativePlatform());
-  }, []);
+  const [isNative] = useState(() => Capacitor.isNativePlatform());
 
   // useEffect(() => {
   //   if (isSignedIn) {

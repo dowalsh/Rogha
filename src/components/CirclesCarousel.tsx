@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Blend } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CircleDialog } from "./CircleDialog";
@@ -11,11 +12,15 @@ import { NewCircleDialog } from "./NewCircleDialog";
 
 export function CirclesCarousel() {
   const [circles, setCircles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any | null>(null);
   const [newDialogOpen, setNewDialogOpen] = useState(false);
 
   useEffect(() => {
-    getCirclesForUser().then(setCircles);
+    getCirclesForUser().then((data) => {
+      setCircles(data);
+      setLoading(false);
+    });
   }, []);
 
   const handleCreate = async (name: string, description?: string) => {
@@ -44,6 +49,11 @@ export function CirclesCarousel() {
           Circles
         </h2>
       </div>
+      {loading ? (
+        <div className="flex justify-center py-6">
+          <Spinner />
+        </div>
+      ) : (
       <div className="flex flex-wrap gap-4 py-2 overflow-y-auto justify-center">
         {/* Create */}
         <motion.div whileHover={{ scale: 1.05 }}>
@@ -72,6 +82,7 @@ export function CirclesCarousel() {
           </motion.div>
         ))}
       </div>
+      )}
 
       <CircleDialog
         key={selected?.id ?? "none"} // keep open after mutations

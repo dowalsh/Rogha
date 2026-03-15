@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "react-hot-toast";
 import { Plus, Loader2, X, UserMinus, Check, Clock, Users } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 
 type FriendState = "ACCEPTED" | "PENDING_OUTGOING" | "PENDING_INCOMING";
 
@@ -258,7 +259,9 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       </div>
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="flex justify-center py-6">
+          <Spinner />
+        </div>
       ) : !hasAny ? (
         <div className="text-sm text-muted-foreground">
           No friends or requests yet. Send a request to someone!

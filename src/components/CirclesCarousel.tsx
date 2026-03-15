@@ -44,7 +44,7 @@ export function CirclesCarousel() {
           Circles
         </h2>
       </div>
-      <div className="flex overflow-x-auto py-4 gap-4 pb-2 px-2 scrollbar-none">
+      <div className="flex flex-wrap gap-4 py-2 overflow-y-auto">
         {/* Create */}
         <motion.div whileHover={{ scale: 1.05 }}>
           <Card

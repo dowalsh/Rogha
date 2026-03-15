@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { ActivityEventType } from "@/generated/prisma/enums";
-import { getAcceptedFriendIds } from "@/lib/friends";
+import { getAcceptedFriendships } from "@/lib/friends";
 import type { BuzzItemProps, BuzzKind } from "@/components/buzz/BuzzItem";
 import { resolveVisiblePosts } from "@/lib/access/postAccess";
 
@@ -95,11 +95,11 @@ export async function getBuzz({
   userId,
   limit = 50,
 }: GetBuzzArgs): Promise<BuzzItemProps[]> {
-  // 1) Whose activity we care about
-  const friendIds = await getAcceptedFriendIds(userId);
-  if (!friendIds || friendIds.length === 0) {
-    return [];
-  }
+  // 1) Whose activity we care about (with friendship dates for temporal gating)
+  const friendships = await getAcceptedFriendships(userId);
+  if (!friendships.length) return [];
+  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
+  const friendIds = Array.from(friendMap.keys());
 
   // 2) Fetch recent activity for those friends
   const events = await prisma.activityEvent.findMany({
@@ -127,6 +127,7 @@ export async function getBuzz({
           status: true, // ADD
           audienceType: true, // ADD
           circleId: true, // ADD
+          createdAt: true, // ADD
           author: {
             select: {
               id: true,
@@ -149,8 +150,15 @@ export async function getBuzz({
     take: limit,
   });
 
+  // 3) Temporal gate: only include events that occurred after the friendship started
+  const temporallyGatedEvents = events.filter((e) => {
+    const friendshipDate = friendMap.get(e.actorId);
+    if (!friendshipDate) return false;
+    return e.createdAt >= friendshipDate;
+  });
+
   // Extract posts for access resolution
-  const postsForAccess = events
+  const postsForAccess = temporallyGatedEvents
     .filter((e) => !!e.post)
     .map((e) => ({
       id: e.post!.id,
@@ -158,6 +166,7 @@ export async function getBuzz({
       status: e.post!.status,
       audienceType: e.post!.audienceType,
       circleId: e.post!.circleId,
+      createdAt: e.post!.createdAt,
     }));
 
   // Ask access layer which posts are visible
@@ -170,7 +179,7 @@ export async function getBuzz({
   const visiblePostIds = new Set(visiblePosts.map((p) => p.id));
 
   // Filter events by visible post ids
-  const visibleEvents = events.filter(
+  const visibleEvents = temporallyGatedEvents.filter(
     (e) => e.post && visiblePostIds.has(e.post.id),
   );
 

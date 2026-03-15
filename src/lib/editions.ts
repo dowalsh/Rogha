@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
+import { getAcceptedFriendships } from "@/lib/friends";
 
 type DbUser = { id: string };
 
@@ -128,10 +129,9 @@ export async function publishEditionForWeek(weekStart: Date) {
 }
 
 export async function getPublishedEditions(user: DbUser) {
-  const friendships = await prisma.friendship.findMany({
-    where: { OR: [{ aId: user.id }, { bId: user.id }] },
-    select: { aId: true, bId: true, status: true, acceptedAt: true },
-  });
+  const friendships = await getAcceptedFriendships(user.id);
+  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
+  const friendIds = Array.from(friendMap.keys());
 
   const editions = await prisma.edition.findMany({
     where: { NOT: { publishedAt: null } },
@@ -139,47 +139,13 @@ export async function getPublishedEditions(user: DbUser) {
     select: { id: true, title: true, weekStart: true, publishedAt: true },
   });
 
-  // return Promise.all(
-  //   editions.map(async (ed) => {
-  //     const cutoff = ed.publishedAt ?? plannedPublishAt(ed.weekStart);
-  //     const validFriendIds = friendships
-  //       .filter(
-  //         (f) =>
-  //           f.status === "ACCEPTED" && f.acceptedAt && f.acceptedAt < cutoff
-  //       )
-  //       .map((f) => (f.aId === user.id ? f.bId : f.aId));
-
-  //     const posts = await prisma.post.findMany({
-  //       where: {
-  //         editionId: ed.id,
-  //         status: "PUBLISHED",
-  //         OR: [{ authorId: user.id }, { authorId: { in: validFriendIds } }],
-  //       },
-  //       orderBy: { updatedAt: "desc" },
-  //       select: {
-  //         id: true,
-  //         title: true,
-  //         status: true,
-  //         updatedAt: true,
-  //         authorId: true,
-  //         author: { select: { id: true, name: true, image: true } },
-  //       },
-  //     });
-
-  // ABOVE is logic with cutoff; replaced with following logic where all historical posts are readable by new friends
-
   return Promise.all(
     editions.map(async (ed) => {
-      // Friends that are fully accepted, no cutoff check
-      const validFriendIds = friendships
-        .filter((f) => f.status === "ACCEPTED")
-        .map((f) => (f.aId === user.id ? f.bId : f.aId));
-
       const posts = await prisma.post.findMany({
         where: {
           editionId: ed.id,
           status: "PUBLISHED",
-          OR: [{ authorId: user.id }, { authorId: { in: validFriendIds } }],
+          OR: [{ authorId: user.id }, { authorId: { in: friendIds } }],
         },
         orderBy: { updatedAt: "desc" },
         select: {
@@ -187,6 +153,7 @@ export async function getPublishedEditions(user: DbUser) {
           title: true,
           status: true,
           updatedAt: true,
+          createdAt: true,
           authorId: true,
           author: {
             select: { id: true, name: true, image: true },
@@ -194,26 +161,29 @@ export async function getPublishedEditions(user: DbUser) {
         },
       });
 
+      // Temporal gate: only include friend posts created after the friendship started
+      const visiblePosts = posts.filter((p) => {
+        if (p.authorId === user.id) return true;
+        const friendshipDate = friendMap.get(p.authorId);
+        return friendshipDate !== undefined && friendshipDate <= p.createdAt;
+      });
+
       console.debug(
         "[getPublishedEditions] edition:",
         ed.id,
         "posts:",
-        posts.length
+        visiblePosts.length
       );
-      return { ...ed, posts };
+      return { ...ed, posts: visiblePosts };
     })
   );
 }
 
 export async function getPublishedEditionById(user: DbUser, id: string) {
-  // 1) Friendships for FRIENDS audience
-  const friendships = await prisma.friendship.findMany({
-    where: { OR: [{ aId: user.id }, { bId: user.id }] },
-    select: { aId: true, bId: true, status: true },
-  });
-  const validFriendIds = friendships
-    .filter((f) => f.status === "ACCEPTED")
-    .map((f) => (f.aId === user.id ? f.bId : f.aId));
+  // 1) Friendships with dates for temporal gating
+  const friendships = await getAcceptedFriendships(user.id);
+  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
+  const validFriendIds = Array.from(friendMap.keys());
 
   // 2) Edition shell
   const edition = await prisma.edition.findUnique({
@@ -260,6 +230,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       title: true,
       status: true,
       updatedAt: true,
+      createdAt: true,
       authorId: true,
       audienceType: true,
       circleId: true,
@@ -270,13 +241,23 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     },
   });
 
+  // Temporal gate: FRIENDS posts are only visible if friendship predates the post
+  const visiblePosts = posts.filter((p) => {
+    if (p.authorId === user.id) return true;
+    if (p.audienceType === "ALL_USERS") return true;
+    if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query
+    // FRIENDS: check friendship date
+    const friendshipDate = friendMap.get(p.authorId);
+    return friendshipDate !== undefined && friendshipDate <= p.createdAt;
+  });
+
   console.debug(
     "[getPublishedEditionById] edition:",
     edition.id,
     "posts:",
-    posts.length
+    visiblePosts.length
   );
-  return { ...edition, posts };
+  return { ...edition, posts: visiblePosts };
 }
 
 export async function getMostRecentPublishedEditionForUser() {

@@ -64,6 +64,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
             <Button
               variant="ghost"
               className="flex items-center gap-3 justify-start"
+              onClick={handleNavClick}
               asChild
             >
               <Link href="/">
@@ -77,6 +78,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"
+                  onClick={handleNavClick}
                   asChild
                 >
                   <Link href="/editions/latest">

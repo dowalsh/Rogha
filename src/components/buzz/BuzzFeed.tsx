@@ -3,7 +3,7 @@
 
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { Activity } from "lucide-react";
+import { Activity, RefreshCw } from "lucide-react";
 import { BuzzItem, BuzzItemProps } from "./BuzzItem";
 import { BuzzSkeleton } from "./BuzzSkeleton";
 
@@ -11,7 +11,8 @@ export type BuzzFeedProps = {
   items: BuzzItemProps[];
   isLoading?: boolean;
   className?: string;
-  headerSlot?: ReactNode; // optional: for "Buzz" heading / actions
+  headerSlot?: ReactNode;
+  onRefresh?: () => void;
 };
 
 export function BuzzFeed({
@@ -19,6 +20,7 @@ export function BuzzFeed({
   isLoading = false,
   className,
   headerSlot,
+  onRefresh,
 }: BuzzFeedProps) {
   return (
     <section className={cn("space-y-4", className)}>
@@ -28,7 +30,18 @@ export function BuzzFeed({
           <Activity className="h-4 w-4" />
           <h2 className="text-lg font-semibold">Buzz</h2>
         </div>
-        {headerSlot}
+        <div className="flex items-center gap-2">
+          {headerSlot}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Refresh feed"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Body */}

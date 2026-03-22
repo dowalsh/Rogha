@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { ActivityEventType } from "@/generated/prisma/enums";
-import { getAcceptedFriendIds } from "@/lib/friends";
+import { getAcceptedFriendships } from "@/lib/friends";
 import type { BuzzItemProps, BuzzKind } from "@/components/buzz/BuzzItem";
 import { resolveVisiblePosts } from "@/lib/access/postAccess";
 
@@ -95,16 +95,61 @@ export async function getBuzz({
   userId,
   limit = 50,
 }: GetBuzzArgs): Promise<BuzzItemProps[]> {
-  // 1) Whose activity we care about
-  const friendIds = await getAcceptedFriendIds(userId);
-  if (!friendIds || friendIds.length === 0) {
-    return [];
-  }
+  // 1) Whose activity we care about (with friendship dates for temporal gating)
+  const friendships = await getAcceptedFriendships(userId);
+  if (!friendships.length) return [];
+  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
+  const friendIds = Array.from(friendMap.keys());
 
-  // 2) Fetch recent activity for those friends
+  // 2a) Fetch FRIENDS/CIRCLE posts authored by direct friends.
+  //
+  // These are used to surface "mutual friend" activity in Buzz:
+  // if Bob (not my friend) comments on Alice's (my friend) FRIENDS post,
+  // I can already see that comment when I open the post — so it should
+  // also appear in Buzz.
+  //
+  // Why only FRIENDS and CIRCLE audience posts (not ALL_USERS)?
+  //   - FRIENDS post: only the author's friends can see/comment → every
+  //     commenter is a mutual friend by definition.
+  //   - CIRCLE post: only joined circle members can comment → controlled group.
+  //   - ALL_USERS post: any stranger on the platform can comment → surfacing
+  //     their activity would introduce unknown users into the Buzz feed.
+  const publishedPostsByFriends = await prisma.post.findMany({
+    where: {
+      authorId: { in: friendIds },
+      status: "PUBLISHED",
+      audienceType: { in: ["FRIENDS", "CIRCLE"] },
+    },
+    select: { id: true, authorId: true },
+  });
+  // Map: postId → post's authorId (used for temporal gating when the actor
+  // is a mutual friend rather than a direct friend)
+  const postIdToAuthorId = new Map(
+    publishedPostsByFriends.map((p) => [p.id, p.authorId]),
+  );
+  const publishedFriendAudiencePostIds = Array.from(postIdToAuthorId.keys());
+
+  // 2b) Fetch recent activity events.
+  //
+  // Two sources of events shown in Buzz:
+  //   a) Direct friend as actor — their activity anywhere on the platform
+  //   b) Any user acting on a friend's FRIENDS/CIRCLE post (mutual friends)
+  //
+  // Likes (POST_LIKED, COMMENT_LIKED) are excluded from both sources — they
+  // are too noisy and don't add conversational signal.
   const events = await prisma.activityEvent.findMany({
     where: {
-      actorId: { in: friendIds },
+      OR: [
+        // (a) Direct friends' own activity
+        { actorId: { in: friendIds } },
+        // (b) Any user's activity on a friend's restricted post —
+        //     excludes the viewer's own activity (you don't need to see
+        //     yourself commenting in your own Buzz feed)
+        {
+          postId: { in: publishedFriendAudiencePostIds },
+          actorId: { not: userId },
+        },
+      ],
       eventType: {
         notIn: [ActivityEventType.POST_LIKED, ActivityEventType.COMMENT_LIKED],
       },
@@ -127,6 +172,7 @@ export async function getBuzz({
           status: true, // ADD
           audienceType: true, // ADD
           circleId: true, // ADD
+          createdAt: true, // ADD
           author: {
             select: {
               id: true,
@@ -149,8 +195,31 @@ export async function getBuzz({
     take: limit,
   });
 
+  // 3) Temporal gate: only include events that occurred after the relevant
+  //    friendship was accepted.
+  //
+  //    For direct friends (actor is in friendMap):
+  //      gate on when the viewer became friends with the actor.
+  //
+  //    For mutual friends (actor is NOT a direct friend, acting on a friend's post):
+  //      gate on when the viewer became friends with the POST AUTHOR.
+  //      Rationale: I started seeing Alice's world when I friended Alice, so
+  //      any activity on Alice's posts after that date is fair game.
+  const temporallyGatedEvents = events.filter((e) => {
+    const viewerFriendshipWithActor = friendMap.get(e.actorId);
+    if (viewerFriendshipWithActor) return e.createdAt >= viewerFriendshipWithActor;
+
+    // Mutual friend path: use the post author's friendship date as the gate
+    if (e.post) {
+      const viewerFriendshipWithPostAuthor = friendMap.get(e.post.authorId);
+      if (viewerFriendshipWithPostAuthor)
+        return e.createdAt >= viewerFriendshipWithPostAuthor;
+    }
+    return false;
+  });
+
   // Extract posts for access resolution
-  const postsForAccess = events
+  const postsForAccess = temporallyGatedEvents
     .filter((e) => !!e.post)
     .map((e) => ({
       id: e.post!.id,
@@ -158,6 +227,7 @@ export async function getBuzz({
       status: e.post!.status,
       audienceType: e.post!.audienceType,
       circleId: e.post!.circleId,
+      createdAt: e.post!.createdAt,
     }));
 
   // Ask access layer which posts are visible
@@ -170,7 +240,7 @@ export async function getBuzz({
   const visiblePostIds = new Set(visiblePosts.map((p) => p.id));
 
   // Filter events by visible post ids
-  const visibleEvents = events.filter(
+  const visibleEvents = temporallyGatedEvents.filter(
     (e) => e.post && visiblePostIds.has(e.post.id),
   );
 

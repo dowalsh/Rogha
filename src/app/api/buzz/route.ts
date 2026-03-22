@@ -13,6 +13,12 @@ export async function GET(_req: NextRequest) {
     }
 
     const buzz = await getBuzz({ userId: user.id });
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[BUZZ API] Feed requested by user:", user.id);
+      console.log("[BUZZ API] Returning items:", buzz.length);
+    }
+
     return NextResponse.json(buzz, { status: 200 });
   } catch (e) {
     console.error("[BUZZ_GET_ERROR]", e);

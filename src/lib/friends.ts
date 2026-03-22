@@ -106,3 +106,30 @@ export async function getAcceptedFriendIds(userId: string): Promise<string[]> {
 
   return friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
 }
+
+export type FriendshipEntry = {
+  friendId: string;
+  acceptedAt: Date;
+};
+
+/**
+ * Return accepted friends with the date the friendship was accepted.
+ * Used for temporal access gating: content is only visible if it was
+ * created on or after the friendship date.
+ */
+export async function getAcceptedFriendships(
+  userId: string
+): Promise<FriendshipEntry[]> {
+  const rows = await prisma.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [{ aId: userId }, { bId: userId }],
+    },
+    select: { aId: true, bId: true, acceptedAt: true, createdAt: true },
+  });
+
+  return rows.map((f) => ({
+    friendId: f.aId === userId ? f.bId : f.aId,
+    acceptedAt: f.acceptedAt ?? f.createdAt,
+  }));
+}

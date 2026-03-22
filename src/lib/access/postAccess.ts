@@ -1,7 +1,7 @@
 // src/lib/access/postAccess.ts
 
 import { prisma } from "@/lib/prisma";
-import { getAcceptedFriendIds } from "@/lib/friends";
+import { getAcceptedFriendships } from "@/lib/friends";
 
 export type AudienceType = "ALL_USERS" | "FRIENDS" | "CIRCLE";
 
@@ -11,6 +11,7 @@ export type MinimalPost = {
   status: string; // "DRAFT" | "SUBMITTED" | "PUBLISHED" | ...
   audienceType: AudienceType;
   circleId: string | null;
+  createdAt: Date;
 };
 
 //
@@ -22,10 +23,10 @@ export type MinimalPost = {
 function canViewPostPolicy(args: {
   viewerId: string | null;
   post: MinimalPost;
-  isFriend: boolean;
+  friendshipAcceptedAt: Date | null; // null = not a friend
   isInCircle: boolean;
 }) {
-  const { viewerId, post, isFriend, isInCircle } = args;
+  const { viewerId, post, friendshipAcceptedAt, isInCircle } = args;
 
   // Unpublished → author only
   if (post.status !== "PUBLISHED") {
@@ -40,7 +41,12 @@ function canViewPostPolicy(args: {
       return true;
 
     case "FRIENDS":
-      return !!viewerId && isFriend;
+      // Must be a friend AND friendship must predate the post
+      return (
+        !!viewerId &&
+        friendshipAcceptedAt !== null &&
+        friendshipAcceptedAt <= post.createdAt
+      );
 
     case "CIRCLE":
       return !!viewerId && isInCircle;
@@ -70,14 +76,15 @@ export async function resolveVisiblePosts(args: {
       canViewPostPolicy({
         viewerId: null,
         post,
-        isFriend: false,
+        friendshipAcceptedAt: null,
         isInCircle: false,
       }),
     );
   }
 
-  // Fetch friendships once
-  const friendIds = await getAcceptedFriendIds(viewerId);
+  // Fetch friendships (with dates) once
+  const friendships = await getAcceptedFriendships(viewerId);
+  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
 
   // Collect circleIds in this batch
   const circleIds = Array.from(
@@ -105,7 +112,7 @@ export async function resolveVisiblePosts(args: {
     canViewPostPolicy({
       viewerId,
       post,
-      isFriend: friendIds.includes(post.authorId),
+      friendshipAcceptedAt: friendMap.get(post.authorId) ?? null,
       isInCircle: post.circleId ? joinedSet.has(post.circleId) : false,
     }),
   );
@@ -138,6 +145,7 @@ export async function requirePostAccess(
       status: true,
       audienceType: true,
       circleId: true,
+      createdAt: true,
     },
   });
 

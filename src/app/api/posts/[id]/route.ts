@@ -73,6 +73,7 @@ export async function GET(
       status: post.status,
       audienceType: post.audienceType,
       circleId: post.circleId,
+      createdAt: post.createdAt,
     });
 
     if (!allowed) {

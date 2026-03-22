@@ -17,7 +17,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "react-hot-toast";
-import { Plus, Loader2, X, UserMinus, Check, Clock } from "lucide-react";
+import { Plus, Loader2, X, UserMinus, Check, Clock, Users } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 
 type FriendState = "ACCEPTED" | "PENDING_OUTGOING" | "PENDING_INCOMING";
 
@@ -208,7 +209,10 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
   return (
     <div className="rounded-md border p-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm font-medium">Friends</div>
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <Users className="h-5 w-5" />
+          Friends
+        </h2>
 
         {showAdd ? (
           <div className="flex items-center gap-2">
@@ -255,13 +259,15 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       </div>
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
+        <div className="flex justify-center py-6">
+          <Spinner />
+        </div>
       ) : !hasAny ? (
         <div className="text-sm text-muted-foreground">
           No friends or requests yet. Send a request to someone!
         </div>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-1">
+        <div className="flex flex-col gap-2">
           {items.map((item) => {
             const u = item.user;
             const name = u.name || "Unknown";
@@ -283,7 +289,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
               <div
                 key={u.id}
                 className={[
-                  "group relative flex min-w-[240px] items-center gap-3 rounded-md border px-3 py-2",
+                  "group relative flex w-full items-center gap-3 rounded-md border px-3 py-2",
                   isPending ? "bg-muted/60 shadow-sm" : "hover:bg-muted",
                 ].join(" ")}
               >

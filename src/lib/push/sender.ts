@@ -43,6 +43,14 @@ export async function sendPushToUser(
   for (const device of devices) {
     try {
       const result = await provider.send(note, device.token);
+      console.log("[PUSH_RESULT]", {
+        userId,
+        sent: result.sent.length,
+        failed: result.failed.map((f) => ({
+          token: f.device,
+          reason: f.response?.reason,
+        })),
+      });
       for (const failed of result.failed) {
         if (
           failed.response?.reason === "BadDeviceToken" ||

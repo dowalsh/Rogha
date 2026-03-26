@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Trash2 } from "lucide-react";
 import { useLike } from "@/hooks/useLike";
 import { LikeButton } from "./LikeButton";
 import type { AudienceType } from "@/types/index";
@@ -25,10 +26,14 @@ interface CommentType {
 function CommentItem({
   comment,
   onReply,
+  onDelete,
+  currentUserId,
   depth = 0,
 }: {
   comment: CommentType;
   onReply: (parentId: string, content: string) => void;
+  onDelete: (id: string, parentId?: string) => void;
+  currentUserId: string | null;
   depth?: number;
 }) {
   const [showReply, setShowReply] = useState(false);
@@ -67,12 +72,23 @@ function CommentItem({
           <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
             {comment.content}
           </p>
-          <LikeButton
-            liked={liked}
-            count={count}
-            onToggle={toggle}
-            fetchLikersUrl={`/api/comments/${comment.id}/likes`}
-          />
+          <div className="flex items-center gap-2">
+            <LikeButton
+              liked={liked}
+              count={count}
+              onToggle={toggle}
+              fetchLikersUrl={`/api/comments/${comment.id}/likes`}
+            />
+            {currentUserId === comment.author.id && (
+              <button
+                onClick={() => onDelete(comment.id, undefined)}
+                className="text-muted-foreground hover:text-destructive transition-colors"
+                aria-label="Delete comment"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -84,6 +100,8 @@ function CommentItem({
               key={r.id}
               comment={r}
               onReply={onReply}
+              onDelete={(id) => onDelete(id, comment.id)}
+              currentUserId={currentUserId}
               depth={depth + 1}
             />
           ))}
@@ -141,6 +159,14 @@ export default function CommentsSection({
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((d) => d.id && setCurrentUserId(d.id))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`/api/posts/${postId}/comments`)
@@ -272,6 +298,25 @@ export default function CommentsSection({
     }
   }
 
+  async function deleteComment(id: string, parentId?: string) {
+    if (!confirm("Delete this comment?")) return;
+
+    const res = await fetch(`/api/comments/${id}/replies`, { method: "DELETE" });
+    if (!res.ok) return;
+
+    if (parentId) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === parentId
+            ? { ...c, replies: c.replies.filter((r) => r.id !== id) }
+            : c
+        )
+      );
+    } else {
+      setComments((prev) => prev.filter((c) => c.id !== id));
+    }
+  }
+
   const totalComments = comments.reduce(
     (acc, c) => acc + 1 + c.replies.length,
     0
@@ -305,7 +350,7 @@ export default function CommentsSection({
 
       <div className="space-y-6">
         {comments.map((c) => (
-          <CommentItem key={c.id} comment={c} onReply={addReply} />
+          <CommentItem key={c.id} comment={c} onReply={addReply} onDelete={deleteComment} currentUserId={currentUserId} />
         ))}
       </div>
 

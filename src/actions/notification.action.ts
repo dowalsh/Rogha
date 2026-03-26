@@ -219,6 +219,7 @@ export async function createCommentNotification({
       await sendPushToUser(post.authorId, {
         title: "New comment",
         body: `${commenter.name ?? commenter.username} commented on "${post.title ?? "your post"}"`,
+        url: `/reader/${postId}#comment-${newCommentId}`,
       });
     }
 
@@ -313,6 +314,7 @@ export async function createCommentNotification({
         await sendPushToUser(uid, {
           title: "New reply",
           body: `${commenter.name ?? commenter.username} replied in a thread`,
+          url: `/reader/${newComment.postId}#comment-${newCommentId}`,
         });
       }
     }
@@ -343,6 +345,7 @@ export async function createFriendRequestNotification({
     await sendPushToUser(targetId, {
       title: "Friend request",
       body: `${requester?.name ?? requester?.username ?? "Someone"} sent you a friend request`,
+      url: `/circles`,
     });
   }
 
@@ -489,6 +492,7 @@ export async function createSubmitNotifications({
     await sendPushToUser(uid, {
       title: "New post",
       body: `${authorName} submitted a new post`,
+      url: `/reader/${postId}`,
     });
   }
 }

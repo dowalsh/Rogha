@@ -34,11 +34,20 @@ export function usePushNotifications(isSignedIn: boolean) {
       (err) => console.error("[PUSH_REG_ERROR]", err)
     );
 
+    const tapListener = PushNotifications.addListener(
+      "pushNotificationActionPerformed",
+      (action) => {
+        const url = action.notification.data?.url;
+        if (url) window.location.href = url;
+      }
+    );
+
     register().catch(console.error);
 
     return () => {
       tokenListener.then((l) => l.remove());
       errorListener.then((l) => l.remove());
+      tapListener.then((l) => l.remove());
     };
   }, [isSignedIn]);
 }

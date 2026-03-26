@@ -17,7 +17,7 @@ function getProvider(): apn.Provider | null {
 
 export async function sendPushToUser(
   userId: string,
-  payload: { title: string; body: string }
+  payload: { title: string; body: string; url?: string }
 ) {
   const provider = getProvider();
   if (!provider) {
@@ -39,6 +39,7 @@ export async function sendPushToUser(
   note.alert = { title: payload.title, body: payload.body };
   note.sound = "default";
   note.topic = APP_BUNDLE_ID;
+  if (payload.url) note.payload = { url: payload.url };
 
   for (const device of devices) {
     try {

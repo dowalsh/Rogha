@@ -216,10 +216,10 @@ export async function createCommentNotification({
 
     const pushPrefs = await getUserPushPrefs(post.authorId);
     if (pushPrefs.pushEnabled && pushPrefs.pushComments) {
-      sendPushToUser(post.authorId, {
+      await sendPushToUser(post.authorId, {
         title: "New comment",
         body: `${commenter.name ?? commenter.username} commented on "${post.title ?? "your post"}"`,
-      }).catch(console.error);
+      });
     }
 
     return notif;
@@ -310,10 +310,10 @@ export async function createCommentNotification({
 
       const pp = replyPrefsMap.get(uid);
       if (!pp || (pp.pushEnabled && pp.pushReplies)) {
-        sendPushToUser(uid, {
+        await sendPushToUser(uid, {
           title: "New reply",
           body: `${commenter.name ?? commenter.username} replied in a thread`,
-        }).catch(console.error);
+        });
       }
     }
 
@@ -340,10 +340,10 @@ export async function createFriendRequestNotification({
 
   const pushPrefs = await getUserPushPrefs(targetId);
   if (pushPrefs.pushEnabled && pushPrefs.pushFriendRequests) {
-    sendPushToUser(targetId, {
+    await sendPushToUser(targetId, {
       title: "Friend request",
       body: `${requester?.name ?? requester?.username ?? "Someone"} sent you a friend request`,
-    }).catch(console.error);
+    });
   }
 
   return notif;
@@ -486,9 +486,9 @@ export async function createSubmitNotifications({
   }
 
   for (const uid of pushRecipientIds) {
-    sendPushToUser(uid, {
+    await sendPushToUser(uid, {
       title: "New post",
       body: `${authorName} submitted a new post`,
-    }).catch(console.error);
+    });
   }
 }

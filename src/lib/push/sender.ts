@@ -10,7 +10,7 @@ function getProvider(): apn.Provider | null {
   if (!key || !keyId || !teamId) return null;
 
   return new apn.Provider({
-    token: { key, keyId, teamId },
+    token: { key: key.replace(/\\n/g, "\n"), keyId, teamId },
     production: process.env.VERCEL_ENV === "production",
   });
 }

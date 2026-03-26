@@ -11,7 +11,7 @@ function getProvider(): apn.Provider | null {
 
   return new apn.Provider({
     token: { key, keyId, teamId },
-    production: process.env.NODE_ENV === "production",
+    production: process.env.VERCEL_ENV === "production",
   });
 }
 

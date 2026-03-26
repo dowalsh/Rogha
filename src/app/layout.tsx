@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
 import DeepLinkInit from "@/components/DeepLinkInit";
+import PushNotificationInit from "@/components/PushNotificationInit";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -76,6 +77,7 @@ export default async function RootLayout({
               </div>
               <Toaster />
               <DeepLinkInit />
+              <PushNotificationInit />
             </ThemeProvider>
           </TooltipProvider>
         </body>

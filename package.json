@@ -33,6 +33,7 @@
     "@lexical/table": "^0.34.0",
     "@lexical/text": "^0.34.0",
     "@lexical/utils": "^0.34.0",
+    "@parse/node-apn": "^7.1.0",
     "@prisma/adapter-pg": "^7.1.0",
     "@prisma/client": "^7.1.0",
     "@prisma/extension-accelerate": "^3.0.1",

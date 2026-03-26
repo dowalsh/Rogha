@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { canonicalPair } from "@/lib/friends";
+import { createFriendRequestNotification } from "@/actions/notification.action";
 
 type Box = "accepted" | "incoming" | "outgoing";
 
@@ -126,6 +127,16 @@ export async function POST(req: NextRequest) {
           status: "PENDING",
         },
       });
+
+      try {
+        await createFriendRequestNotification({
+          requesterId: user.id,
+          targetId: target.id,
+        });
+      } catch (err) {
+        console.error("[FRIEND_REQUEST_NOTIFICATION_ERROR]", err);
+      }
+
       console.log("friends.request", {
         meId: user.id,
         targetId: target.id,

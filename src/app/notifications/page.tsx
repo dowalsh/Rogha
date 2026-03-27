@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getNotificationLink } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { HeartIcon, MessageCircleIcon, Send } from "lucide-react";
+import { HeartIcon, MessageCircleIcon, Send, UserPlus } from "lucide-react";
 import Link from "next/link";
 
 import { useEffect, useState } from "react";
@@ -27,6 +27,8 @@ const getNotificationIcon = (type: string) => {
       return <MessageCircleIcon className="size-4 text-blue-500" />;
     case "SUBMIT":
       return <Send className="size-4 text-yellow-500" />;
+    case "FRIEND_REQUEST":
+      return <UserPlus className="size-4 text-green-500" />;
     default:
       return null;
   }
@@ -114,7 +116,9 @@ function NotificationsPage() {
                             ? "liked"
                             : notification.type === "COMMENT"
                               ? "commented"
-                              : "submitted a new post"}
+                              : notification.type === "FRIEND_REQUEST"
+                                ? "sent you a friend request"
+                                : "submitted a new post"}
                         </span>
                       </div>
 

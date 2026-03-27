@@ -49,6 +49,9 @@ model User {
   activityEvents ActivityEvent[] @relation("userActivityEvent")
 
   circleMemberships CircleMember[]
+
+  notificationPreference NotificationPreference?
+  pushDevices            PushDevice[]
 }
 
 model Circle {
@@ -244,6 +247,45 @@ enum NotificationType {
   LIKE
   COMMENT
   SUBMIT
+  FRIEND_REQUEST
+}
+
+model NotificationPreference {
+  userId                String   @id
+
+  emailEnabled          Boolean  @default(true)
+  pushEnabled           Boolean  @default(true)
+
+  emailComments         Boolean  @default(true)
+  pushComments          Boolean  @default(true)
+
+  emailReplies          Boolean  @default(true)
+  pushReplies           Boolean  @default(true)
+
+  emailSubmissions      Boolean  @default(true)
+  pushSubmissions       Boolean  @default(true)
+
+  emailFriendRequests   Boolean  @default(true)
+  pushFriendRequests    Boolean  @default(true)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  enabled    Boolean  @default(true)
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, enabled])
 }
 
 enum ActivityEventType {

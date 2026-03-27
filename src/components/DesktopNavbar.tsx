@@ -6,6 +6,7 @@ import {
   NotebookPen,
   Blend,
   Info,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -93,6 +94,12 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
             <Link href="/about">
               <Info className="w-4 h-4" />
               <span className="hidden lg:inline">About</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" className="flex items-center gap-2" asChild>
+            <Link href="/settings">
+              <Settings className="w-4 h-4" />
+              <span className="hidden lg:inline">Settings</span>
             </Link>
           </Button>
           <UserButton />

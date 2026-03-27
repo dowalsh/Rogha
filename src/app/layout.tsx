@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
 import DeepLinkInit from "@/components/DeepLinkInit";
+import PushNotificationInit from "@/components/PushNotificationInit";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -65,7 +66,7 @@ export default async function RootLayout({
                   </div>
                 )}
                 {process.env.VERCEL_ENV === "preview" && (
-                  <div className="w-full bg-yellow-400 text-black text-center py-2 text-sm font-bold z-50">
+                  <div className="w-full bg-green-400 text-black text-center py-2 text-sm font-bold z-50">
                     PREVIEW
                   </div>
                 )}
@@ -76,6 +77,7 @@ export default async function RootLayout({
               </div>
               <Toaster />
               <DeepLinkInit />
+              <PushNotificationInit />
             </ThemeProvider>
           </TooltipProvider>
         </body>

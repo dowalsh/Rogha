@@ -8,6 +8,7 @@ import {
   Newspaper,
   NotebookPen,
   Info,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,6 +134,17 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                   <Link href="/about">
                     <Info className="w-4 h-4" />
                     About
+                  </Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-3 justify-start"
+                  onClick={handleNavClick}
+                  asChild
+                >
+                  <Link href="/settings">
+                    <Settings className="w-4 h-4" />
+                    Settings
                   </Link>
                 </Button>
                 {/* <Button

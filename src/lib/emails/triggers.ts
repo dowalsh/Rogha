@@ -110,6 +110,9 @@ export async function triggerPublishedEditionEmail() {
         Read the edition
       </a>
     </p>
+    <p style="margin-top:24px;font-size:12px;color:#888;">
+      Don't want these emails? <a href="${appUrl}/settings" style="color:#888;">Manage notification settings</a>
+    </p>
   `;
 
   const batchSize = 25;
@@ -161,7 +164,8 @@ export async function triggerCommentNotificationEmail(
     commentText,
     url,
     postTitle ?? undefined,
-    isReply ?? false
+    isReply ?? false,
+    process.env.APP_URL
   );
 
   // send email

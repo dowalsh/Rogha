@@ -25,6 +25,9 @@ export function buildPostSubmittedEmail(
           Go to your posts
         </a>
       </p>
+      <p style="margin-top:24px;font-size:12px;color:#888;">
+        Don’t want these emails? <a href="${safeUrl}/settings" style="color:#888;">Manage notification settings</a>
+      </p>
     `,
   };
 }
@@ -33,13 +36,15 @@ export function buildPostSubmittedEmail(
 export function buildCommentNotificationEmail(
   actorName: string,
   commentText: string,
-  appUrl: string,
+  postUrl: string,
   postTitle?: string,
-  isReply?: boolean
+  isReply?: boolean,
+  baseUrl?: string
 ): BuiltEmail {
   const safeActor = actorName?.trim() || "Someone";
   const safeComment = commentText?.trim() || "";
-  const safeUrl = appUrl?.replace(/\/$/, "") || "";
+  const safeUrl = postUrl?.replace(/\/$/, "") || "";
+  const safeBase = (baseUrl ?? postUrl)?.replace(/\/$/, "") || "";
   const safeTitle = postTitle?.trim();
 
   const subject = isReply
@@ -55,10 +60,13 @@ export function buildCommentNotificationEmail(
       ${safeComment}
     </blockquote>
     <p>
-      <a href="${safeUrl}" 
+      <a href="${safeUrl}"
          style="display:inline-block;padding:10px 16px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">
         View the conversation
       </a>
+    </p>
+    <p style="margin-top:24px;font-size:12px;color:#888;">
+      Don't want these emails? <a href="${safeBase}/settings" style="color:#888;">Manage notification settings</a>
     </p>
   `;
 

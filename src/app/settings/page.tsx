@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -66,6 +67,11 @@ export default function SettingsPage() {
   if (!prefs) return null;
 
   return (
+    <>
+      <SignedOut>
+        <RedirectToSignIn signInFallbackRedirectUrl="/settings" />
+      </SignedOut>
+      <SignedIn>
     <div className="max-w-xl mx-auto py-8 px-4 space-y-6">
       <h1 className="text-2xl font-semibold">Settings</h1>
 
@@ -128,5 +134,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+      </SignedIn>
+    </>
   );
 }

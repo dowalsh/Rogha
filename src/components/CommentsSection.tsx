@@ -124,8 +124,13 @@ function CommentItem({
               <Textarea
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = `${el.scrollHeight}px`;
+                }}
                 placeholder="Write a reply..."
-                className="resize-none text-sm"
+                className="overflow-hidden resize-none text-sm"
               />
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSubmitReply}>
@@ -360,6 +365,12 @@ export default function CommentsSection({
           placeholder="Write your comment..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = `${el.scrollHeight}px`;
+          }}
+          className="overflow-hidden resize-none"
         />
         <Button
           onClick={addComment}

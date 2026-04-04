@@ -27,6 +27,7 @@ export async function GET(
         authorId: true,
         audienceType: true,
         circleId: true,
+        editionId: true,
         heroImageUrl: true,
         createdAt: true,
         updatedAt: true,

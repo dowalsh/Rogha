@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { PostRow } from "@/components/PostRow";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/Spinner";
 
 // ✅ rename to avoid shadowing the component & match API shape
 type PostRowData = {
@@ -93,10 +94,10 @@ export default function PostsPage() {
           </div>
 
           {loading ? (
-            <div className="rounded-md border p-6 text-sm text-muted-foreground">
-              Loading…
+            <div className="flex justify-center p-6">
+              <Spinner />
             </div>
-          ) : posts && posts.length === 0 ? (
+          ) :posts && posts.length === 0 ? (
             <div className="rounded-md border p-6 text-sm text-muted-foreground">
               No posts yet. Create your first one!
             </div>

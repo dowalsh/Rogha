@@ -21,7 +21,8 @@ import {
   CommandInput,
   CommandItem,
 } from "@/components/ui/command";
-import { X, UserPlus, LogOut, Check } from "lucide-react";
+import { X, UserPlus, Check } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 import {
   addMemberToCircle,
   removeMemberFromCircle,
@@ -47,6 +48,7 @@ export function CircleDialog({
     circle?.members ?? []
   );
   const [friends, setFriends] = useState<any[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -57,7 +59,9 @@ export function CircleDialog({
 
   // load friends only when dialog opens (saves a fetch)
   useEffect(() => {
-    if (open) getFriends().then(setFriends);
+    if (!open) return;
+    setLoadingFriends(true);
+    getFriends().then(setFriends).finally(() => setLoadingFriends(false));
   }, [open]);
 
   const handleRemove = async (memberId: string) => {
@@ -124,7 +128,11 @@ export function CircleDialog({
                     <CommandInput placeholder="Search friends..." />
                     <CommandEmpty>No friends found</CommandEmpty>
                     <CommandGroup>
-                      {addableFriends.map((friend) => (
+                      {loadingFriends ? (
+                        <div className="flex justify-center p-4">
+                          <Spinner className="h-4 w-4" />
+                        </div>
+                      ) : addableFriends.map((friend) => (
                         <CommandItem
                           key={friend.id}
                           onSelect={() => handleAdd(friend.id)}
@@ -141,7 +149,8 @@ export function CircleDialog({
                           </div>
                           {isAdding && <Check className="w-4 h-4 ml-auto" />}
                         </CommandItem>
-                      ))}
+                      ))
+                      }
                     </CommandGroup>
                   </Command>
                 </PopoverContent>

@@ -117,6 +117,11 @@
   resolved "https://registry.npmjs.org/@capacitor/push-notifications/-/push-notifications-8.0.2.tgz"
   integrity sha512-mej8Eh4EU4JXbaeyMX2l+4NNK6IdY5iRsEXpBOTHLD29fuCACBP7kOJTiJv6piw134zdlbFH0rR+sDKHIiFOFg==
 
+"@capacitor/splash-screen@^8.0.1":
+  version "8.0.1"
+  resolved "https://registry.npmjs.org/@capacitor/splash-screen/-/splash-screen-8.0.1.tgz"
+  integrity sha512-c/ew/Z3eA7z8l06WoRAtzVF16VwYYrExmHmfGq1Cg675pVzaC/yuucB8/1xG1vhEfnW4fZ1KhSf/kzR1RiVYgg==
+
 "@chevrotain/cst-dts-gen@10.5.0":
   version "10.5.0"
   resolved "https://registry.npmjs.org/@chevrotain/cst-dts-gen/-/cst-dts-gen-10.5.0.tgz"

@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Trash2 } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 import { useLike } from "@/hooks/useLike";
 import { LikeButton } from "./LikeButton";
 import type { AudienceType } from "@/types/index";
@@ -162,6 +163,7 @@ export default function CommentsSection({
   postAudienceType: AudienceType; // <- type
 }) {
   const [comments, setComments] = useState<CommentType[]>([]);
+  const [loadingComments, setLoadingComments] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -174,6 +176,7 @@ export default function CommentsSection({
   }, []);
 
   useEffect(() => {
+    setLoadingComments(true);
     fetch(`/api/posts/${postId}/comments`)
       .then((res) => res.json())
       .then((data) =>
@@ -183,7 +186,8 @@ export default function CommentsSection({
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           )
         )
-      );
+      )
+      .finally(() => setLoadingComments(false));
   }, [postId]);
 
   useEffect(() => {
@@ -354,9 +358,15 @@ export default function CommentsSection({
       </div>
 
       <div className="space-y-6">
-        {comments.map((c) => (
-          <CommentItem key={c.id} comment={c} onReply={addReply} onDelete={deleteComment} currentUserId={currentUserId} />
-        ))}
+        {loadingComments ? (
+          <div className="flex justify-center p-4">
+            <Spinner />
+          </div>
+        ) : (
+          comments.map((c) => (
+            <CommentItem key={c.id} comment={c} onReply={addReply} onDelete={deleteComment} currentUserId={currentUserId} />
+          ))
+        )}
       </div>
 
       <h2 className="text-2xl font-bold">Join the conversation</h2>

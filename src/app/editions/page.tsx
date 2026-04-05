@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/Spinner";
 
 type EditionRow = {
   id: string;
@@ -141,8 +142,10 @@ export default function EditionsPage() {
           {/* Editions list */}
           <div className="mx-auto max-w-3xl space-y-6 font-serif">
             {loading ? (
-              <div className="text-center text-muted-foreground">Loading…</div>
-            ) : !editions || editions.length === 0 ? (
+              <div className="flex justify-center p-6">
+                <Spinner />
+              </div>
+            ) :!editions || editions.length === 0 ? (
               <div className="py-20 text-center text-2xl font-bold uppercase tracking-widest text-muted-foreground">
                 No editions published yet
               </div>

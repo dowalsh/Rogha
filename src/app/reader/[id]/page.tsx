@@ -13,6 +13,7 @@ import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 import CommentsSection from "@/components/CommentsSection";
 
 import { LikeButton } from "@/components/LikeButton";
+import { Spinner } from "@/components/Spinner";
 import { useLike } from "@/hooks/useLike";
 import type { AudienceType } from "@/types/index";
 
@@ -185,8 +186,8 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl p-6 space-y-4 text-sm text-muted-foreground">
-        Loading…
+      <div className="flex justify-center p-12">
+        <Spinner />
       </div>
     );
   }

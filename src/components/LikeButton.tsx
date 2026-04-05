@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Heart } from "lucide-react";
+import { Spinner } from "@/components/Spinner";
 import {
   Dialog,
   DialogContent,
@@ -23,13 +24,16 @@ export function LikeButton({
     { id: string; name: string | null; image: string | null }[]
   >([]);
   const [open, setOpen] = useState(false);
+  const [loadingLikers, setLoadingLikers] = useState(false);
 
   async function fetchLikers() {
     if (open) return;
+    setLoadingLikers(true);
     const res = await fetch(fetchLikersUrl);
     if (res.ok) {
       setLikers(await res.json());
     }
+    setLoadingLikers(false);
   }
 
   return (
@@ -64,7 +68,11 @@ export function LikeButton({
             <DialogTitle>Liked by</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            {likers.length === 0 ? (
+            {loadingLikers ? (
+              <div className="flex justify-center p-4">
+                <Spinner />
+              </div>
+            ) : likers.length === 0 ? (
               <p className="text-sm text-muted-foreground">No likes yet</p>
             ) : (
               likers.map((u) => (

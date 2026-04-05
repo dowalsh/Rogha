@@ -10,6 +10,7 @@ import { UploadButton } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
 import { AudienceType } from "@/types";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
+import { Spinner } from "@/components/Spinner";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 
@@ -26,6 +27,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     Array<{ id: string; name: string }>
   >([]);
 
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -64,7 +66,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
         setSaved(true);
       })
-      .catch((err) => console.error("Failed to load post:", err));
+      .catch((err) => console.error("Failed to load post:", err))
+      .finally(() => setLoading(false));
   }, [params.id]);
 
   // Load my circles
@@ -183,6 +186,14 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [editorLocked, isSaving, saved, title, doc]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center p-12">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-4">

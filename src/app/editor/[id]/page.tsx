@@ -36,13 +36,13 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const editorLocked = useMemo(
     () =>
       status === "SUBMITTED" || status === "PUBLISHED" || status === "ARCHIVED",
-    [status]
+    [status],
   );
 
   // SHOW: submit toggle visible only for DRAFT or SUBMITTED
   const submitButtonShow = useMemo(
     () => status === "DRAFT" || status === "SUBMITTED",
-    [status]
+    [status],
   );
 
   // Load post
@@ -177,14 +177,16 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   // Autosave: refs keep interval callback from going stale
   const handleSaveRef = useRef(handleSave);
   const canAutosaveRef = useRef(false);
-  useEffect(() => { handleSaveRef.current = handleSave; });
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
   useEffect(() => {
     canAutosaveRef.current = !saved && !editorLocked && !isSaving;
   }, [saved, editorLocked, isSaving]);
   useEffect(() => {
     const interval = setInterval(() => {
       if (canAutosaveRef.current) void handleSaveRef.current();
-    }, 10_000);
+    }, 30_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -283,7 +285,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
             onBeforeUploadBegin={async (files) => {
               // compress each file before upload
               const compressedFiles = await Promise.all(
-                files.map((file) => normalizeImage(file))
+                files.map((file) => normalizeImage(file)),
               );
               return compressedFiles;
             }}

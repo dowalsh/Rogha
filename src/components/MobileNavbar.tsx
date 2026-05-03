@@ -82,7 +82,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                   onClick={handleNavClick}
                   asChild
                 >
-                  <Link href="/editions/latest">
+                  <Link href="/editions">
                     <Newspaper className="w-4 h-4" />
                     Editions
                   </Link>

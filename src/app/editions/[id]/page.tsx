@@ -69,7 +69,14 @@ export default async function EditionPage({
         </Button>
       </Link>
 
-      <Frontpage edition={editionData} />
+      <Frontpage
+        edition={editionData}
+        revealProps={{
+          hasOpened: edition.hasOpened,
+          viewerCount: edition.viewerCount,
+          viewerNames: edition.viewerNames,
+        }}
+      />
     </div>
   );
 }

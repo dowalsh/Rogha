@@ -62,7 +62,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
       {isLoaded && isSignedIn && user ? (
         <>
           <Button variant="ghost" className="flex items-center gap-2" asChild>
-            <Link href="/editions/latest">
+            <Link href="/editions">
               <Newspaper className="w-4 h-4" />
               <span className="hidden lg:inline">Editions</span>
             </Link>
@@ -105,7 +105,10 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
           <UserButton />
         </>
       ) : (
-        <SignInButton mode="modal" forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}>
+        <SignInButton
+          mode="modal"
+          forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+        >
           <Button variant="default">Sign In</Button>
         </SignInButton>
       )}

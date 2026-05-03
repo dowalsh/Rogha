@@ -251,13 +251,36 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     return friendshipDate !== undefined && friendshipDate <= p.createdAt;
   });
 
+  // View data for reveal overlay
+  const [viewRecord, viewerPreview, viewerCount] = await Promise.all([
+    prisma.editionView.findUnique({
+      where: { editionId_userId: { editionId: id, userId: user.id } },
+      select: { openedAt: true },
+    }),
+    prisma.editionView.findMany({
+      where: { editionId: id, userId: { in: validFriendIds } },
+      orderBy: { openedAt: "asc" },
+      take: 2,
+      select: { user: { select: { name: true } } },
+    }),
+    prisma.editionView.count({
+      where: { editionId: id, userId: { in: validFriendIds } },
+    }),
+  ]);
+
   console.debug(
     "[getPublishedEditionById] edition:",
     edition.id,
     "posts:",
     visiblePosts.length
   );
-  return { ...edition, posts: visiblePosts };
+  return {
+    ...edition,
+    posts: visiblePosts,
+    hasOpened: Boolean(viewRecord),
+    viewerCount,
+    viewerNames: viewerPreview.map((v) => v.user.name ?? "Someone"),
+  };
 }
 
 export async function getMostRecentPublishedEditionForUser() {

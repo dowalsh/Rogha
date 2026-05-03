@@ -69,7 +69,8 @@ export function BuzzItem({
   const content = (
     <div
       className={cn(
-        "rounded-lg border bg-background/60 p-3 sm:p-4 transition hover:bg-accent/50",
+        "rounded-lg border bg-background/60 p-3 sm:p-4 transition",
+        href && "hover:bg-accent/50",
         className,
       )}
     >

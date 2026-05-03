@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, SignInButton } from "@clerk/nextjs";
+import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
@@ -82,6 +83,13 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<PostDTO | null>(null);
+  const [editionStatus, setEditionStatus] = useState<{
+    hasOpened: boolean;
+    viewerCount: number;
+    viewerNames: string[];
+  } | null>(null);
+  const [editionRevealed, setEditionRevealed] = useState(true);
+  const [revealFading, setRevealFading] = useState(false);
 
   const { isLoaded, isSignedIn } = useUser();
 
@@ -89,23 +97,38 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/posts/${params.id}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/posts/${params.id}`, { cache: "no-store" });
         if (res.status === 404) return notFound();
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: PostDTO = await res.json();
-        if (!cancelled) setPost(data);
+        if (cancelled) return;
+        setPost(data);
+
+        if (data.editionId) {
+          try {
+            const sr = await fetch(`/api/editions/${data.editionId}/status`, { cache: "no-store" });
+            if (!cancelled && sr.ok) {
+              const status = await sr.json();
+              setEditionStatus(status);
+              setEditionRevealed(status.hasOpened);
+            }
+          } catch {
+            // Status fetch failed — default to revealed so content is never blocked by a network error
+          }
+        }
       } catch (e) {
         console.error("Failed to load post:", e);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [params.id]);
+
+  const handleReveal = () => {
+    setRevealFading(true);
+    setTimeout(() => setEditionRevealed(true), 200);
+  };
 
   const { liked, count, toggle } = useLike({
     id: post?.id ?? "", // fallback string, won’t be used until post loads
@@ -203,7 +226,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
-      {/* Back to edition */}
+      {/* Back to edition — always accessible */}
       <div>
         <Button
           type="button"
@@ -216,6 +239,19 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
           Back to edition
         </Button>
       </div>
+
+      {/* Edition reveal overlay — covers post content until opened */}
+      {!editionRevealed && editionStatus && post?.editionId && (
+        <EditionRevealOverlay
+          editionId={post.editionId}
+          viewerCount={editionStatus.viewerCount}
+          viewerNames={editionStatus.viewerNames}
+          fading={revealFading}
+          onReveal={handleReveal}
+          mode="fullscreen"
+        />
+      )}
+
       {/* HERO IMAGE */}
       {heroImageUrl && (
         <div className="space-y-2">

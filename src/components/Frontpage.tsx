@@ -1,7 +1,9 @@
 // src/components/Frontpage.tsx
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 
 // Front page posts as they arrive from the Edition page
 type Post = {
@@ -21,13 +23,19 @@ type FrontpageProps = {
     weekStart: string;
     posts: Post[];
   };
+  revealProps?: {
+    hasOpened: boolean;
+    viewerCount: number;
+    viewerNames: string[];
+  };
 };
 
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 function formatEditionLabel(edition: FrontpageProps["edition"]): string {
-  return (
-    edition.title ??
-    `Week of ${new Date(edition.weekStart).toISOString().slice(0, 10)}`
-  );
+  if (edition.title) return edition.title;
+  const [year, month, day] = edition.weekStart.slice(0, 10).split("-").map(Number);
+  return `${MONTH_ABBR[month - 1]} ${day}, ${year}`;
 }
 
 function getAudienceLabel(post: Post): string {
@@ -170,20 +178,25 @@ function TertiaryStory({ post }: { post: Post }) {
   );
 }
 
-export function Frontpage({ edition }: FrontpageProps) {
+export function Frontpage({ edition, revealProps }: FrontpageProps) {
   const editionLabel = formatEditionLabel(edition);
   const posts = edition.posts ?? [];
+
+  const [revealed, setRevealed] = useState(revealProps?.hasOpened ?? true);
+  const [fading, setFading] = useState(false);
+
+  const handleReveal = () => {
+    setFading(true);
+    setTimeout(() => setRevealed(true), 200);
+  };
 
   if (posts.length === 0) {
     return (
       <div className="mx-auto max-w-5xl space-y-8 font-serif">
         <header className="border-b pb-4 text-center">
           <h1 className="text-5xl font-black uppercase tracking-wide">
-            The Sunday Edition
-          </h1>
-          <p className="mt-1 text-sm italic text-muted-foreground">
             {editionLabel}
-          </p>
+          </h1>
         </header>
 
         <div className="py-20 text-center text-3xl font-bold uppercase tracking-widest text-muted-foreground">
@@ -200,15 +213,22 @@ export function Frontpage({ edition }: FrontpageProps) {
   const secondary = rest;
 
   return (
+    <>
+      {!revealed && revealProps && (
+        <EditionRevealOverlay
+          editionId={edition.id}
+          viewerCount={revealProps.viewerCount}
+          viewerNames={revealProps.viewerNames}
+          fading={fading}
+          onReveal={handleReveal}
+        />
+      )}
     <div className="mx-auto max-w-5xl space-y-8 font-serif">
-      {/* Newspaper masthead */}
+      {/* Masthead */}
       <header className="border-b pb-4 text-center">
         <h1 className="text-5xl font-black uppercase tracking-wide">
-          The Sunday Edition
-        </h1>
-        <p className="mt-1 text-sm italic text-muted-foreground">
           {editionLabel}
-        </p>
+        </h1>
       </header>
 
       {/* Lead story */}
@@ -236,5 +256,6 @@ export function Frontpage({ edition }: FrontpageProps) {
         </section>
       )} */}
     </div>
+    </>
   );
 }

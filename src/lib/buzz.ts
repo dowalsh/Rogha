@@ -218,8 +218,18 @@ export async function getBuzz({
     return false;
   });
 
-  // Extract posts for access resolution
-  const postsForAccess = temporallyGatedEvents
+  // POST_SUBMITTED events reference posts that are still SUBMITTED (not PUBLISHED),
+  // so the access check would block them for everyone except the author. Since the
+  // submission signal is "my friend submitted something" and the actor already passed
+  // temporal gating as a direct friend, skip the access check for these events.
+  const isSubmitFromDirectFriend = (e: (typeof temporallyGatedEvents)[number]) =>
+    e.eventType === ActivityEventType.POST_SUBMITTED && friendMap.has(e.actorId);
+
+  const submitEvents = temporallyGatedEvents.filter(isSubmitFromDirectFriend);
+  const nonSubmitEvents = temporallyGatedEvents.filter((e) => !isSubmitFromDirectFriend(e));
+
+  // Extract posts for access resolution (non-submit events only)
+  const postsForAccess = nonSubmitEvents
     .filter((e) => !!e.post)
     .map((e) => ({
       id: e.post!.id,
@@ -236,12 +246,15 @@ export async function getBuzz({
     posts: postsForAccess,
   });
 
-  // Create lookup set
   const visiblePostIds = new Set(visiblePosts.map((p) => p.id));
 
-  // Filter events by visible post ids
-  const visibleEvents = temporallyGatedEvents.filter(
+  const visibleNonSubmitEvents = nonSubmitEvents.filter(
     (e) => e.post && visiblePostIds.has(e.post.id),
+  );
+
+  // Merge and re-sort by recency (each group was already ordered, but we're combining two)
+  const visibleEvents = [...submitEvents, ...visibleNonSubmitEvents].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
   );
 
   const items: BuzzItemProps[] = visibleEvents.map((e) => {
@@ -261,11 +274,11 @@ export async function getBuzz({
       ? (truncate(e.comment?.content, 160) ?? null)
       : null;
 
-    const href = buildHref({
-      post: e.post!,
-      comment: e.comment,
-      eventType: e.eventType,
-    });
+    // Submitted posts aren't published yet — no readable page to link to
+    const href =
+      e.eventType === ActivityEventType.POST_SUBMITTED
+        ? undefined
+        : buildHref({ post: e.post!, comment: e.comment, eventType: e.eventType });
 
     return {
       id: e.id,

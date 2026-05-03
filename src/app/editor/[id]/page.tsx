@@ -295,7 +295,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           value={title}
           onChange={handleTitleChange}
           placeholder="Untitled post"
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="w-full rounded-md border px-3 py-2 text-base md:text-sm"
           disabled={editorLocked}
         />
       </div>
@@ -364,7 +364,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         {audienceType === "CIRCLE" && (
           <div className="flex items-center gap-2">
             <select
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="w-full rounded-md border px-3 py-2 text-base md:text-sm"
               value={circleId ?? ""}
               onChange={(e) => {
                 setCircleId(e.target.value || null);

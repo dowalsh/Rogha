@@ -45,7 +45,7 @@ export function TiptapMvp({
       attributes: {
         class:
           cn(
-            "prose prose-sm sm:prose base-content focus:outline-none min-h-[160px]",
+            "prose sm:prose-sm base-content focus:outline-none min-h-[160px]",
             editorClassName
           ) || "",
         "data-placeholder": placeholder,

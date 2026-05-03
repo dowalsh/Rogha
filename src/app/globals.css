@@ -86,3 +86,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Prevent iOS WebKit auto-zoom when focusing inputs smaller than 16px */
+@media (hover: none) and (pointer: coarse) {
+  input, textarea, select, [contenteditable] {
+    font-size: max(16px, 1em);
+  }
+}

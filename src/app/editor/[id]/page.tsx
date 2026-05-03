@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
@@ -173,6 +173,20 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       setIsDeleting(false);
     }
   }
+
+  // Autosave: refs keep interval callback from going stale
+  const handleSaveRef = useRef(handleSave);
+  const canAutosaveRef = useRef(false);
+  useEffect(() => { handleSaveRef.current = handleSave; });
+  useEffect(() => {
+    canAutosaveRef.current = !saved && !editorLocked && !isSaving;
+  }, [saved, editorLocked, isSaving]);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (canAutosaveRef.current) void handleSaveRef.current();
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Cmd/Ctrl+S to save (only when editable and dirty)
   useEffect(() => {

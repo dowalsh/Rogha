@@ -107,7 +107,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
       ) : (
         <SignInButton
           mode="modal"
-          forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+          // forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
         >
           <Button variant="default">Sign In</Button>
         </SignInButton>

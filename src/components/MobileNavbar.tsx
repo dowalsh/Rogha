@@ -170,7 +170,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
             ) : (
               <SignInButton
                 mode="modal"
-                forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+                // forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
               >
                 <Button
                   variant="default"

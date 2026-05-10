@@ -20,15 +20,19 @@ function NativeCallbackInner() {
     const ticket = params.get("ticket");
     const redirect = safeRedirect(params.get("redirect"));
 
+    console.log("[Rogha debug] native-callback: ticket present:", !!ticket, "redirect:", redirect);
+
     if (!ticket) {
+      console.warn("[Rogha debug] native-callback: no ticket, redirecting to", redirect);
       router.replace(redirect);
       return;
     }
 
-    console.log("[Rogha debug] /auth/native-callback: consuming ticket");
+    console.log("[Rogha debug] native-callback: consuming ticket");
     signIn
       .create({ strategy: "ticket", ticket })
       .then((result) => {
+        console.log("[Rogha debug] native-callback: signIn.create status:", result.status);
         if (result.status === "complete") {
           return setActive({ session: result.createdSessionId });
         }
@@ -38,7 +42,12 @@ function NativeCallbackInner() {
         router.replace(redirect);
       })
       .catch((err) => {
-        console.error("[Rogha debug] ticket sign-in failed:", err);
+        if (err?.errors?.[0]?.code === "session_exists") {
+          console.log("[Rogha debug] native-callback: session already exists, navigating to", redirect);
+          router.replace(redirect);
+          return;
+        }
+        console.error("[Rogha debug] native-callback: ticket sign-in failed:", JSON.stringify(err));
         router.replace("/sign-in");
       });
   }, [isLoaded]);

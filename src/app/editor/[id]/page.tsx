@@ -6,13 +6,51 @@ import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
 import { Send, Undo, Trash2, ChevronLeft } from "lucide-react";
-import { UploadButton } from "@/lib/uploadthing";
+import { useUploadThing } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
 import { AudienceType } from "@/types";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { Spinner } from "@/components/Spinner";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
+
+function HeroImageUploadButton({ onComplete }: { onComplete: (url: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { startUpload, isUploading } = useUploadThing("imageUploader", {
+    onClientUploadComplete: (res) => {
+      const url = res?.[0]?.ufsUrl;
+      if (url) onComplete(url);
+    },
+    onUploadError: (err: Error) => alert(`Upload failed: ${err.message}`),
+  });
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const normalized = await Promise.all(files.map(normalizeImage));
+    await startUpload(normalized);
+    e.target.value = "";
+  };
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif"
+        className="hidden"
+        onChange={handleChange}
+      />
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={isUploading}
+        className="ut-button ut-ready"
+      >
+        {isUploading ? "Uploading..." : "Choose Image"}
+      </button>
+    </>
+  );
+}
 
 export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -280,23 +318,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         </div>
 
         {!editorLocked && (
-          <UploadButton
-            endpoint="imageUploader"
-            onBeforeUploadBegin={async (files) => {
-              // compress each file before upload
-              const compressedFiles = await Promise.all(
-                files.map((file) => normalizeImage(file)),
-              );
-              return compressedFiles;
+          <HeroImageUploadButton
+            onComplete={(url) => {
+              setHeroImageUrl(url);
+              setSaved(false);
             }}
-            onClientUploadComplete={(res) => {
-              const first = res?.[0];
-              if (first?.url) {
-                setHeroImageUrl(first.url);
-                setSaved(false);
-              }
-            }}
-            onUploadError={(err) => alert(`Upload failed: ${err.message}`)}
           />
         )}
       </div>

@@ -19,15 +19,24 @@ function SignInInner() {
   const isNative = Capacitor.isNativePlatform();
   const browserOpenedRef = useRef(false);
 
+  console.log("[Rogha debug] sign-in/page: isNative:", isNative, "fromApp:", fromApp, "redirect:", redirect);
+
   useEffect(() => {
     // In the native WebView (not inside SFSafariViewController), open the real sign-in
     // in an in-app browser so OAuth runs in the correct session context.
-    if (isNative && !fromApp && !browserOpenedRef.current) {
+    if (isNative && !fromApp) {
+      if (browserOpenedRef.current) {
+        console.log("[Rogha debug] sign-in/page: Browser.open already called, skipping");
+        return;
+      }
       browserOpenedRef.current = true;
-      Browser.open({
-        url: `https://rogha.dylanwalsh.ie/sign-in?fromApp=1&redirect=${encodeURIComponent(redirect)}`,
-        presentationStyle: "popover",
-      });
+      const url = `https://rogha.dylanwalsh.ie/sign-in?fromApp=1&redirect=${encodeURIComponent(redirect)}`;
+      console.log("[Rogha debug] sign-in/page: calling Browser.open →", url);
+      Browser.open({ url, presentationStyle: "popover" })
+        .then(() => console.log("[Rogha debug] sign-in/page: Browser.open resolved"))
+        .catch((e) => console.error("[Rogha debug] sign-in/page: Browser.open failed:", e));
+    } else {
+      console.log("[Rogha debug] sign-in/page: rendering Clerk <SignIn>, fromApp:", fromApp, "isNative:", isNative);
     }
   }, []);
 

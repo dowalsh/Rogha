@@ -70,6 +70,11 @@ export default async function RootLayout({
                     PREVIEW
                   </div>
                 )}
+                {process.env.NEXT_PUBLIC_SHOW_UPDATE_NOTICE === "true" && (
+                  <div className="w-full bg-yellow-400 text-black text-center py-2 text-sm font-medium z-50 px-4">
+                    Having issues? Open TestFlight → tap Update → delete &amp; reinstall Rogha if sign-in still fails.
+                  </div>
+                )}
                 <Navbar />
                 <main className="py-8">
                   <div className="max-w-7xl mx-auto px-4">{children}</div>

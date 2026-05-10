@@ -1,9 +1,9 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getDbUserId } from "./user.action";
+import { getDbUser } from "@/lib/getDbUser";
 
 export async function getProfileByUsername(username: string) {
   try {
@@ -149,8 +149,8 @@ export async function getUserLikedPosts(userId: string) {
 
 export async function updateProfile(formData: FormData) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) throw new Error("Unauthorized");
+    const { user: dbUser, error } = await getDbUser();
+    if (error || !dbUser) throw new Error("Unauthorized");
 
     const name = formData.get("name") as string;
     const bio = formData.get("bio") as string;
@@ -158,7 +158,7 @@ export async function updateProfile(formData: FormData) {
     const website = formData.get("website") as string;
 
     const user = await prisma.user.update({
-      where: { clerkId },
+      where: { id: dbUser.id },
       data: {
         name,
         bio,

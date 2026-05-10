@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { upsertClerkUser } from "@/actions/user.action";

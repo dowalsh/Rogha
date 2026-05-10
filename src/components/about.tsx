@@ -7,6 +7,15 @@ export function About() {
     <div className="max-w-3xl mx-auto py-8">
       <div className="max-w-3xl mx-auto py-8">
         <div className="flex flex-col gap-4">
+          {/* Migration notice — remove after all users have migrated */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Account notice</p>
+            <p className="mt-1">
+              We recently upgraded our authentication system. You may need to sign up
+              for a new account — but if you use the <strong>same email address</strong>,
+              all your posts, circles, and data will be waiting for you.
+            </p>
+          </div>
           <h1 className="text-3xl font-serif text-center">Welcome to Rogha</h1>
 
           <p>

@@ -4,6 +4,8 @@ import { useEffect } from "react";
 
 export default function ReturnToApp() {
   useEffect(() => {
+    console.log("[Rogha debug] /auth/return-to-app loaded");
+    console.log("[Rogha debug] redirecting to rogha://auth");
     window.location.href = "rogha://auth";
   }, []);
 

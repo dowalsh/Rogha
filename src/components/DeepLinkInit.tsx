@@ -20,15 +20,28 @@ export default function DeepLinkInit() {
 
     function onDeepLink(e: Event) {
       const { url } = (e as CustomEvent<{ url: string }>).detail;
+
+      // Universal link — navigate directly to the path within the app
+      if (url.startsWith("https://rogha.dylanwalsh.ie/")) {
+        const { pathname, search } = new URL(url);
+        console.log("[Rogha debug] DeepLinkInit: universal link to", pathname);
+        router.push(pathname + search);
+        return;
+      }
+
+      // Custom scheme — auth return with ticket and optional redirect destination
       const parsed = new URL(url.replace("rogha://", "https://rogha.placeholder/"));
       const ticket = parsed.searchParams.get("ticket");
+      const redirect = parsed.searchParams.get("redirect") ?? "/";
 
       if (ticket) {
         console.log("[Rogha debug] DeepLinkInit: routing to native-callback with ticket");
-        router.push(`/auth/native-callback?ticket=${encodeURIComponent(ticket)}`);
+        router.push(
+          `/auth/native-callback?ticket=${encodeURIComponent(ticket)}&redirect=${encodeURIComponent(redirect)}`
+        );
       } else {
-        console.log("[Rogha debug] DeepLinkInit: routing to /");
-        router.push("/");
+        console.log("[Rogha debug] DeepLinkInit: routing to", redirect);
+        router.push(redirect);
       }
     }
 

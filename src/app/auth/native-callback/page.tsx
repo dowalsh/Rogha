@@ -4,6 +4,11 @@ import { useEffect, Suspense } from "react";
 import { useSignIn } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 
+function safeRedirect(value: string | null | undefined): string {
+  if (!value) return "/";
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
 function NativeCallbackInner() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const params = useSearchParams();
@@ -13,8 +18,10 @@ function NativeCallbackInner() {
     if (!isLoaded) return;
 
     const ticket = params.get("ticket");
+    const redirect = safeRedirect(params.get("redirect"));
+
     if (!ticket) {
-      router.replace("/");
+      router.replace(redirect);
       return;
     }
 
@@ -27,8 +34,8 @@ function NativeCallbackInner() {
         }
       })
       .then(() => {
-        console.log("[Rogha debug] native-callback: sign-in complete, redirecting to /");
-        router.replace("/");
+        console.log("[Rogha debug] native-callback: sign-in complete, redirecting to", redirect);
+        router.replace(redirect);
       })
       .catch((err) => {
         console.error("[Rogha debug] ticket sign-in failed:", err);

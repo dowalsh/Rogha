@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 function ReturnToAppInner() {
   const params = useSearchParams();
   const fromApp = params.get("fromApp") === "1";
+  const redirect = params.get("redirect") ?? "/";
 
   useEffect(() => {
     console.log("[Rogha debug] /auth/return-to-app loaded, fromApp:", fromApp);
@@ -15,11 +16,11 @@ function ReturnToAppInner() {
         .then((r) => r.json())
         .then(({ token }) => {
           console.log("[Rogha debug] redirecting to rogha://auth with ticket");
-          window.location.href = `rogha://auth?ticket=${token}`;
+          window.location.href = `rogha://auth?ticket=${token}&redirect=${encodeURIComponent(redirect)}`;
         })
         .catch((err) => {
           console.error("[Rogha debug] mobile-ticket fetch failed:", err);
-          window.location.href = "rogha://auth";
+          window.location.href = `rogha://auth?redirect=${encodeURIComponent(redirect)}`;
         });
     } else {
       console.log("[Rogha debug] redirecting to rogha://auth");

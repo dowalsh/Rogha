@@ -6,7 +6,22 @@ import type { PluginListenerHandle } from "@capacitor/core";
 export type DeepLinkEvent = CustomEvent<{ url: string }>;
 
 function handleDeepLink(url: string) {
+  // Universal link — iOS opened the app from an HTTPS email/web link
+  if (url.startsWith("https://rogha.dylanwalsh.ie/")) {
+    console.log("[Rogha debug] universal link:", url);
+    window.dispatchEvent(new CustomEvent("rogha:deeplink", { detail: { url } }));
+    return;
+  }
+
   if (!url.startsWith("rogha://")) return;
+
+  // Capacitor replays the cached launch URL to every new appUrlOpen listener. For auth
+  // return URLs this causes a reload loop — dedup them. Regular deep links don't need this.
+  if (url.startsWith("rogha://auth")) {
+    const lastHandled = sessionStorage.getItem("rogha_deep_link_last");
+    if (lastHandled === url) return;
+    sessionStorage.setItem("rogha_deep_link_last", url);
+  }
 
   console.log("[Rogha debug] appUrlOpen:", url);
   Browser.close(); // dismiss SFSafariViewController — it won't close itself on custom schemes

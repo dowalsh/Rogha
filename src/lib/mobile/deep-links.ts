@@ -6,6 +6,12 @@ import type { PluginListenerHandle } from "@capacitor/core";
 function handleDeepLink(url: string) {
   if (!url.startsWith("rogha://")) return;
 
+  // Capacitor caches getLaunchUrl and replays appUrlOpen to every new listener for the entire
+  // app session. Dedup against sessionStorage so a page reload doesn't re-trigger the same URL.
+  const lastHandled = sessionStorage.getItem("rogha_deep_link_last");
+  if (lastHandled === url) return;
+  sessionStorage.setItem("rogha_deep_link_last", url);
+
   console.log("[Rogha debug] appUrlOpen:", url);
   Browser.close(); // dismiss SFSafariViewController — it won't close itself on custom schemes
 
@@ -32,7 +38,7 @@ export async function initDeepLinks(): Promise<PluginListenerHandle | null> {
   console.log("[Rogha debug] getLaunchUrl:", launchUrl?.url ?? "(none)");
   // Skip rogha://auth — it's only a signal to return from OAuth, not a cold-launch destination.
   // Processing it here causes an infinite reload loop since Capacitor caches getLaunchUrl for the entire app session.
-  if (launchUrl?.url && launchUrl.url !== "rogha://auth") {
+  if (launchUrl?.url && !launchUrl.url.startsWith("rogha://auth")) {
     handleDeepLink(launchUrl.url);
   }
 

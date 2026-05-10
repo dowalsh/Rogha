@@ -141,9 +141,13 @@ model Post {
   notifications Notification[]
 
   audienceType  AudienceType @default(FRIENDS)
- circleId String?  
+ circleId String?
  circle   Circle? @relation("PostCircle", fields: [circleId], references: [id], onDelete: SetNull)
   activityEvents ActivityEvent[] @relation("PostActivityEvents")
+
+  publicShareToken     String?   @unique
+  publicShareEnabled   Boolean   @default(false)
+  publicShareCreatedAt DateTime?
 
 }
 

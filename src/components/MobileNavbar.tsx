@@ -21,6 +21,7 @@ import {
 import { useState } from "react";
 import { SignInButton, SignOutButton } from "@clerk/nextjs";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import Link from "next/link";
 import type { UserResource } from "@clerk/types";
 
@@ -167,11 +168,22 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                   </Button>
                 </SignOutButton>
               </>
-            ) : (
-              <SignInButton
-                mode="modal"
-                // forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+            ) : isNative ? (
+              <Button
+                variant="default"
+                className="w-full"
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  Browser.open({
+                    url: "https://rogha.dylanwalsh.ie/sign-in?fromApp=1",
+                    presentationStyle: "popover",
+                  });
+                }}
               >
+                Sign In
+              </Button>
+            ) : (
+              <SignInButton mode="modal">
                 <Button
                   variant="default"
                   className="w-full"

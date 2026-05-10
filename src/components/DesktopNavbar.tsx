@@ -14,6 +14,7 @@ import { SignInButton, UserButton } from "@clerk/nextjs";
 import type { UserResource } from "@clerk/types";
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 // import { getUnreadCount } from "@/actions/notification.action";
 
 type DesktopNavbarProps = {
@@ -104,11 +105,20 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
           </Button>
           <UserButton />
         </>
-      ) : (
-        <SignInButton
-          mode="modal"
-          // forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+      ) : isNative ? (
+        <Button
+          variant="default"
+          onClick={() =>
+            Browser.open({
+              url: "https://rogha.dylanwalsh.ie/sign-in?fromApp=1",
+              presentationStyle: "popover",
+            })
+          }
         >
+          Sign In
+        </Button>
+      ) : (
+        <SignInButton mode="modal">
           <Button variant="default">Sign In</Button>
         </SignInButton>
       )}

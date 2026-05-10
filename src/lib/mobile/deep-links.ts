@@ -1,19 +1,30 @@
 import { App } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import type { PluginListenerHandle } from "@capacitor/core";
 
 function handleDeepLink(url: string) {
   if (!url.startsWith("rogha://")) return;
 
-  console.log("[Rogha debug] handleDeepLink routing to /:", url);
-  window.location.href = "/";
+  console.log("[Rogha debug] appUrlOpen:", url);
+  Browser.close(); // dismiss SFSafariViewController — it won't close itself on custom schemes
+
+  const parsed = new URL(url.replace("rogha://", "https://rogha.placeholder/"));
+  const ticket = parsed.searchParams.get("ticket");
+
+  if (ticket) {
+    console.log("[Rogha debug] handleDeepLink: routing to native-callback with ticket");
+    window.location.href = `/auth/native-callback?ticket=${encodeURIComponent(ticket)}`;
+  } else {
+    console.log("[Rogha debug] handleDeepLink: routing to /");
+    window.location.href = "/";
+  }
 }
 
 export async function initDeepLinks(): Promise<PluginListenerHandle | null> {
   if (!Capacitor.isNativePlatform()) return null;
 
   const handle = await App.addListener("appUrlOpen", ({ url }) => {
-    console.log("[Rogha debug] appUrlOpen:", url);
     if (url) handleDeepLink(url);
   });
 

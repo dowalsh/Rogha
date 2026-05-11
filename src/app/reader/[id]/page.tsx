@@ -33,6 +33,7 @@ type PostDTO = {
   likeCount: number;
   likedByMe: boolean;
   audienceType: AudienceType;
+  edition?: { publishedAt: string | null } | null;
 };
 
 // --- helpers: quick validator & explainer (diagnostics only) ---
@@ -271,6 +272,18 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
         <h1 className="text-2xl font-semibold leading-tight">{title}</h1>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{authorName}</span>
+          {post.edition?.publishedAt && (
+            <>
+              <span>·</span>
+              <span>
+                {new Date(post.edition.publishedAt).toLocaleDateString("en-IE", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </span>
+            </>
+          )}
         </div>
       </header>
 

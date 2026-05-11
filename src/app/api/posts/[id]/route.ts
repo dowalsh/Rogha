@@ -33,6 +33,7 @@ export async function GET(
         updatedAt: true,
 
         author: { select: { id: true, name: true, image: true } },
+        edition: { select: { publishedAt: true } },
         _count: { select: { likes: true } },
         likes: { select: { id: true, userId: true } },
       },

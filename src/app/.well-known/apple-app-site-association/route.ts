@@ -8,11 +8,7 @@ export async function GET() {
           {
             appIDs: ["K8J558UJAV.ie.dylanwalsh.rogha"],
             components: [
-              { "/": "/api/*", exclude: true },
-              { "/": "/.well-known/*", exclude: true },
-              { "/": "/sign-in*", exclude: true },
-              { "/": "/auth/*", exclude: true },
-              { "/": "/*" },
+              { "/": "/open/*" },
             ],
           },
         ],

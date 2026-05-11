@@ -205,7 +205,7 @@ export async function createCommentNotification({
           to: post.author.email,
           actorName: commenter.name ?? commenter.username,
           commentText: newComment.content,
-          url: `${process.env.APP_URL}/reader/${post.id}#comment-${newComment.id}`,
+          url: `${process.env.APP_URL}/open/reader/${post.id}#comment-${newComment.id}`,
           postTitle: post.title,
           isReply: false,
         });
@@ -302,7 +302,7 @@ export async function createCommentNotification({
           to: participant.email,
           actorName: commenter.name ?? commenter.username,
           commentText: newComment.content,
-          url: `${process.env.APP_URL}/reader/${newComment.postId}#comment-${newComment.id}`,
+          url: `${process.env.APP_URL}/open/reader/${newComment.postId}#comment-${newComment.id}`,
           isReply: true,
         });
       } catch (err) {

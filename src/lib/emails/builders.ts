@@ -20,13 +20,13 @@ export function buildPostSubmittedEmail(
       <p>They just submitted: <strong>${safeTitle}</strong></p>
       <p>All posts will be published together this Sunday. Hope you’ve got one in the works too!</p>
       <p>
-        <a href="${safeUrl}/posts"
+        <a href="${safeUrl}/open/posts"
            style="display:inline-block;padding:10px 16px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">
           Go to your posts
         </a>
       </p>
       <p style="margin-top:24px;font-size:12px;color:#888;">
-        Don’t want these emails? <a href="${safeUrl}/settings" style="color:#888;">Manage notification settings</a>
+        Don’t want these emails? <a href="${safeUrl}/open/settings" style="color:#888;">Manage notification settings</a>
       </p>
     `,
   };
@@ -66,7 +66,7 @@ export function buildCommentNotificationEmail(
       </a>
     </p>
     <p style="margin-top:24px;font-size:12px;color:#888;">
-      Don't want these emails? <a href="${safeBase}/settings" style="color:#888;">Manage notification settings</a>
+      Don't want these emails? <a href="${safeBase}/open/settings" style="color:#888;">Manage notification settings</a>
     </p>
   `;
 

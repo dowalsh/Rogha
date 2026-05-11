@@ -21,11 +21,14 @@ export default function DeepLinkInit() {
     function onDeepLink(e: Event) {
       const { url } = (e as CustomEvent<{ url: string }>).detail;
 
-      // Universal link — navigate directly to the path within the app
+      // Universal link — strip /open prefix and navigate to the real path
       if (url.startsWith("https://rogha.dylanwalsh.ie/")) {
         const { pathname, search } = new URL(url);
-        console.log("[Rogha debug] DeepLinkInit: universal link to", pathname);
-        router.push(pathname + search);
+        const destination = pathname.startsWith("/open/")
+          ? pathname.slice("/open".length) + search
+          : pathname + search;
+        console.log("[Rogha debug] DeepLinkInit: universal link →", destination);
+        router.push(destination);
         return;
       }
 

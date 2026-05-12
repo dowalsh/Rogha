@@ -12,7 +12,9 @@ export default function SplashScreenInit() {
   }, []);
 
   useEffect(() => {
-    console.log(`[SplashScreen] isLoaded changed → ${isLoaded} at ${Date.now()}`);
+    console.log(
+      `[SplashScreen] isLoaded changed → ${isLoaded} at ${Date.now()}`,
+    );
     if (isLoaded && Capacitor.isNativePlatform()) {
       console.log(`[SplashScreen] hiding splash at ${Date.now()}`);
       SplashScreen.hide({ fadeOutDuration: 200 });

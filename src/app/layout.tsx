@@ -10,6 +10,7 @@ import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
 import DeepLinkInit from "@/components/DeepLinkInit";
 import PushNotificationInit from "@/components/PushNotificationInit";
+import SplashScreenInit from "@/components/SplashScreenInit";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -72,7 +73,8 @@ export default async function RootLayout({
                 )}
                 {process.env.NEXT_PUBLIC_SHOW_UPDATE_NOTICE === "true" && (
                   <div className="w-full bg-yellow-400 text-black text-center py-2 text-sm font-medium z-50 px-4">
-                    Having issues? Open TestFlight → tap Update → delete &amp; reinstall Rogha if sign-in still fails.
+                    Having issues? Open TestFlight → tap Update → delete &amp;
+                    reinstall Rogha if sign-in still fails.
                   </div>
                 )}
                 <Navbar />
@@ -83,6 +85,7 @@ export default async function RootLayout({
               <Toaster />
               <DeepLinkInit />
               <PushNotificationInit />
+              <SplashScreenInit />
             </ThemeProvider>
           </TooltipProvider>
         </body>

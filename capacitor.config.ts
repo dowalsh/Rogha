@@ -19,6 +19,13 @@ const config: CapacitorConfig = {
       "clerk.rogha.dylanwalsh.ie",
     ],
   },
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: false,
+      launchShowDuration: 8000,
+      backgroundColor: "#ffffff",
+    },
+  },
 };
 
 export default config;

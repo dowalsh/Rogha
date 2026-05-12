@@ -127,6 +127,11 @@ export function About() {
             dylanwitsend@gmail.com
           </a>
         </p>
+
+        <div className="mt-8 flex gap-4 justify-center text-xs text-muted-foreground">
+          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+          <Link href="/terms" className="hover:underline">Terms &amp; Conditions</Link>
+        </div>
       </div>
     </div>
   );

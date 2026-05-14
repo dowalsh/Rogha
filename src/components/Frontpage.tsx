@@ -30,12 +30,10 @@ type FrontpageProps = {
   };
 };
 
-const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function formatEditionLabel(edition: FrontpageProps["edition"]): string {
-  if (edition.title) return edition.title;
-  const [year, month, day] = edition.weekStart.slice(0, 10).split("-").map(Number);
-  return `${MONTH_ABBR[month - 1]} ${day}, ${year}`;
+  const date = edition.weekStart.slice(0, 10).replace(/-/g, "‑");
+  return `Week of ${date}`;
 }
 
 function getAudienceLabel(post: Post): string {
@@ -194,7 +192,7 @@ export function Frontpage({ edition, revealProps }: FrontpageProps) {
     return (
       <div className="mx-auto max-w-5xl space-y-8 font-serif">
         <header className="border-b pb-4 text-center">
-          <h1 className="text-5xl font-black uppercase tracking-wide">
+          <h1 className="text-5xl font-black uppercase tracking-wide whitespace-nowrap">
             {editionLabel}
           </h1>
         </header>

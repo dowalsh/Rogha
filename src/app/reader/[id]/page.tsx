@@ -12,6 +12,7 @@ import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 import CommentsSection from "@/components/CommentsSection";
+import { Spinner } from "@/components/Spinner";
 
 import { LikeButton } from "@/components/LikeButton";
 import { Spinner } from "@/components/Spinner";
@@ -188,8 +189,9 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   // Wait for Clerk to finish loading
   if (!isLoaded) {
     return (
-      <div className="mx-auto max-w-3xl p-6 text-sm text-muted-foreground">
-        Checking authentication...
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <Spinner className="h-8 w-8" />
+        <p className="text-sm text-muted-foreground">Checking authentication…</p>
       </div>
     );
   }

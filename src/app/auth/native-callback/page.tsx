@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useSignIn } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Spinner } from "@/components/Spinner";
 
 function safeRedirect(value: string | null | undefined): string {
   if (!value) return "/";
@@ -52,7 +53,12 @@ function NativeCallbackInner() {
       });
   }, [isLoaded]);
 
-  return <div>Signing you in...</div>;
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <Spinner className="h-8 w-8" />
+      <p className="text-sm text-muted-foreground">Signing you in…</p>
+    </div>
+  );
 }
 
 export default function NativeCallback() {

@@ -2,6 +2,7 @@
 
 import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { Spinner } from "@/components/Spinner";
 
 function ReturnToAppInner() {
   const params = useSearchParams();
@@ -38,9 +39,15 @@ function ReturnToAppInner() {
   }, [fromApp]);
 
   return (
-    <div>
-      Opening Rogha...
-      <a href="rogha://auth">Tap here if the app doesn't open!</a>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <Spinner className="h-8 w-8" />
+      <p className="text-sm text-muted-foreground">Opening Rogha…</p>
+      <a
+        href="rogha://auth"
+        className="text-xs text-muted-foreground underline underline-offset-4"
+      >
+        Tap here if the app doesn't open
+      </a>
     </div>
   );
 }

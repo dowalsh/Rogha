@@ -19,22 +19,25 @@ function SignInInner() {
   const redirect = safeRedirect(params.get("redirect") ?? params.get("redirect_url"));
   const isNative = Capacitor.isNativePlatform();
   const browserOpenedRef = useRef(false);
-  const { session, signOut } = useClerk();
-  // For fromApp flows, we must clear any lingering session before showing the
-  // sign-in form — otherwise Clerk auto-redirects without prompting for credentials.
-  const [sessionCleared, setSessionCleared] = useState(!fromApp);
+  const { session, signOut, loaded: isLoaded } = useClerk();
+  // For fromApp flows, we must clear any lingering Safari-store session before
+  // showing the sign-in form — otherwise Clerk auto-redirects without prompting.
+  // Start as false for fromApp so we wait for Clerk to fully load first.
+  const [sessionCleared, setSessionCleared] = useState(false);
 
   console.log("[Rogha debug] sign-in/page: isNative:", isNative, "fromApp:", fromApp, "redirect:", redirect);
 
   useEffect(() => {
-    if (!fromApp) return;
+    if (!fromApp) { setSessionCleared(true); return; }
+    if (!isLoaded) return; // wait for Clerk to finish initialising before trusting session state
     if (session) {
       console.log("[Rogha debug] sign-in/page: fromApp session found, signing out first");
-      signOut().then(() => setSessionCleared(true));
+      // Pass redirectUrl so signOut() comes back here instead of navigating to /
+      signOut({ redirectUrl: window.location.href });
     } else {
       setSessionCleared(true);
     }
-  }, [fromApp, session]);
+  }, [fromApp, isLoaded, session]);
 
   useEffect(() => {
     // In the native WebView (not inside SFSafariViewController), open the real sign-in

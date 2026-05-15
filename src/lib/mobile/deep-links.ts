@@ -26,6 +26,9 @@ function handleDeepLink(url: string) {
   console.log("[Rogha debug] appUrlOpen:", url);
   Browser.close(); // dismiss SFSafariViewController — it won't close itself on custom schemes
 
+  // sign-out-native page redirects here after clearing Safari-store session — nothing else to do
+  if (url === "rogha://auth/close") return;
+
   window.dispatchEvent(new CustomEvent("rogha:deeplink", { detail: { url } }));
 }
 

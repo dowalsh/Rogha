@@ -165,15 +165,6 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                   onClick={async () => {
                     setShowMobileMenu(false);
                     await signOut();
-                    if (isNative) {
-                      // Clear Safari/SFSafariViewController cookies so the next
-                      // sign-in doesn't auto-login the previous account.
-                      await Browser.open({
-                        url: "https://rogha.dylanwalsh.ie/sign-out-native",
-                        presentationStyle: "popover",
-                      });
-                      await Browser.close();
-                    }
                   }}
                 >
                   <LogOutIcon className="w-4 h-4" />

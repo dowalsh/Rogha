@@ -13,9 +13,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 import CommentsSection from "@/components/CommentsSection";
 import { Spinner } from "@/components/Spinner";
-
 import { LikeButton } from "@/components/LikeButton";
-import { Spinner } from "@/components/Spinner";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { useLike } from "@/hooks/useLike";
 import type { AudienceType } from "@/types/index";

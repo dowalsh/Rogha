@@ -4,6 +4,8 @@ import { getPostByShareToken } from "@/lib/access/publicShareAccess";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/jpeg";
+// At scale, add: export const revalidate = 86400;
+// Next.js will cache the generated image at the CDN layer and regenerate at most once per day.
 
 export default async function Image({
   params,

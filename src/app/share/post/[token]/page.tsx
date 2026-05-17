@@ -20,14 +20,12 @@ export async function generateMetadata({
     openGraph: {
       title,
       ...(description && { description }),
-      images: post.heroImageUrl ? [{ url: post.heroImageUrl }] : [],
       type: "article",
     },
     twitter: {
-      card: post.heroImageUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       ...(description && { description }),
-      images: post.heroImageUrl ? [post.heroImageUrl] : [],
     },
   };
 }

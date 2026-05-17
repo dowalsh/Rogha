@@ -64,7 +64,7 @@ export async function POST(
   if (!post || post.authorId !== user.id)
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
-  if (post.status === "DRAFT" || post.status === "ARCHIVED")
+  if (post.status !== "PUBLISHED")
     return NextResponse.json({ error: "Post cannot be shared" }, { status: 409 });
 
   if (post.publicShareEnabled && post.publicShareToken)

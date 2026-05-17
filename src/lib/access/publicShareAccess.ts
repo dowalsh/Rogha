@@ -23,7 +23,7 @@ export async function getPostByShareToken(
     where: {
       publicShareToken: token,
       publicShareEnabled: true,
-      status: { notIn: ["DRAFT", "ARCHIVED"] },
+      status: "PUBLISHED",
     },
     select: {
       id: true,

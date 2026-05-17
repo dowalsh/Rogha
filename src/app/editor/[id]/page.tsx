@@ -118,7 +118,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       .catch(() => setMyCircles([]));
   }, []);
 
-  const isShareable = status === "SUBMITTED" || status === "PUBLISHED";
+  const isShareable = status === "PUBLISHED";
 
   // Change handlers
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

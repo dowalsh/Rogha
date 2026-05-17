@@ -139,8 +139,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   });
 
   const isAuthor = !!(user && post && user.id === post.author?.id);
-  const isShareable =
-    post?.status === "SUBMITTED" || post?.status === "PUBLISHED";
+  const isShareable = post?.status === "PUBLISHED";
 
   const backHref = post?.editionId
     ? `/editions/${post.editionId}`

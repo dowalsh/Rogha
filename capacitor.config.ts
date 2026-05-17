@@ -15,7 +15,16 @@ const config: CapacitorConfig = {
       "*.clerk.accounts.dev",
       "*.clerk.dev",
       "*.clerk.com",
+      "accounts.rogha.dylanwalsh.ie",
+      "clerk.rogha.dylanwalsh.ie",
     ],
+  },
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: false,
+      launchShowDuration: 8000,
+      backgroundColor: "#ffffff",
+    },
   },
 };
 

@@ -52,12 +52,14 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
     const last = user.lastName || "";
     const name = `${first} ${last}`.trim() || computedUsername || "Unknown";
 
+    if (!email) throw new Error("Cannot upsert user without an email address");
+
     return await prisma.user.upsert({
-      where: { clerkId: userId! },
+      where: { email },
       update: {
+        clerkId: userId!,
         name,
         image: user.imageUrl ?? null,
-        email,
       },
       create: {
         clerkId: userId!,

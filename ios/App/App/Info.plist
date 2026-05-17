@@ -47,6 +47,12 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to take a photo for your post</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to choose a photo for your post</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 	<dict>

@@ -16,7 +16,11 @@ type EditionRow = {
   title?: string | null;
   weekStart: string;
   publishedAt?: string | null;
-  posts: { id: string }[];
+  posts: {
+    id: string;
+    title?: string | null;
+    author?: { id: string; name?: string | null } | null;
+  }[];
 };
 
 type FullEdition = {
@@ -54,13 +58,33 @@ type YearGroup = {
 };
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const MONTH_ABBR = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 function parseWeekStartParts(weekStart: string) {
@@ -99,12 +123,20 @@ function groupEditions(editions: EditionRow[]): YearGroup[] {
   for (const [year, monthMap] of Array.from(yearMap)) {
     const months: MonthGroup[] = [];
     for (const [month, eds] of Array.from(monthMap)) {
-      const totalStories = eds.reduce((sum: number, ed: EditionRow) => sum + (ed.posts?.length ?? 0), 0);
-      const sorted = [...eds].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+      const totalStories = eds.reduce(
+        (sum: number, ed: EditionRow) => sum + (ed.posts?.length ?? 0),
+        0,
+      );
+      const sorted = [...eds].sort((a, b) =>
+        b.weekStart.localeCompare(a.weekStart),
+      );
       months.push({ year, month, editions: sorted, totalStories });
     }
     months.sort((a, b) => b.month - a.month);
-    const totalStories = months.reduce((sum: number, m: MonthGroup) => sum + m.totalStories, 0);
+    const totalStories = months.reduce(
+      (sum: number, m: MonthGroup) => sum + m.totalStories,
+      0,
+    );
     yearGroups.push({ year, months, totalStories });
   }
 
@@ -113,13 +145,19 @@ function groupEditions(editions: EditionRow[]): YearGroup[] {
 }
 
 function getInitialCollapseState(groups: YearGroup[]) {
-  if (groups.length === 0) return { expandedYears: new Set<number>(), expandedMonths: new Set<string>() };
+  if (groups.length === 0)
+    return {
+      expandedYears: new Set<number>(),
+      expandedMonths: new Set<string>(),
+    };
   const currentYear = new Date().getFullYear();
   const topGroup = groups.find((g) => g.year === currentYear) ?? groups[0];
   const expandedYears = new Set([topGroup.year]);
   const expandedMonths = new Set<string>();
   if (topGroup.months.length > 0) {
-    expandedMonths.add(monthKey(topGroup.months[0].year, topGroup.months[0].month));
+    expandedMonths.add(
+      monthKey(topGroup.months[0].year, topGroup.months[0].month),
+    );
   }
   return { expandedYears, expandedMonths };
 }
@@ -127,22 +165,35 @@ function getInitialCollapseState(groups: YearGroup[]) {
 // ── Archive sub-components ──────────────────────────────────────────────────
 
 function WeekRow({ edition }: { edition: EditionRow }) {
-  const postCount = edition.posts?.length ?? 0;
   return (
     <Link
       href={`/editions/${edition.id}`}
-      className="flex items-center justify-between py-2 px-3 rounded hover:bg-muted/50 transition-colors group"
+      className="block py-2 px-3 rounded hover:bg-muted/50 transition-colors group"
     >
       <span className="text-sm font-medium group-hover:underline">
         {formatWeekDate(edition.weekStart)}
       </span>
-      <span className="text-xs text-muted-foreground">{storyLabel(postCount)}</span>
+      {edition.posts.length > 0 && (
+        <ul className="mt-1 space-y-0.5">
+          {edition.posts.map((post) => (
+            <li
+              key={post.id}
+              className="text-xs text-muted-foreground truncate"
+            >
+              {post.title ?? "Untitled"}
+              {post.author?.name ? ` — ${post.author.name}` : ""}
+            </li>
+          ))}
+        </ul>
+      )}
     </Link>
   );
 }
 
 function MonthSection({
-  group, isExpanded, onToggle,
+  group,
+  isExpanded,
+  onToggle,
 }: {
   group: MonthGroup;
   isExpanded: boolean;
@@ -155,16 +206,24 @@ function MonthSection({
         className="flex items-center justify-between w-full py-1.5 px-2 rounded hover:bg-muted/30 transition-colors text-left"
       >
         <div className="flex items-center gap-1.5">
-          {isExpanded
-            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-none" />
-            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-none" />}
-          <span className="text-sm font-semibold">{MONTH_NAMES[group.month - 1]}</span>
+          {isExpanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-none" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-none" />
+          )}
+          <span className="text-sm font-semibold">
+            {MONTH_NAMES[group.month - 1]}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground">{storyLabel(group.totalStories)}</span>
+        <span className="text-xs text-muted-foreground">
+          {storyLabel(group.totalStories)}
+        </span>
       </button>
       {isExpanded && (
         <div className="ml-5 mt-0.5 space-y-0.5">
-          {group.editions.map((ed) => <WeekRow key={ed.id} edition={ed} />)}
+          {group.editions.map((ed) => (
+            <WeekRow key={ed.id} edition={ed} />
+          ))}
         </div>
       )}
     </div>
@@ -172,7 +231,11 @@ function MonthSection({
 }
 
 function YearSection({
-  group, isExpanded, expandedMonths, onToggleYear, onToggleMonth,
+  group,
+  isExpanded,
+  expandedMonths,
+  onToggleYear,
+  onToggleMonth,
 }: {
   group: YearGroup;
   isExpanded: boolean;
@@ -187,12 +250,16 @@ function YearSection({
         className="flex items-center justify-between w-full px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
       >
         <div className="flex items-center gap-2">
-          {isExpanded
-            ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-none" />
-            : <ChevronRight className="h-4 w-4 text-muted-foreground flex-none" />}
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground flex-none" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground flex-none" />
+          )}
           <span className="font-bold text-base">{group.year}</span>
         </div>
-        <span className="text-xs text-muted-foreground">{storyLabel(group.totalStories)}</span>
+        <span className="text-xs text-muted-foreground">
+          {storyLabel(group.totalStories)}
+        </span>
       </button>
       {isExpanded && (
         <div className="px-3 py-2 space-y-1">
@@ -216,18 +283,23 @@ function YearSection({
 function EditionsArchive({ editions }: { editions: EditionRow[] }) {
   const filtered = useMemo(
     () => editions.filter((ed) => (ed.posts?.length ?? 0) > 0),
-    [editions]
+    [editions],
   );
 
   const groups = useMemo(() => groupEditions(filtered), [filtered]);
 
-  const [expandedYears, setExpandedYears] = useState<Set<number>>(() => new Set());
-  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(() => new Set());
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [initialised, setInitialised] = useState(false);
 
   useEffect(() => {
     if (!initialised && groups.length > 0) {
-      const { expandedYears: ey, expandedMonths: em } = getInitialCollapseState(groups);
+      const { expandedYears: ey, expandedMonths: em } =
+        getInitialCollapseState(groups);
       setExpandedYears(ey);
       setExpandedMonths(em);
       setInitialised(true);
@@ -237,7 +309,8 @@ function EditionsArchive({ editions }: { editions: EditionRow[] }) {
   function toggleYear(year: number) {
     setExpandedYears((prev) => {
       const next = new Set(prev);
-      if (next.has(year)) next.delete(year); else next.add(year);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
       return next;
     });
   }
@@ -245,7 +318,8 @@ function EditionsArchive({ editions }: { editions: EditionRow[] }) {
   function toggleMonth(key: string) {
     setExpandedMonths((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -260,16 +334,16 @@ function EditionsArchive({ editions }: { editions: EditionRow[] }) {
 
   return (
     <div className="space-y-3">
-        {groups.map((yg) => (
-          <YearSection
-            key={yg.year}
-            group={yg}
-            isExpanded={expandedYears.has(yg.year)}
-            expandedMonths={expandedMonths}
-            onToggleYear={() => toggleYear(yg.year)}
-            onToggleMonth={toggleMonth}
-          />
-        ))}
+      {groups.map((yg) => (
+        <YearSection
+          key={yg.year}
+          group={yg}
+          isExpanded={expandedYears.has(yg.year)}
+          expandedMonths={expandedMonths}
+          onToggleYear={() => toggleYear(yg.year)}
+          onToggleMonth={toggleMonth}
+        />
+      ))}
     </div>
   );
 }
@@ -283,10 +357,16 @@ function StoryLead({ post }: { post: FullEditionPost }) {
     <div className="border-b pb-8">
       {post.heroImageUrl && (
         <div className="aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
-          <img src={post.heroImageUrl} alt={post.title ?? ""} className="h-full w-full object-cover" />
+          <img
+            src={post.heroImageUrl}
+            alt={post.title ?? ""}
+            className="h-full w-full object-cover"
+          />
         </div>
       )}
-      <h2 className="text-4xl font-black leading-tight">{post.title ?? "Untitled"}</h2>
+      <h2 className="text-4xl font-black leading-tight">
+        {post.title ?? "Untitled"}
+      </h2>
       {post.author?.name && (
         <p className="mt-2 text-sm text-muted-foreground">{post.author.name}</p>
       )}
@@ -299,10 +379,16 @@ function StoryCard({ post }: { post: FullEditionPost }) {
     <div className="border bg-card p-3 space-y-2">
       {post.heroImageUrl && (
         <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-          <img src={post.heroImageUrl} alt={post.title ?? ""} className="h-full w-full object-cover" />
+          <img
+            src={post.heroImageUrl}
+            alt={post.title ?? ""}
+            className="h-full w-full object-cover"
+          />
         </div>
       )}
-      <h3 className="text-base font-semibold leading-snug">{post.title ?? "Untitled"}</h3>
+      <h3 className="text-base font-semibold leading-snug">
+        {post.title ?? "Untitled"}
+      </h3>
       {post.author?.name && (
         <p className="text-xs text-muted-foreground">{post.author.name}</p>
       )}
@@ -338,7 +424,9 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
       <Link
         href={`/editions/${edition.id}`}
         className={`block group space-y-6 p-6 transition-colors ${
-          showOverlay ? "pointer-events-none" : "hover:border-foreground/40 hover:shadow-sm"
+          showOverlay
+            ? "pointer-events-none"
+            : "hover:border-foreground/40 hover:shadow-sm"
         }`}
       >
         {/* Date + arrow */}
@@ -356,7 +444,9 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
             {lead && <StoryLead post={lead} />}
             {rest.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {rest.map((post) => <StoryCard key={post.id} post={post} />)}
+                {rest.map((post) => (
+                  <StoryCard key={post.id} post={post} />
+                ))}
               </div>
             )}
           </div>
@@ -391,7 +481,9 @@ export default function EditionsPage() {
       if (data.length > 0) {
         setLoadingLatest(true);
         try {
-          const r2 = await fetch(`/api/editions/${data[0].id}`, { cache: "no-store" });
+          const r2 = await fetch(`/api/editions/${data[0].id}`, {
+            cache: "no-store",
+          });
           if (r2.ok) setLatestEdition(await r2.json());
         } finally {
           setLoadingLatest(false);
@@ -419,11 +511,18 @@ export default function EditionsPage() {
         credentials: "include",
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || res.statusText || "Publish failed");
+      if (!res.ok)
+        throw new Error(data?.error || res.statusText || "Publish failed");
       if (data.published) {
-        setMsg(`Published edition ${data.editionId} • posts updated: ${data.postsPublished ?? 0}`);
+        setMsg(
+          `Published edition ${data.editionId} • posts updated: ${data.postsPublished ?? 0}`,
+        );
       } else {
-        setMsg(data.reason === "ALREADY_PUBLISHED" ? "Already published." : "Nothing to publish for last week.");
+        setMsg(
+          data.reason === "ALREADY_PUBLISHED"
+            ? "Already published."
+            : "Nothing to publish for last week.",
+        );
       }
       await fetchEditions();
     } catch (e: any) {
@@ -443,14 +542,20 @@ export default function EditionsPage() {
 
       <SignedIn>
         <div className="mx-auto max-w-5xl space-y-12 py-4">
-
           {/* Admin controls */}
           {process.env.NODE_ENV === "development" && (
             <div className="flex items-center gap-3">
-              <Button onClick={handlePublishLastWeek} disabled={publishing} variant="outline" size="sm">
+              <Button
+                onClick={handlePublishLastWeek}
+                disabled={publishing}
+                variant="outline"
+                size="sm"
+              >
                 {publishing ? "Publishing…" : "Manually publish last week"}
               </Button>
-              {msg && <span className="text-sm text-muted-foreground">{msg}</span>}
+              {msg && (
+                <span className="text-sm text-muted-foreground">{msg}</span>
+              )}
             </div>
           )}
 
@@ -467,7 +572,9 @@ export default function EditionsPage() {
             ) : latestEdition ? (
               <LatestEditionPreview edition={latestEdition} />
             ) : (
-              <p className="py-12 text-center text-muted-foreground">No editions published yet.</p>
+              <p className="py-12 text-center text-muted-foreground">
+                No editions published yet.
+              </p>
             )}
           </section>
 
@@ -480,7 +587,6 @@ export default function EditionsPage() {
               <EditionsArchive editions={archiveEditions} />
             </section>
           )}
-
         </div>
       </SignedIn>
     </>

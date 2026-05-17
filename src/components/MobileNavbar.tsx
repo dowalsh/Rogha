@@ -19,8 +19,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useState } from "react";
-import { SignInButton, SignOutButton } from "@clerk/nextjs";
+import { SignInButton, useClerk } from "@clerk/nextjs";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import Link from "next/link";
 import type { UserResource } from "@clerk/types";
 
@@ -33,6 +34,7 @@ type MobileNavbarProps = {
 function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isNative] = useState(() => Capacitor.isNativePlatform());
+  const { signOut } = useClerk();
 
   const handleNavClick = () => {
     setShowMobileMenu(false);
@@ -157,21 +159,34 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                     Profile
                   </Link>
                 </Button> */}
-                <SignOutButton>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-3 justify-start w-full"
-                  >
-                    <LogOutIcon className="w-4 h-4" />
-                    Logout
-                  </Button>
-                </SignOutButton>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-3 justify-start w-full"
+                  onClick={async () => {
+                    setShowMobileMenu(false);
+                    await signOut();
+                  }}
+                >
+                  <LogOutIcon className="w-4 h-4" />
+                  Logout
+                </Button>
               </>
-            ) : (
-              <SignInButton
-                mode="modal"
-                forceRedirectUrl={isNative ? "/auth/return-to-app" : undefined}
+            ) : isNative ? (
+              <Button
+                variant="default"
+                className="w-full"
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  Browser.open({
+                    url: "https://rogha.dylanwalsh.ie/sign-in?fromApp=1",
+                    presentationStyle: "popover",
+                  });
+                }}
               >
+                Sign In
+              </Button>
+            ) : (
+              <SignInButton mode="modal">
                 <Button
                   variant="default"
                   className="w-full"

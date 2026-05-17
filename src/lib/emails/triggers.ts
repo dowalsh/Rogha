@@ -105,13 +105,13 @@ export async function triggerPublishedEditionEmail() {
     <p>All the posts from this week are now live.</p>
     <p>Come check them out and join the convo!</p>
     <p>
-      <a href="${appUrl}/editions"
+      <a href="${appUrl}/open/editions"
          style="display:inline-block;padding:10px 16px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">
         Read the edition
       </a>
     </p>
     <p style="margin-top:24px;font-size:12px;color:#888;">
-      Don't want these emails? <a href="${appUrl}/settings" style="color:#888;">Manage notification settings</a>
+      Don't want these emails? <a href="${appUrl}/open/settings" style="color:#888;">Manage notification settings</a>
     </p>
   `;
 

@@ -1,8 +1,9 @@
 import { ImageResponse } from "next/og";
+import sharp from "sharp";
 import { getPostByShareToken } from "@/lib/access/publicShareAccess";
 
 export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const contentType = "image/jpeg";
 
 export default async function Image({
   params,
@@ -12,7 +13,7 @@ export default async function Image({
   const post = await getPostByShareToken(params.token);
   if (!post) return new Response("Not found", { status: 404 });
 
-  return new ImageResponse(
+  const png = await new ImageResponse(
     (
       <div
         style={{
@@ -35,13 +36,17 @@ export default async function Image({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              opacity: 0.55,
             }}
           />
         )}
-
       </div>
     ),
     { ...size },
-  );
+  ).arrayBuffer();
+
+  const jpeg = await sharp(Buffer.from(png)).jpeg({ quality: 75 }).toBuffer();
+
+  return new Response(new Uint8Array(jpeg), {
+    headers: { "Content-Type": "image/jpeg" },
+  });
 }

@@ -27,6 +27,7 @@ type PostDTO = {
   heroImageUrl?: string | null;
   author?: {
     id: string;
+    clerkId?: string | null;
     name?: string | null;
     image?: string | null;
   } | null;
@@ -138,7 +139,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     initialCount: post?.likeCount ?? 0,
   });
 
-  const isAuthor = !!(user && post && user.id === post.author?.id);
+  const isAuthor = !!(user && post && user.id === post.author?.clerkId);
   const isShareable = post?.status === "PUBLISHED";
 
   const backHref = post?.editionId

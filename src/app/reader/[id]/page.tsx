@@ -15,6 +15,7 @@ import CommentsSection from "@/components/CommentsSection";
 
 import { LikeButton } from "@/components/LikeButton";
 import { Spinner } from "@/components/Spinner";
+import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { useLike } from "@/hooks/useLike";
 import type { AudienceType } from "@/types/index";
 
@@ -91,7 +92,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   const [editionRevealed, setEditionRevealed] = useState(true);
   const [revealFading, setRevealFading] = useState(false);
 
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
 
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +137,10 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     initialLiked: post?.likedByMe ?? false,
     initialCount: post?.likeCount ?? 0,
   });
+
+  const isAuthor = !!(user && post && user.id === post.author?.id);
+  const isShareable =
+    post?.status === "SUBMITTED" || post?.status === "PUBLISHED";
 
   const backHref = post?.editionId
     ? `/editions/${post.editionId}`
@@ -272,6 +277,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{authorName}</span>
         </div>
+        {isAuthor && isShareable && <ShareLinkControls postId={post.id} />}
       </header>
 
       {/* Rendered content or diagnostics */}

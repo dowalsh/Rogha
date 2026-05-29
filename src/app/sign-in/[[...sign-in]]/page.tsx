@@ -72,6 +72,8 @@ function SignInInner() {
     <SignIn
       forceRedirectUrl={returnUrl}
       signUpForceRedirectUrl={returnUrl}
+      afterSignInUrl={returnUrl}
+      afterSignUpUrl={returnUrl}
     />
   );
 }

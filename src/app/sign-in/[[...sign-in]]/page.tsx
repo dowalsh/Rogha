@@ -12,11 +12,21 @@ function safeRedirect(value: string | null | undefined): string {
   return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
+const SESSION_STORAGE_FROM_APP = "rogha_sign_in_from_app";
+const SESSION_STORAGE_REDIRECT = "rogha_sign_in_redirect";
+
 function SignInInner() {
   const params = useSearchParams();
-  const fromApp = params.get("fromApp") === "1";
-  // Clerk middleware uses redirect_url; our own code uses redirect — accept both
-  const redirect = safeRedirect(params.get("redirect") ?? params.get("redirect_url"));
+  // fromApp and redirect can be lost if Clerk's signOut strips URL params on redirect.
+  // sessionStorage is the fallback so they survive the signOut → reload cycle.
+  const fromApp =
+    params.get("fromApp") === "1" ||
+    sessionStorage.getItem(SESSION_STORAGE_FROM_APP) === "1";
+  const redirect = safeRedirect(
+    params.get("redirect") ??
+    params.get("redirect_url") ??
+    sessionStorage.getItem(SESSION_STORAGE_REDIRECT)
+  );
   const isNative = Capacitor.isNativePlatform();
   const browserOpenedRef = useRef(false);
   const { session, signOut, loaded: isLoaded } = useClerk();
@@ -32,9 +42,15 @@ function SignInInner() {
     if (!isLoaded) return; // wait for Clerk to finish initialising before trusting session state
     if (session) {
       console.log("[Rogha debug] sign-in/page: fromApp session found, signing out first");
-      // Pass redirectUrl so signOut() comes back here instead of navigating to /
+      // Persist fromApp + redirect in sessionStorage before signOut — Clerk's redirectUrl
+      // param can be overridden by its own sign-in URL config, losing our query params.
+      sessionStorage.setItem(SESSION_STORAGE_FROM_APP, "1");
+      sessionStorage.setItem(SESSION_STORAGE_REDIRECT, redirect);
       signOut({ redirectUrl: window.location.href });
     } else {
+      // Session cleared — params are no longer needed in sessionStorage.
+      sessionStorage.removeItem(SESSION_STORAGE_FROM_APP);
+      sessionStorage.removeItem(SESSION_STORAGE_REDIRECT);
       setSessionCleared(true);
     }
   }, [fromApp, isLoaded, session]);
@@ -72,8 +88,6 @@ function SignInInner() {
     <SignIn
       forceRedirectUrl={returnUrl}
       signUpForceRedirectUrl={returnUrl}
-      afterSignInUrl={returnUrl}
-      afterSignUpUrl={returnUrl}
     />
   );
 }

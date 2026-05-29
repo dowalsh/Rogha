@@ -48,9 +48,6 @@ function SignInInner() {
       sessionStorage.setItem(SESSION_STORAGE_REDIRECT, redirect);
       signOut({ redirectUrl: window.location.href });
     } else {
-      // Session cleared — params are no longer needed in sessionStorage.
-      sessionStorage.removeItem(SESSION_STORAGE_FROM_APP);
-      sessionStorage.removeItem(SESSION_STORAGE_REDIRECT);
       setSessionCleared(true);
     }
   }, [fromApp, isLoaded, session]);

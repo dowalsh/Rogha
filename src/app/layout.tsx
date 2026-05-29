@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "react-hot-toast";
@@ -87,6 +88,13 @@ export default async function RootLayout({
               <PushNotificationInit />
               <SplashScreenInit />
             </ThemeProvider>
+            {/* TODO: remove Eruda before shipping */}
+            <Script id="eruda-init" strategy="afterInteractive">{`
+              var s = document.createElement('script');
+              s.src = '//cdn.jsdelivr.net/npm/eruda';
+              s.onload = function() { eruda.init(); };
+              document.head.appendChild(s);
+            `}</Script>
           </TooltipProvider>
         </body>
       </html>

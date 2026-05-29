@@ -88,13 +88,13 @@ export default async function RootLayout({
               <PushNotificationInit />
               <SplashScreenInit />
             </ThemeProvider>
-            {/* TODO: remove Eruda before shipping */}
-            <Script id="eruda-init" strategy="afterInteractive">{`
+            {/* Eruda in-page console — set to true to enable for mobile debugging */}
+            {false && <Script id="eruda-init" strategy="afterInteractive">{`
               var s = document.createElement('script');
               s.src = '//cdn.jsdelivr.net/npm/eruda';
               s.onload = function() { eruda.init(); };
               document.head.appendChild(s);
-            `}</Script>
+            `}</Script>}
           </TooltipProvider>
         </body>
       </html>

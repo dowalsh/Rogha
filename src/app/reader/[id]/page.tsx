@@ -297,7 +297,10 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
             <ContentOverflowMenu
               contentType="POST"
               contentId={post.id}
+              authorId={post.author?.id ?? ""}
+              authorName={authorName}
               onReported={() => setPostReported(true)}
+              onBlocked={() => router.replace("/")}
             />
           )}
         </div>

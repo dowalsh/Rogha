@@ -55,7 +55,7 @@ function getAuthorName(post: Post): string {
   return post.author?.name ?? "Unknown";
 }
 
-function LeadStory({ post, currentUserId, onReported }: { post: Post; currentUserId?: string | null; onReported: () => void }) {
+function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
   const authorName = getAuthorName(post);
   const hasImage = Boolean(post.heroImageUrl);
   const isOwn = !!currentUserId && post.author?.id === currentUserId;
@@ -79,7 +79,7 @@ function LeadStory({ post, currentUserId, onReported }: { post: Post; currentUse
         </Link>
         {!isOwn && currentUserId && (
           <div className="absolute top-0 right-0">
-            <ContentOverflowMenu contentType="POST" contentId={post.id} onReported={onReported} />
+            <ContentOverflowMenu contentType="POST" contentId={post.id} authorId={post.author?.id ?? ""} authorName={authorName} onReported={onReported} onBlocked={onBlocked} />
           </div>
         )}
       </section>
@@ -116,14 +116,14 @@ function LeadStory({ post, currentUserId, onReported }: { post: Post; currentUse
       </Link>
       {!isOwn && currentUserId && (
         <div className="absolute top-0 right-0">
-          <ContentOverflowMenu contentType="POST" contentId={post.id} onReported={onReported} />
+          <ContentOverflowMenu contentType="POST" contentId={post.id} authorId={post.author?.id ?? ""} authorName={authorName} onReported={onReported} onBlocked={onBlocked} />
         </div>
       )}
     </section>
   );
 }
 
-function SecondaryStory({ post, currentUserId, onReported }: { post: Post; currentUserId?: string | null; onReported: () => void }) {
+function SecondaryStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
   const authorName = getAuthorName(post);
   const isOwn = !!currentUserId && post.author?.id === currentUserId;
 
@@ -156,7 +156,7 @@ function SecondaryStory({ post, currentUserId, onReported }: { post: Post; curre
       </Link>
       {!isOwn && currentUserId && (
         <div className="absolute top-1 right-1 z-10">
-          <ContentOverflowMenu contentType="POST" contentId={post.id} onReported={onReported} />
+          <ContentOverflowMenu contentType="POST" contentId={post.id} authorId={post.author?.id ?? ""} authorName={authorName} onReported={onReported} onBlocked={onBlocked} />
         </div>
       )}
     </div>
@@ -204,10 +204,16 @@ export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProp
   const [revealed, setRevealed] = useState(revealProps?.hasOpened ?? true);
   const [fading, setFading] = useState(false);
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
 
-  const posts = allPosts.filter((p) => !reportedIds.has(p.id));
+  const posts = allPosts.filter(
+    (p) => !reportedIds.has(p.id) && !blockedAuthorIds.has(p.author?.id ?? ""),
+  );
   function handleReported(postId: string) {
     setReportedIds((prev) => new Set(Array.from(prev).concat(postId)));
+  }
+  function handleBlocked(authorId: string) {
+    setBlockedAuthorIds((prev) => new Set(Array.from(prev).concat(authorId)));
   }
 
   const handleReveal = () => {
@@ -257,14 +263,14 @@ export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProp
       </header>
 
       {/* Lead story */}
-      {lead && <LeadStory post={lead} currentUserId={currentUserId} onReported={() => handleReported(lead.id)} />}
+      {lead && <LeadStory post={lead} currentUserId={currentUserId} onReported={() => handleReported(lead.id)} onBlocked={() => handleBlocked(lead.author?.id ?? "")} />}
 
       {/* Secondary grid: 2–3 stories underneath the lead */}
       {secondary.length > 0 && (
         <section className="border-b pb-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {secondary.map((post) => (
-              <SecondaryStory key={post.id} post={post} currentUserId={currentUserId} onReported={() => handleReported(post.id)} />
+              <SecondaryStory key={post.id} post={post} currentUserId={currentUserId} onReported={() => handleReported(post.id)} onBlocked={() => handleBlocked(post.author?.id ?? "")} />
             ))}
           </div>
         </section>

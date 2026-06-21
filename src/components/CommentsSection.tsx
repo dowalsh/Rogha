@@ -30,12 +30,14 @@ function CommentItem({
   comment,
   onReply,
   onDelete,
+  onBlocked,
   currentUserId,
   depth = 0,
 }: {
   comment: CommentType;
   onReply: (parentId: string, content: string) => Promise<{ ok: boolean; error?: string }>;
   onDelete: (id: string, parentId?: string) => void;
+  onBlocked: (authorId: string) => void;
   currentUserId: string | null;
   depth?: number;
 }) {
@@ -101,7 +103,10 @@ function CommentItem({
               <ContentOverflowMenu
                 contentType="COMMENT"
                 contentId={comment.id}
+                authorId={comment.author.id}
+                authorName={comment.author.name ?? comment.author.id}
                 onReported={() => setReported(true)}
+                onBlocked={() => onBlocked(comment.author.id)}
               />
             ) : null}
           </div>
@@ -117,6 +122,7 @@ function CommentItem({
               comment={r}
               onReply={onReply}
               onDelete={(id) => onDelete(id, comment.id)}
+              onBlocked={onBlocked}
               currentUserId={currentUserId}
               depth={depth + 1}
             />
@@ -182,6 +188,11 @@ export default function CommentsSection({
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
+
+  function handleBlocked(authorId: string) {
+    setBlockedAuthorIds((prev) => new Set(Array.from(prev).concat(authorId)));
+  }
 
   useEffect(() => {
     fetch("/api/me")
@@ -381,9 +392,11 @@ export default function CommentsSection({
             <Spinner />
           </div>
         ) : (
-          comments.map((c) => (
-            <CommentItem key={c.id} comment={c} onReply={addReply} onDelete={deleteComment} currentUserId={currentUserId} />
-          ))
+          comments
+            .filter((c) => !blockedAuthorIds.has(c.author.id))
+            .map((c) => (
+              <CommentItem key={c.id} comment={c} onReply={addReply} onDelete={deleteComment} onBlocked={handleBlocked} currentUserId={currentUserId} />
+            ))
         )}
       </div>
 

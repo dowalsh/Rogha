@@ -241,17 +241,20 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     },
   });
 
-  // Reported post IDs for this viewer
-  const reportedPostIds = await prisma.report
-    .findMany({
-      where: { reporterId: user.id, contentType: "POST" },
-      select: { contentId: true },
-    })
-    .then((rows) => new Set(rows.map((r) => r.contentId)));
+  // Reported post IDs + blocked author IDs for this viewer
+  const [reportedPostIds, blockedAuthorIds] = await Promise.all([
+    prisma.report
+      .findMany({ where: { reporterId: user.id, contentType: "POST" }, select: { contentId: true } })
+      .then((rows) => new Set(rows.map((r) => r.contentId))),
+    prisma.block
+      .findMany({ where: { blockerId: user.id }, select: { blockedId: true } })
+      .then((rows) => new Set(rows.map((r) => r.blockedId))),
+  ]);
 
-  // Temporal gate + reporter exclusion
+  // Temporal gate + reporter/block exclusion
   const visiblePosts = posts.filter((p) => {
     if (reportedPostIds.has(p.id)) return false;
+    if (blockedAuthorIds.has(p.authorId)) return false;
     if (p.authorId === user.id) return true;
     if (p.audienceType === "ALL_USERS") return true;
     if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query

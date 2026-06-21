@@ -34,16 +34,18 @@ export async function GET(
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    // Fetch reported comment IDs for this viewer to exclude them
-    const reportedCommentIds = await prisma.report
-      .findMany({
-        where: { reporterId: user.id, contentType: "COMMENT" },
-        select: { contentId: true },
-      })
-      .then((rows) => rows.map((r) => r.contentId));
+    // Fetch reported comment IDs + blocked author IDs for this viewer
+    const [reportedCommentIds, blockedAuthorIds] = await Promise.all([
+      prisma.report
+        .findMany({ where: { reporterId: user.id, contentType: "COMMENT" }, select: { contentId: true } })
+        .then((rows) => rows.map((r) => r.contentId)),
+      prisma.block
+        .findMany({ where: { blockerId: user.id }, select: { blockedId: true } })
+        .then((rows) => rows.map((r) => r.blockedId)),
+    ]);
 
-    const excludeFilter = (extraIds: string[]) => {
-      const ids = [...reportedCommentIds, ...extraIds];
+    const excludeFilter = () => {
+      const ids = reportedCommentIds;
       return ids.length > 0 ? { NOT: { id: { in: ids } } } : {};
     };
 
@@ -52,14 +54,19 @@ export async function GET(
         postId,
         parentCommentId: null,
         status: "ACTIVE",
-        ...excludeFilter([]),
+        ...(blockedAuthorIds.length > 0 ? { NOT: { authorId: { in: blockedAuthorIds } } } : {}),
+        ...excludeFilter(),
       },
       include: {
         author: { select: { id: true, name: true, image: true } },
         _count: { select: { likes: true } },
         likes: { where: { userId: user.id }, select: { id: true } },
         replies: {
-          where: { status: "ACTIVE", ...excludeFilter([]) },
+          where: {
+            status: "ACTIVE",
+            ...(blockedAuthorIds.length > 0 ? { NOT: { authorId: { in: blockedAuthorIds } } } : {}),
+            ...excludeFilter(),
+          },
           include: {
             author: { select: { id: true, name: true, image: true } },
             _count: { select: { likes: true } },

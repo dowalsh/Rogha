@@ -19,13 +19,30 @@ import { Button } from "@/components/ui/button";
 type Props = {
   contentType: "POST" | "COMMENT";
   contentId: string;
+  authorId: string;
+  authorName: string;
   onReported: () => void;
+  onBlocked: () => void;
 };
 
-export function ContentOverflowMenu({ contentType, contentId, onReported }: Props) {
+type Dialog = "report" | "block" | null;
+
+export function ContentOverflowMenu({
+  contentType,
+  contentId,
+  authorId,
+  authorName,
+  onReported,
+  onBlocked,
+}: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [dialog, setDialog] = useState<Dialog>(null);
   const [loading, setLoading] = useState(false);
+
+  function openDialog(d: Dialog) {
+    setMenuOpen(false);
+    setDialog(d);
+  }
 
   async function handleConfirmReport() {
     setLoading(true);
@@ -36,11 +53,30 @@ export function ContentOverflowMenu({ contentType, contentId, onReported }: Prop
         body: JSON.stringify({ contentType, contentId }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setConfirmOpen(false);
+      setDialog(null);
       onReported();
       toast.success("Thanks — we've received your report.");
     } catch {
       toast.error("Failed to submit report. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleConfirmBlock() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blockedId: authorId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDialog(null);
+      onBlocked();
+      toast.success(`${authorName} has been blocked.`);
+    } catch {
+      toast.error("Failed to block user. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -61,24 +97,27 @@ export function ContentOverflowMenu({ contentType, contentId, onReported }: Prop
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-36 p-1"
+          className="w-40 p-1"
           align="end"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(false);
-              setConfirmOpen(true);
-            }}
+            onClick={(e) => { e.stopPropagation(); openDialog("report"); }}
           >
             Report
+          </button>
+          <button
+            className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+            onClick={(e) => { e.stopPropagation(); openDialog("block"); }}
+          >
+            Block {authorName}
           </button>
         </PopoverContent>
       </Popover>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      {/* Report confirm */}
+      <AlertDialog open={dialog === "report"} onOpenChange={(o) => !o && setDialog(null)}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Report this content?</AlertDialogTitle>
@@ -91,6 +130,24 @@ export function ContentOverflowMenu({ contentType, contentId, onReported }: Prop
             <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmReport} disabled={loading}>
               {loading ? "Reporting…" : "Report"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Block confirm */}
+      <AlertDialog open={dialog === "block"} onOpenChange={(o) => !o && setDialog(null)}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Block {authorName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Their posts and comments will no longer appear for you. They won't be notified.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmBlock} disabled={loading}>
+              {loading ? "Blocking…" : "Block"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

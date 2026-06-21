@@ -28,6 +28,9 @@ function canViewPostPolicy(args: {
 }) {
   const { viewerId, post, friendshipAcceptedAt, isInCircle } = args;
 
+  // Removed → no one
+  if (post.status === "REMOVED") return false;
+
   // Unpublished → author only
   if (post.status !== "PUBLISHED") {
     return viewerId === post.authorId;

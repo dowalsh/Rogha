@@ -76,6 +76,7 @@ export default async function EditionPage({
           viewerCount: edition.viewerCount,
           viewerNames: edition.viewerNames,
         }}
+        currentUserId={user.id}
       />
     </div>
   );

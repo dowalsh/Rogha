@@ -12,6 +12,7 @@ import { AudienceType } from "@/types";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { Spinner } from "@/components/Spinner";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
+import toast from "react-hot-toast";
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 
@@ -184,12 +185,16 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           circleId: audienceType === "CIRCLE" ? circleId : null,
         }),
       });
-      if (!res.ok) throw new Error(`Toggle failed: ${res.status}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error ?? "Failed to submit. Please try again.");
+        return;
+      }
       setStatus(next);
       setSaved(true);
-      await res.json();
     } catch (err) {
       console.error("Failed to toggle submit:", err);
+      toast.error("Failed to submit. Please try again.");
     } finally {
       setIsSaving(false);
     }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getDbUserId } from "./user.action";
 import { getDbUser } from "@/lib/getDbUser";
+import { isContentBlocked } from "@/lib/contentFilter";
 
 export async function getProfileByUsername(username: string) {
   try {
@@ -156,6 +157,10 @@ export async function updateProfile(formData: FormData) {
     const bio = formData.get("bio") as string;
     const location = formData.get("location") as string;
     const website = formData.get("website") as string;
+
+    if (isContentBlocked(bio)) {
+      return { success: false, error: "This content may violate our community standards." };
+    }
 
     const user = await prisma.user.update({
       where: { id: dbUser.id },

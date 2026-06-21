@@ -15,6 +15,7 @@ import CommentsSection from "@/components/CommentsSection";
 import { Spinner } from "@/components/Spinner";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
+import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
 import { useLike } from "@/hooks/useLike";
 import type { AudienceType } from "@/types/index";
 
@@ -22,7 +23,7 @@ type PostDTO = {
   id: string;
   title?: string | null;
   content?: unknown;
-  status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
+  status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED" | "REMOVED";
   editionId?: string | null;
   heroImageUrl?: string | null;
   author?: {
@@ -139,6 +140,8 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     initialCount: post?.likeCount ?? 0,
   });
 
+  const [postReported, setPostReported] = useState(false);
+
   const isAuthor = !!(user && post && user.id === post.author?.clerkId);
   const isShareable = post?.status === "PUBLISHED";
 
@@ -227,6 +230,20 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
+
+  if (postReported) {
+    return (
+      <div className="mx-auto max-w-3xl p-6 space-y-4 text-center">
+        <p className="text-muted-foreground">
+          Thanks — we've received your report and will review this post.
+        </p>
+        <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Back to edition
+        </Button>
+      </div>
+    );
+  }
   // // focus debug output on audience type only
   // console.log("post.audienceType:", post?.audienceType ?? "undefined");
 
@@ -274,7 +291,16 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
       {/* Header: title + likes + author */}
       <header className="space-y-3">
-        <h1 className="text-2xl font-semibold leading-tight">{title}</h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-2xl font-semibold leading-tight">{title}</h1>
+          {!isAuthor && (
+            <ContentOverflowMenu
+              contentType="POST"
+              contentId={post.id}
+              onReported={() => setPostReported(true)}
+            />
+          )}
+        </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{authorName}</span>
           {post.edition?.publishedAt && (

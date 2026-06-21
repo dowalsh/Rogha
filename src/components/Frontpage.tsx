@@ -4,6 +4,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
+import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
 
 // Front page posts as they arrive from the Edition page
 type Post = {
@@ -28,6 +29,7 @@ type FrontpageProps = {
     viewerCount: number;
     viewerNames: string[];
   };
+  currentUserId?: string | null;
 };
 
 
@@ -53,16 +55,17 @@ function getAuthorName(post: Post): string {
   return post.author?.name ?? "Unknown";
 }
 
-function LeadStory({ post }: { post: Post }) {
+function LeadStory({ post, currentUserId, onReported }: { post: Post; currentUserId?: string | null; onReported: () => void }) {
   const authorName = getAuthorName(post);
   const hasImage = Boolean(post.heroImageUrl);
+  const isOwn = !!currentUserId && post.author?.id === currentUserId;
 
   // No image → full-width headline layout
   if (!hasImage) {
     return (
-      <section className="border-b pb-8">
+      <section className="border-b pb-8 relative">
         <Link href={`/reader/${post.id}`} className="group block w-full">
-          <article className="transition-shadow duration-200  space-y-4">
+          <article className="transition-shadow duration-200 space-y-4">
             <h2 className="text-4xl font-black leading-tight group-hover:underline">
               {post.title ?? "Untitled Post"}
             </h2>
@@ -74,13 +77,18 @@ function LeadStory({ post }: { post: Post }) {
             </div>
           </article>
         </Link>
+        {!isOwn && currentUserId && (
+          <div className="absolute top-0 right-0">
+            <ContentOverflowMenu contentType="POST" contentId={post.id} onReported={onReported} />
+          </div>
+        )}
       </section>
     );
   }
 
   // With image → two-column layout
   return (
-    <section className="border-b pb-8">
+    <section className="border-b pb-8 relative">
       <Link href={`/reader/${post.id}`} className="group block w-full">
         <article className="grid gap-6 transition-shadow duration-200  lg:grid-cols-[2fr,1fr] lg:items-stretch">
           <div className="aspect-[16/9] w-full overflow-hidden bg-muted">
@@ -106,39 +114,52 @@ function LeadStory({ post }: { post: Post }) {
           </div>
         </article>
       </Link>
+      {!isOwn && currentUserId && (
+        <div className="absolute top-0 right-0">
+          <ContentOverflowMenu contentType="POST" contentId={post.id} onReported={onReported} />
+        </div>
+      )}
     </section>
   );
 }
 
-function SecondaryStory({ post }: { post: Post }) {
+function SecondaryStory({ post, currentUserId, onReported }: { post: Post; currentUserId?: string | null; onReported: () => void }) {
   const authorName = getAuthorName(post);
+  const isOwn = !!currentUserId && post.author?.id === currentUserId;
 
   return (
-    <Link href={`/reader/${post.id}`} className="group block h-full">
-      <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200 ">
-        {post.heroImageUrl && (
-          <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-            <img
-              src={post.heroImageUrl}
-              alt={post.title ?? "Story image"}
-              className="h-full w-full object-cover"
-            />
+    <div className="relative h-full">
+      <Link href={`/reader/${post.id}`} className="group block h-full">
+        <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200 ">
+          {post.heroImageUrl && (
+            <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+              <img
+                src={post.heroImageUrl}
+                alt={post.title ?? "Story image"}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
+
+          <div className="mt-2 space-y-2">
+            <h3 className="text-lg font-semibold leading-snug group-hover:underline">
+              {post.title ?? "Untitled Post"}
+            </h3>
           </div>
-        )}
 
-        <div className="mt-2 space-y-2">
-          <h3 className="text-lg font-semibold leading-snug group-hover:underline">
-            {post.title ?? "Untitled Post"}
-          </h3>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>{authorName}</span>
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+            <span>{getAudienceLabel(post)}</span>
+          </div>
+        </article>
+      </Link>
+      {!isOwn && currentUserId && (
+        <div className="absolute top-1 right-1 z-10">
+          <ContentOverflowMenu contentType="POST" contentId={post.id} onReported={onReported} />
         </div>
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>{authorName}</span>
-          <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-          <span>{getAudienceLabel(post)}</span>
-        </div>
-      </article>
-    </Link>
+      )}
+    </div>
   );
 }
 
@@ -176,12 +197,18 @@ function TertiaryStory({ post }: { post: Post }) {
   );
 }
 
-export function Frontpage({ edition, revealProps }: FrontpageProps) {
+export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProps) {
   const editionLabel = formatEditionLabel(edition);
-  const posts = edition.posts ?? [];
+  const allPosts = edition.posts ?? [];
 
   const [revealed, setRevealed] = useState(revealProps?.hasOpened ?? true);
   const [fading, setFading] = useState(false);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+
+  const posts = allPosts.filter((p) => !reportedIds.has(p.id));
+  function handleReported(postId: string) {
+    setReportedIds((prev) => new Set(Array.from(prev).concat(postId)));
+  }
 
   const handleReveal = () => {
     setFading(true);
@@ -230,14 +257,14 @@ export function Frontpage({ edition, revealProps }: FrontpageProps) {
       </header>
 
       {/* Lead story */}
-      {lead && <LeadStory post={lead} />}
+      {lead && <LeadStory post={lead} currentUserId={currentUserId} onReported={() => handleReported(lead.id)} />}
 
       {/* Secondary grid: 2–3 stories underneath the lead */}
       {secondary.length > 0 && (
         <section className="border-b pb-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {secondary.map((post) => (
-              <SecondaryStory key={post.id} post={post} />
+              <SecondaryStory key={post.id} post={post} currentUserId={currentUserId} onReported={() => handleReported(post.id)} />
             ))}
           </div>
         </section>

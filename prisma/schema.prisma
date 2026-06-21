@@ -53,6 +53,7 @@ model User {
   notificationPreference NotificationPreference?
   pushDevices            PushDevice[]
   editionViews           EditionView[]
+  reports                Report[]
 }
 
 model Circle {
@@ -111,6 +112,7 @@ enum PostStatus {
   SUBMITTED
   PUBLISHED
   ARCHIVED
+  REMOVED
 }
 
 enum AudienceType {
@@ -179,12 +181,18 @@ model Friendship {
   @@index([requesterId])
 }
 
+enum CommentStatus {
+  ACTIVE
+  REMOVED
+}
+
 model Comment {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   content   String
   authorId  String
   postId    String
   parentCommentId  String?
+  status    CommentStatus @default(ACTIVE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -304,6 +312,32 @@ model PushDevice {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, enabled])
+}
+
+enum ContentType {
+  POST
+  COMMENT
+}
+
+enum ReportStatus {
+  PENDING
+  ACTIONED
+  DISMISSED
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  contentType ContentType
+  contentId   String
+  reporterId  String
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  reporter    User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([contentType, contentId, reporterId])
+  @@index([reporterId])
+  @@index([contentType, contentId])
 }
 
 enum ActivityEventType {

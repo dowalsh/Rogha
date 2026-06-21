@@ -32,6 +32,39 @@ export function buildPostSubmittedEmail(
   };
 }
 
+export type ReportEmailInput = {
+  reportId: string;
+  contentType: "POST" | "COMMENT";
+  contentId: string;
+  contentText: string;
+  reporterName: string;
+  reporterEmail: string;
+  timestamp: Date;
+};
+
+export function buildReportEmail(input: ReportEmailInput): BuiltEmail {
+  const { reportId, contentType, contentId, contentText, reporterName, reporterEmail, timestamp } = input;
+  const label = contentType === "POST" ? "Post" : "Comment";
+  const dateStr = timestamp.toISOString();
+
+  return {
+    subject: `[Report] ${label} reported by ${reporterName}`,
+    html: `
+      <h1>Content reported</h1>
+      <p><strong>Type:</strong> ${label}</p>
+      <p><strong>Content ID:</strong> ${contentId}</p>
+      <p><strong>Report ID:</strong> ${reportId}</p>
+      <p><strong>Reporter:</strong> ${reporterName} &lt;${reporterEmail}&gt;</p>
+      <p><strong>Reported at:</strong> ${dateStr}</p>
+      <hr />
+      <p><strong>Content:</strong></p>
+      <blockquote style="margin:12px 0;padding:12px;background:#f9f9f9;border-left:4px solid #ccc;">
+        ${contentText}
+      </blockquote>
+    `,
+  };
+}
+
 // lib/email/builders.ts
 export function buildCommentNotificationEmail(
   actorName: string,

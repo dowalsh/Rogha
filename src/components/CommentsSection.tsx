@@ -6,6 +6,8 @@ import { Trash2 } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { useLike } from "@/hooks/useLike";
 import { LikeButton } from "./LikeButton";
+import { ContentOverflowMenu } from "./ContentOverflowMenu";
+import toast from "react-hot-toast";
 import type { AudienceType } from "@/types/index";
 
 interface Author {
@@ -32,11 +34,12 @@ function CommentItem({
   depth = 0,
 }: {
   comment: CommentType;
-  onReply: (parentId: string, content: string) => void;
+  onReply: (parentId: string, content: string) => Promise<{ ok: boolean; error?: string }>;
   onDelete: (id: string, parentId?: string) => void;
   currentUserId: string | null;
   depth?: number;
 }) {
+  const [reported, setReported] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [reply, setReply] = useState("");
 
@@ -49,10 +52,16 @@ function CommentItem({
 
   async function handleSubmitReply() {
     if (!reply.trim()) return;
-    await onReply(comment.id, reply);
-    setReply("");
-    setShowReply(false);
+    const { ok, error } = await onReply(comment.id, reply);
+    if (ok) {
+      setReply("");
+      setShowReply(false);
+    } else {
+      toast.error(error ?? "Failed to post reply. Please try again.");
+    }
   }
+
+  if (reported) return null;
 
   return (
     <div id={`comment-${comment.id}`} className="space-y-2 scroll-mt-60">
@@ -80,7 +89,7 @@ function CommentItem({
               onToggle={toggle}
               fetchLikersUrl={`/api/comments/${comment.id}/likes`}
             />
-            {currentUserId === comment.author.id && (
+            {currentUserId === comment.author.id ? (
               <button
                 onClick={() => onDelete(comment.id, undefined)}
                 className="text-muted-foreground hover:text-destructive transition-colors"
@@ -88,7 +97,13 @@ function CommentItem({
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
-            )}
+            ) : currentUserId ? (
+              <ContentOverflowMenu
+                contentType="COMMENT"
+                contentId={comment.id}
+                onReported={() => setReported(true)}
+              />
+            ) : null}
           </div>
         </div>
       </div>
@@ -206,10 +221,11 @@ export default function CommentsSection({
     if (!newComment.trim() || submitting) return;
     setSubmitting(true);
 
+    const text = newComment;
     const tempId = `temp-${Date.now()}`;
     const optimisticComment: CommentType = {
       id: tempId,
-      content: newComment,
+      content: text,
       createdAt: new Date().toISOString(),
       author: { id: "me", name: "You", image: "/placeholder-user.jpg" },
       replies: [],
@@ -217,36 +233,37 @@ export default function CommentsSection({
       likedByMe: false,
     };
 
-    // show comment immediately
     setComments((prev) => [...prev, optimisticComment]);
-    setNewComment("");
 
     try {
       const res = await fetch(`/api/posts/${postId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newComment }),
+        body: JSON.stringify({ content: text }),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
       const created = await res.json();
 
-      // ✅ Replace the optimistic one, don't append
       setComments((prev) =>
         prev.map((c) =>
           c.id === tempId ? { ...created, likeCount: 0, likedByMe: false } : c
         )
       );
-    } catch (err) {
+      setNewComment("");
+    } catch (err: any) {
       console.error("Failed to post comment:", err);
       setComments((prev) => prev.filter((c) => c.id !== tempId));
-      alert("Failed to post comment. Please try again.");
+      toast.error(err.message ?? "Failed to post comment. Please try again.");
     } finally {
       setSubmitting(false);
     }
   }
-  async function addReply(parentId: string, content: string) {
-    if (!content.trim()) return;
+  async function addReply(parentId: string, content: string): Promise<{ ok: boolean; error?: string }> {
+    if (!content.trim()) return { ok: false };
 
     const tempId = `temp-${Date.now()}`;
     const optimisticReply: CommentType = {
@@ -259,7 +276,6 @@ export default function CommentsSection({
       likedByMe: false,
     };
 
-    // 🟢 Show immediately
     setComments((prev) =>
       prev.map((c) =>
         c.id === parentId
@@ -275,10 +291,12 @@ export default function CommentsSection({
         body: JSON.stringify({ content, parentId }),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
       const created = await res.json();
 
-      // ✅ Replace temp reply with real one
       setComments((prev) =>
         prev.map((c) =>
           c.id === parentId
@@ -293,10 +311,9 @@ export default function CommentsSection({
             : c
         )
       );
-    } catch (err) {
+      return { ok: true };
+    } catch (err: any) {
       console.error("Failed to post reply:", err);
-
-      // ❌ Roll back on failure
       setComments((prev) =>
         prev.map((c) =>
           c.id === parentId
@@ -304,6 +321,7 @@ export default function CommentsSection({
             : c
         )
       );
+      return { ok: false, error: err.message };
     }
   }
 

@@ -9,6 +9,7 @@ import { createCommentNotification } from "@/actions/notification.action";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { requirePostAccess } from "@/lib/access/postAccess";
+import { isContentBlocked } from "@/lib/contentFilter";
 
 // GET top-level comments (with replies) for a post
 export async function GET(
@@ -33,16 +34,32 @@ export async function GET(
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
+    // Fetch reported comment IDs for this viewer to exclude them
+    const reportedCommentIds = await prisma.report
+      .findMany({
+        where: { reporterId: user.id, contentType: "COMMENT" },
+        select: { contentId: true },
+      })
+      .then((rows) => rows.map((r) => r.contentId));
+
+    const excludeFilter = (extraIds: string[]) => {
+      const ids = [...reportedCommentIds, ...extraIds];
+      return ids.length > 0 ? { NOT: { id: { in: ids } } } : {};
+    };
+
     const comments = await prisma.comment.findMany({
       where: {
         postId,
-        parentCommentId: null, // only top-level comments
+        parentCommentId: null,
+        status: "ACTIVE",
+        ...excludeFilter([]),
       },
       include: {
         author: { select: { id: true, name: true, image: true } },
         _count: { select: { likes: true } },
         likes: { where: { userId: user.id }, select: { id: true } },
         replies: {
+          where: { status: "ACTIVE", ...excludeFilter([]) },
           include: {
             author: { select: { id: true, name: true, image: true } },
             _count: { select: { likes: true } },
@@ -120,6 +137,13 @@ export async function POST(
     if (!content) {
       console.warn("[COMMENTS_POST] missing content");
       return NextResponse.json({ error: "Missing content" }, { status: 400 });
+    }
+
+    if (isContentBlocked(content)) {
+      return NextResponse.json(
+        { error: "This comment contains language that may violate our community standards." },
+        { status: 422 },
+      );
     }
 
     // prevent >2 levels deep

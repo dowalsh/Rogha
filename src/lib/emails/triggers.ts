@@ -3,6 +3,8 @@ import { sendEmail } from "./sender";
 import {
   buildCommentNotificationEmail,
   buildPostSubmittedEmail,
+  buildReportEmail,
+  type ReportEmailInput,
 } from "./builders";
 import { prisma } from "@/lib/prisma";
 import { getAcceptedFriendRecipients } from "../friends";
@@ -142,6 +144,17 @@ export async function triggerPublishedEditionEmail() {
   }
 
   return { sent };
+}
+
+const DEVELOPER_EMAIL = "dylanwitsend@gmail.com";
+
+export async function triggerReportEmail(input: ReportEmailInput): Promise<void> {
+  try {
+    const email = buildReportEmail(input);
+    await sendEmail({ to: DEVELOPER_EMAIL, subject: email.subject, html: email.html });
+  } catch (err) {
+    console.error("[REPORT_EMAIL_ERROR]", err);
+  }
 }
 
 type CommentEmailInput = {

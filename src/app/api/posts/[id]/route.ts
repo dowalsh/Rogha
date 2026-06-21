@@ -7,6 +7,7 @@ import { getDbUser } from "@/lib/getDbUser";
 import { createSubmitNotifications } from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { canViewPost } from "@/lib/access/postAccess";
+import { isContentBlocked, extractTextFromDoc } from "@/lib/contentFilter";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -83,6 +84,23 @@ export async function GET(
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
+    // Hide from reporter
+    if (user) {
+      const report = await prisma.report.findUnique({
+        where: {
+          contentType_contentId_reporterId: {
+            contentType: "POST",
+            contentId: id,
+            reporterId: user.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (report) {
+        return NextResponse.json({ error: "Not Found" }, { status: 404 });
+      }
+    }
+
     console.log("[GET] Returning post to authorized viewer");
     return NextResponse.json(baseResponse, { status: 200 });
   } catch (error) {
@@ -125,6 +143,17 @@ export async function PUT(
         { error: "circleId required for CIRCLE" },
         { status: 400 },
       );
+    }
+
+    // Content filter — only on submission (not every autosave keystroke)
+    if (body.status === "SUBMITTED") {
+      const bodyText = extractTextFromDoc(body.content);
+      if (isContentBlocked(body.title, bodyText)) {
+        return NextResponse.json(
+          { error: "This post contains language that may violate our community standards." },
+          { status: 422 },
+        );
+      }
     }
 
     const baseUpdate: any = {

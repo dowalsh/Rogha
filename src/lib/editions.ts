@@ -241,8 +241,17 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     },
   });
 
-  // Temporal gate: FRIENDS posts are only visible if friendship predates the post
+  // Reported post IDs for this viewer
+  const reportedPostIds = await prisma.report
+    .findMany({
+      where: { reporterId: user.id, contentType: "POST" },
+      select: { contentId: true },
+    })
+    .then((rows) => new Set(rows.map((r) => r.contentId)));
+
+  // Temporal gate + reporter exclusion
   const visiblePosts = posts.filter((p) => {
+    if (reportedPostIds.has(p.id)) return false;
     if (p.authorId === user.id) return true;
     if (p.audienceType === "ALL_USERS") return true;
     if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query

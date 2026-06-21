@@ -43,9 +43,11 @@ export default async function RootLayout({
 }) {
   // // 👇 Only run this lazy sync in development
 
-  const user = await currentUser();
+  const user = await currentUser().catch((err) => {
+    console.error("[layout] currentUser() failed:", err);
+    return null;
+  });
   if (user) {
-    // pass the Clerk user directly
     await upsertClerkUser(user);
   }
 

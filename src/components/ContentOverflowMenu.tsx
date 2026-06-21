@@ -64,7 +64,7 @@ export function ContentOverflowMenu({
         setDialog(null);
         onReported();
         onBlocked();
-        toast.success(`Reported and ${authorName} has been blocked.`);
+        toast.success(`Reported. ${authorName} has been blocked.`);
       } else {
         setDialog(null);
         onReported();
@@ -90,7 +90,7 @@ export function ContentOverflowMenu({
       onBlocked();
       toast.success(`${authorName} has been blocked.`);
     } catch {
-      toast.error("Failed to block user. Please try again.");
+      toast.error("Failed to block this user. Please try again.");
     } finally {
       setLoading(false);
     }

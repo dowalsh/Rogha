@@ -106,6 +106,13 @@ export async function getDbUserId() {
   return user.id;
 }
 
+export async function checkIsAdmin(): Promise<boolean> {
+  const { userId: clerkId } = await auth();
+  if (!clerkId) return false;
+  const user = await getUserByClerkId(clerkId);
+  return user?.role === "ADMIN";
+}
+
 /**
  * Suggest 3 random users excluding self & already-followed
  */

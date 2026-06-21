@@ -9,6 +9,7 @@ import {
   NotebookPen,
   Info,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +30,10 @@ type MobileNavbarProps = {
   isLoaded: boolean;
   isSignedIn: boolean | undefined;
   user: UserResource | null | undefined;
+  isAdmin: boolean;
 };
 
-function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
+function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isNative] = useState(() => Capacitor.isNativePlatform());
   const { signOut } = useClerk();
@@ -149,6 +151,19 @@ function MobileNavbar({ isLoaded, isSignedIn, user }: MobileNavbarProps) {
                     Settings
                   </Link>
                 </Button>
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-3 justify-start"
+                    onClick={handleNavClick}
+                    asChild
+                  >
+                    <Link href="/admin">
+                      <ShieldCheck className="w-4 h-4" />
+                      Admin
+                    </Link>
+                  </Button>
+                )}
                 {/* <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start"

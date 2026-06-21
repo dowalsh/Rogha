@@ -7,6 +7,7 @@ import {
   Blend,
   Info,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -21,9 +22,10 @@ type DesktopNavbarProps = {
   isLoaded: boolean;
   isSignedIn: boolean | undefined;
   user: UserResource | null | undefined;
+  isAdmin: boolean;
 };
 
-function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
+function DesktopNavbar({ isLoaded, isSignedIn, user, isAdmin }: DesktopNavbarProps) {
   const [isNative] = useState(() => Capacitor.isNativePlatform());
 
   // useEffect(() => {
@@ -103,6 +105,14 @@ function DesktopNavbar({ isLoaded, isSignedIn, user }: DesktopNavbarProps) {
               <span className="hidden lg:inline">Settings</span>
             </Link>
           </Button>
+          {isAdmin && (
+            <Button variant="ghost" className="flex items-center gap-2" asChild>
+              <Link href="/admin">
+                <ShieldCheck className="w-4 h-4" />
+                <span className="hidden lg:inline">Admin</span>
+              </Link>
+            </Button>
+          )}
           <UserButton />
         </>
       ) : isNative ? (

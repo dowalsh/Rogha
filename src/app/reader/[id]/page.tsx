@@ -336,6 +336,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       <hr className="my-8 border-t border-muted" />
       <CommentsSection
         postId={post.id}
+        postAuthorId={post.author?.id ?? ""}
         postAuthorName={post.author?.name ?? "post author"}
         postAudienceType={post.audienceType}
       />

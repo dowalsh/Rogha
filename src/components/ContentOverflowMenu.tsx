@@ -25,7 +25,7 @@ type Props = {
   onBlocked: () => void;
 };
 
-type Dialog = "report" | "block" | null;
+type Dialog = "report" | "block" | "block_after_report" | null;
 
 export function ContentOverflowMenu({
   contentType,
@@ -53,9 +53,8 @@ export function ContentOverflowMenu({
         body: JSON.stringify({ contentType, contentId }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setDialog(null);
       onReported();
-      toast.success("Thanks — we've received your report.");
+      setDialog("block_after_report");
     } catch {
       toast.error("Failed to submit report. Please try again.");
     } finally {
@@ -64,6 +63,7 @@ export function ContentOverflowMenu({
   }
 
   async function handleConfirmBlock() {
+    const fromReport = dialog === "block_after_report";
     setLoading(true);
     try {
       const res = await fetch("/api/blocks", {
@@ -74,7 +74,11 @@ export function ContentOverflowMenu({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDialog(null);
       onBlocked();
-      toast.success(`${authorName} has been blocked.`);
+      if (fromReport) {
+        toast.success(`Report submitted and ${authorName} has been blocked.`);
+      } else {
+        toast.success(`${authorName} has been blocked.`);
+      }
     } catch {
       toast.error("Failed to block user. Please try again.");
     } finally {
@@ -130,6 +134,32 @@ export function ContentOverflowMenu({
             <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmReport} disabled={loading}>
               {loading ? "Reporting…" : "Report"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Block prompt after report */}
+      <AlertDialog
+        open={dialog === "block_after_report"}
+        onOpenChange={(o) => {
+          if (!o && dialog === "block_after_report") {
+            setDialog(null);
+            toast.success("Thanks — we've received your report.");
+          }
+        }}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Report submitted</AlertDialogTitle>
+            <AlertDialogDescription>
+              Would you also like to block {authorName}? Their content will no longer appear for you.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>No thanks</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmBlock} disabled={loading}>
+              {loading ? "Blocking…" : `Block ${authorName}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

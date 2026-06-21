@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -176,13 +177,16 @@ function CommentItem({
 
 export default function CommentsSection({
   postId,
+  postAuthorId,
   postAuthorName,
   postAudienceType,
 }: {
   postId: string;
+  postAuthorId: string;
   postAuthorName: string;
-  postAudienceType: AudienceType; // <- type
+  postAudienceType: AudienceType;
 }) {
+  const router = useRouter();
   const [comments, setComments] = useState<CommentType[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
   const [newComment, setNewComment] = useState("");
@@ -191,6 +195,10 @@ export default function CommentsSection({
   const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
 
   function handleBlocked(authorId: string) {
+    if (authorId === postAuthorId) {
+      router.replace("/");
+      return;
+    }
     setBlockedAuthorIds((prev) => new Set(Array.from(prev).concat(authorId)));
   }
 

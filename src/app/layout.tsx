@@ -12,6 +12,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import DeepLinkInit from "@/components/DeepLinkInit";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
+import TermsGate from "@/components/TermsGate";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -42,9 +43,11 @@ export default async function RootLayout({
 }) {
   // // 👇 Only run this lazy sync in development
 
-  const user = await currentUser();
+  const user = await currentUser().catch((err) => {
+    console.error("[layout] currentUser() failed:", err);
+    return null;
+  });
   if (user) {
-    // pass the Clerk user directly
     await upsertClerkUser(user);
   }
 
@@ -80,7 +83,9 @@ export default async function RootLayout({
                 )}
                 <Navbar />
                 <main className="py-8">
-                  <div className="max-w-7xl mx-auto px-4">{children}</div>
+                  <div className="max-w-7xl mx-auto px-4">
+                    <TermsGate>{children}</TermsGate>
+                  </div>
                 </main>
               </div>
               <Toaster />

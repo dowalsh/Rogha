@@ -25,7 +25,7 @@ type Props = {
   onBlocked: () => void;
 };
 
-type Dialog = "report" | "block" | "block_after_report" | null;
+type Dialog = "report" | "block" | null;
 
 export function ContentOverflowMenu({
   contentType,
@@ -44,7 +44,7 @@ export function ContentOverflowMenu({
     setDialog(d);
   }
 
-  async function handleConfirmReport() {
+  async function handleReport(alsoBlock: boolean) {
     setLoading(true);
     try {
       const res = await fetch("/api/reports", {
@@ -53,17 +53,31 @@ export function ContentOverflowMenu({
         body: JSON.stringify({ contentType, contentId }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      onReported();
-      setDialog("block_after_report");
+
+      if (alsoBlock) {
+        const blockRes = await fetch("/api/blocks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blockedId: authorId }),
+        });
+        if (!blockRes.ok) throw new Error(`HTTP ${blockRes.status}`);
+        setDialog(null);
+        onReported();
+        onBlocked();
+        toast.success(`Reported and ${authorName} has been blocked.`);
+      } else {
+        setDialog(null);
+        onReported();
+        toast.success("Thanks — we've received your report.");
+      }
     } catch {
-      toast.error("Failed to submit report. Please try again.");
+      toast.error("Failed to submit. Please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleConfirmBlock() {
-    const fromReport = dialog === "block_after_report";
     setLoading(true);
     try {
       const res = await fetch("/api/blocks", {
@@ -74,17 +88,15 @@ export function ContentOverflowMenu({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDialog(null);
       onBlocked();
-      if (fromReport) {
-        toast.success(`Report submitted and ${authorName} has been blocked.`);
-      } else {
-        toast.success(`${authorName} has been blocked.`);
-      }
+      toast.success(`${authorName} has been blocked.`);
     } catch {
       toast.error("Failed to block user. Please try again.");
     } finally {
       setLoading(false);
     }
   }
+
+  const label = contentType === "POST" ? "post" : "comment";
 
   return (
     <>
@@ -120,52 +132,38 @@ export function ContentOverflowMenu({
         </PopoverContent>
       </Popover>
 
-      {/* Report confirm */}
+      {/* Consolidated report dialog */}
       <AlertDialog open={dialog === "report"} onOpenChange={(o) => !o && setDialog(null)}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Report this content?</AlertDialogTitle>
+            <AlertDialogTitle>Report this {label}?</AlertDialogTitle>
             <AlertDialogDescription>
-              We'll review it and take action if it violates our guidelines. This
-              {contentType === "POST" ? " post" : " comment"} will be hidden from your view immediately.
+              We'll review it and take action if it violates our guidelines. The {label} will be hidden from your view immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmReport} disabled={loading}>
-              {loading ? "Reporting…" : "Report"}
+          <AlertDialogFooter className="flex-col sm:flex-col gap-2">
+            <AlertDialogAction
+              onClick={() => handleReport(true)}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? "Submitting…" : `Report and block ${authorName}`}
             </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => handleReport(false)}
+              disabled={loading}
+              className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            >
+              {loading ? "Submitting…" : "Report only"}
+            </AlertDialogAction>
+            <AlertDialogCancel disabled={loading} className="w-full mt-0">
+              Cancel
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Block prompt after report */}
-      <AlertDialog
-        open={dialog === "block_after_report"}
-        onOpenChange={(o) => {
-          if (!o && dialog === "block_after_report") {
-            setDialog(null);
-            toast.success("Thanks — we've received your report.");
-          }
-        }}
-      >
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Report submitted</AlertDialogTitle>
-            <AlertDialogDescription>
-              Would you also like to block {authorName}? Their content will no longer appear for you.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>No thanks</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmBlock} disabled={loading}>
-              {loading ? "Blocking…" : `Block ${authorName}`}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Block confirm */}
+      {/* Block only confirm */}
       <AlertDialog open={dialog === "block"} onOpenChange={(o) => !o && setDialog(null)}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>

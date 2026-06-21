@@ -108,6 +108,24 @@ export default function TermsPage() {
           from your device.
         </p>
 
+        <h2 className="text-xl font-serif pt-4">User-Generated Content and Conduct</h2>
+
+        <p>
+          The Application lets users create and share content. By using the Application
+          you agree not to post or transmit content that is objectionable, including
+          content that is unlawful, harassing, abusive, threatening, obscene,
+          defamatory, or hateful. There is zero tolerance for objectionable content or
+          abusive behavior toward other users.
+        </p>
+
+        <p>
+          You are responsible for the content you create. The Service Provider may
+          remove any content and may suspend or remove any user who violates these
+          terms, at any time and without notice. The Application provides tools to
+          report objectionable content and to block abusive users; reports are reviewed
+          and acted on within 24 hours.
+        </p>
+
         <h2 className="text-xl font-serif pt-4">Changes to These Terms and Conditions</h2>
 
         <p>

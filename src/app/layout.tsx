@@ -12,6 +12,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import DeepLinkInit from "@/components/DeepLinkInit";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
+import TermsGate from "@/components/TermsGate";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -80,7 +81,9 @@ export default async function RootLayout({
                 )}
                 <Navbar />
                 <main className="py-8">
-                  <div className="max-w-7xl mx-auto px-4">{children}</div>
+                  <div className="max-w-7xl mx-auto px-4">
+                    <TermsGate>{children}</TermsGate>
+                  </div>
                 </main>
               </div>
               <Toaster />

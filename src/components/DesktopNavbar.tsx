@@ -16,6 +16,7 @@ import type { UserResource } from "@clerk/types";
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
+import { getAppOrigin } from "@/lib/mobile/appOrigin";
 // import { getUnreadCount } from "@/actions/notification.action";
 
 type DesktopNavbarProps = {
@@ -120,7 +121,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user, isAdmin }: DesktopNavbarPro
           variant="default"
           onClick={() =>
             Browser.open({
-              url: "https://rogha.dylanwalsh.ie/sign-in?fromApp=1",
+              url: `${getAppOrigin()}/sign-in?fromApp=1`,
               presentationStyle: "popover",
             })
           }

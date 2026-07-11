@@ -24,6 +24,7 @@ import { SignInButton, useClerk } from "@clerk/nextjs";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import Link from "next/link";
+import { getAppOrigin } from "@/lib/mobile/appOrigin";
 import type { UserResource } from "@clerk/types";
 
 type MobileNavbarProps = {
@@ -193,7 +194,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
                 onClick={() => {
                   setShowMobileMenu(false);
                   Browser.open({
-                    url: "https://rogha.dylanwalsh.ie/sign-in?fromApp=1",
+                    url: `${getAppOrigin()}/sign-in?fromApp=1`,
                     presentationStyle: "popover",
                   });
                 }}

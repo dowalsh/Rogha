@@ -51,7 +51,7 @@ Even solo, open a PR rather than merging locally — it gives you a diff review,
 
 Every branch auto-deploys a Vercel preview. Keep branches focused enough that the preview answers a single question: *does this feature work?*
 
-Full detail — Clerk key scoping, the shared-database nuance, why you must **never sign in on preview with your real production email**, and the webhook/lazy-sync behavior — lives in [preview-testing.md](./preview-testing.md). Read it before your first preview test session.
+Preview is fully isolated from production: its own Clerk **dev instance** and its own **separate Prisma Postgres database**, so testing never touches real users or data. Full detail — the authoritative Vercel env-var scoping, the database separation, admin-role promotion, and webhook/lazy-sync behavior — lives in [preview-testing.md](./preview-testing.md). Read it before your first preview test session.
 
 ## Quick reference
 

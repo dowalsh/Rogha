@@ -5,6 +5,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { useClerk } from "@clerk/nextjs";
+import { getAppOrigin } from "@/lib/mobile/appOrigin";
 
 function safeRedirect(value: string | null | undefined): string {
   if (!value) return "/";
@@ -61,7 +62,7 @@ function SignInInner() {
         return;
       }
       browserOpenedRef.current = true;
-      const url = `https://rogha.dylanwalsh.ie/sign-in?fromApp=1&redirect=${encodeURIComponent(redirect)}`;
+      const url = `${getAppOrigin()}/sign-in?fromApp=1&redirect=${encodeURIComponent(redirect)}`;
       console.log("[Rogha debug] sign-in/page: calling Browser.open →", url);
       Browser.open({ url, presentationStyle: "popover" })
         .then(() => console.log("[Rogha debug] sign-in/page: Browser.open resolved"))

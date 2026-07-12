@@ -42,6 +42,9 @@ These are the two things that make preview safe and functional. They are intenti
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_live_…` | `pk_test_…` |
 | `CLERK_SECRET_KEY` | `sk_live_…` | `sk_test_…` |
 | `DATABASE_URL` | prod Prisma Postgres Accelerate URL — `prisma+postgres://accelerate.prisma-data.net/?api_key=<PROD_KEY>` | **separate** staging Prisma Postgres Accelerate URL — `prisma+postgres://accelerate.prisma-data.net/?api_key=<STAGING_KEY>` |
+| `NEXT_PUBLIC_APP_SCHEME` | unset → defaults to `rogha` | `roghapreview` |
+
+`NEXT_PUBLIC_APP_SCHEME` drives the native auth deep-link scheme (`<scheme>://auth`) emitted/parsed by the web app (`src/lib/mobile/appScheme.ts`). It must match the URL scheme the paired iOS build registers (`CUSTOM_URL_SCHEME` build setting: `rogha` for prod, `roghapreview` for the preview build). Default `rogha` makes it a no-op for production. See [specs/ios-preview-app.md](./specs/ios-preview-app.md).
 
 Notes:
 - **Clerk:** live instances are bound to the custom domain (`clerk.rogha.dylanwalsh.ie` / `accounts.rogha.dylanwalsh.ie`) and will *not* authenticate from a `*.vercel.app` host. Dev-instance keys aren't domain-locked, which is the only reason sign-in works on preview at all.
@@ -123,6 +126,15 @@ You'll need to re-do this whenever the staging DB is reset/recreated (it starts 
 - **`next.config.mjs` redirect** only matches `rogha.vercel.app` and true subdomains of it — *not*
   Vercel's `*-git-*-*.vercel.app` preview hostnames — so it does not interfere with previews. Rule it out
   only if the preview URL scheme changes.
+- **Push notifications don't work on the TestFlight preview app.** TestFlight distribution forces
+  **production** APNs device tokens, but the staging deployment (`VERCEL_ENV="preview"`) sends via the
+  **sandbox** APNs host (`src/lib/push/sender.ts` keys `production` off `VERCEL_ENV === "production"`).
+  Production token + sandbox send = mismatch, so push is a dead end on preview. This is expected — push
+  isn't validated on preview. (Note: prod is fine — Xcode rewrites `aps-environment` to `production` on
+  archive, so the App Store build's tokens match the prod server's production sends, despite the source
+  `App.entitlements` saying `development`.) Making push work on preview would require keying the APNs
+  `production` flag off how the build was distributed rather than `VERCEL_ENV`, plus handling the APNs
+  topic = bundle-ID difference for the `.preview` build — not worth it unless testing push on device.
 
 ## Gotchas checklist
 

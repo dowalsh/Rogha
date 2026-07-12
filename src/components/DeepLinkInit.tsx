@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { Capacitor } from "@capacitor/core";
 import { initDeepLinks } from "@/lib/mobile/deep-links";
+import { APP_SCHEME } from "@/lib/mobile/appScheme";
 
 export default function DeepLinkInit() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function DeepLinkInit() {
       }
 
       // Custom scheme — auth return with ticket and optional redirect destination
-      const parsed = new URL(url.replace("rogha://", "https://rogha.placeholder/"));
+      const parsed = new URL(url.replace(`${APP_SCHEME}://`, "https://rogha.placeholder/"));
       const ticket = parsed.searchParams.get("ticket");
       const redirect = parsed.searchParams.get("redirect") ?? "/";
 

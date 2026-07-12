@@ -2,6 +2,7 @@ import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import type { PluginListenerHandle } from "@capacitor/core";
+import { APP_SCHEME } from "@/lib/mobile/appScheme";
 
 export type DeepLinkEvent = CustomEvent<{ url: string }>;
 
@@ -13,11 +14,11 @@ function handleDeepLink(url: string) {
     return;
   }
 
-  if (!url.startsWith("rogha://")) return;
+  if (!url.startsWith(`${APP_SCHEME}://`)) return;
 
   // Capacitor replays the cached launch URL to every new appUrlOpen listener. For auth
   // return URLs this causes a reload loop — dedup them. Regular deep links don't need this.
-  if (url.startsWith("rogha://auth")) {
+  if (url.startsWith(`${APP_SCHEME}://auth`)) {
     const lastHandled = sessionStorage.getItem("rogha_deep_link_last");
     if (lastHandled === url) return;
     sessionStorage.setItem("rogha_deep_link_last", url);
@@ -38,9 +39,9 @@ export async function initDeepLinks(): Promise<PluginListenerHandle | null> {
 
   const launchUrl = await App.getLaunchUrl();
   console.log("[Rogha debug] getLaunchUrl:", launchUrl?.url ?? "(none)");
-  // Skip rogha://auth* — auth return URLs are not cold-launch destinations, and Capacitor
+  // Skip <scheme>://auth* — auth return URLs are not cold-launch destinations, and Capacitor
   // caches getLaunchUrl for the entire app session so we'd re-process stale auth tickets.
-  if (launchUrl?.url && !launchUrl.url.startsWith("rogha://auth")) {
+  if (launchUrl?.url && !launchUrl.url.startsWith(`${APP_SCHEME}://auth`)) {
     handleDeepLink(launchUrl.url);
   }
 

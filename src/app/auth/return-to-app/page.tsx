@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Spinner } from "@/components/Spinner";
+import { APP_SCHEME } from "@/lib/mobile/appScheme";
 
 function ReturnToAppInner() {
   const params = useSearchParams();
@@ -22,19 +23,19 @@ function ReturnToAppInner() {
         .then(({ token, error }) => {
           if (error) {
             console.error("[Rogha debug] return-to-app: mobile-ticket error:", error);
-            window.location.href = `rogha://auth?redirect=${encodeURIComponent(redirect)}`;
+            window.location.href = `${APP_SCHEME}://auth?redirect=${encodeURIComponent(redirect)}`;
             return;
           }
-          console.log("[Rogha debug] return-to-app: got ticket, redirecting to rogha://auth");
-          window.location.href = `rogha://auth?ticket=${token}&redirect=${encodeURIComponent(redirect)}`;
+          console.log(`[Rogha debug] return-to-app: got ticket, redirecting to ${APP_SCHEME}://auth`);
+          window.location.href = `${APP_SCHEME}://auth?ticket=${token}&redirect=${encodeURIComponent(redirect)}`;
         })
         .catch((err) => {
           console.error("[Rogha debug] return-to-app: mobile-ticket fetch failed:", err);
-          window.location.href = `rogha://auth?redirect=${encodeURIComponent(redirect)}`;
+          window.location.href = `${APP_SCHEME}://auth?redirect=${encodeURIComponent(redirect)}`;
         });
     } else {
-      console.log("[Rogha debug] return-to-app: non-app flow, redirecting to rogha://auth");
-      window.location.href = "rogha://auth";
+      console.log(`[Rogha debug] return-to-app: non-app flow, redirecting to ${APP_SCHEME}://auth`);
+      window.location.href = `${APP_SCHEME}://auth`;
     }
   }, [fromApp]);
 
@@ -43,7 +44,7 @@ function ReturnToAppInner() {
       <Spinner className="h-8 w-8" />
       <p className="text-sm text-muted-foreground">Opening Rogha…</p>
       <a
-        href="rogha://auth"
+        href={`${APP_SCHEME}://auth`}
         className="text-xs text-muted-foreground underline underline-offset-4"
       >
         Tap here if the app doesn't open

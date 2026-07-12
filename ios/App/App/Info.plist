@@ -60,7 +60,7 @@
 		<string>ie.dylanwalsh.rogha</string>
 		<key>CFBundleURLSchemes</key>
 		<array>
-		<string>rogha</string>
+		<string>$(CUSTOM_URL_SCHEME)</string>
 		</array>
 	</dict>
 	</array>

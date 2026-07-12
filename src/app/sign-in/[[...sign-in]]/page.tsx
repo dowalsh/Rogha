@@ -35,12 +35,18 @@ function SignInInner() {
   // showing the sign-in form — otherwise Clerk auto-redirects without prompting.
   // Start as false for fromApp so we wait for Clerk to fully load first.
   const [sessionCleared, setSessionCleared] = useState(false);
+  // Guards the pre-existing-session check below to run at most once per page load.
+  // Without this, the effect re-fires the instant sign-in creates a fresh session
+  // (since it's in the deps array) and signs that one out too, looping forever.
+  const initialSessionCheckedRef = useRef(false);
 
   console.log("[Rogha debug] sign-in/page: isNative:", isNative, "fromApp:", fromApp, "redirect:", redirect);
 
   useEffect(() => {
     if (!fromApp) { setSessionCleared(true); return; }
     if (!isLoaded) return; // wait for Clerk to finish initialising before trusting session state
+    if (initialSessionCheckedRef.current) return;
+    initialSessionCheckedRef.current = true;
     if (session) {
       console.log("[Rogha debug] sign-in/page: fromApp session found, signing out first");
       // Persist fromApp + redirect in sessionStorage before signOut — Clerk's redirectUrl

@@ -45,8 +45,19 @@ function SignInInner() {
   useEffect(() => {
     if (!fromApp) { setSessionCleared(true); return; }
     if (!isLoaded) return; // wait for Clerk to finish initialising before trusting session state
-    if (initialSessionCheckedRef.current) return;
+
+    if (initialSessionCheckedRef.current) {
+      // Initial check already ran. If the lingering session we signed out has
+      // since cleared, reveal the form. Never sign out a *freshly created*
+      // session here — that's the sign-in we're waiting for (forceRedirectUrl
+      // carries it on to /auth/return-to-app). This recovery matters on the dev
+      // instance, where signOut clears in place without a hard reload, so the
+      // component never remounts to re-evaluate.
+      if (!session) setSessionCleared(true);
+      return;
+    }
     initialSessionCheckedRef.current = true;
+
     if (session) {
       console.log("[Rogha debug] sign-in/page: fromApp session found, signing out first");
       // Persist fromApp + redirect in sessionStorage before signOut — Clerk's redirectUrl

@@ -2,16 +2,22 @@
 
 A short, opinionated guide to how we branch, commit, and ship in **rogha**. The goal: `main` is always deployable, every feature is testable in isolation via its own Vercel preview, and history stays readable.
 
-## The model: one branch per feature
+## The model: feature branches through a staging branch
 
-We use **GitHub Flow** — short-lived feature branches off `main`, merged back via PR.
+We use **GitHub Flow with one long-lived exception: `staging`.**
 
 - `main` is production. It is always in a deployable state. Never commit directly to it.
-- Every unit of work gets its own branch off the latest `main`.
-- Push the branch → Vercel builds **one preview URL for that one branch**. Test the feature there (see [preview-testing.md](./preview-testing.md) for the full rundown of Clerk keys, the shared-DB nuance, and gotchas).
-- Open a PR, review the diff, let checks run, merge, delete the branch.
+- `staging` is a long-lived branch with a **stable** Vercel preview URL (`*-git-staging-*.vercel.app`). It exists because the native (iOS/Capacitor) app's `CAP_SERVER_URL` has to point at one fixed URL to test the native sign-in/deep-link flow — a fresh per-feature preview URL doesn't work for that. In practice, since most changes eventually need native verification, `staging` is the default path for nearly everything, not an edge case.
+- Every unit of work still gets its own short-lived branch, but now branched off the latest `staging` (not `main`):
+  1. `git checkout staging && git pull && git checkout -b feat/thing`
+  2. Push the branch → Vercel builds **its own preview URL** too, for a quick web-only check before native testing.
+  3. Merge into `staging` (PR or local merge) → `staging`'s stable URL updates.
+  4. Point a native build's `CAP_SERVER_URL` at the staging URL and verify the real native flow.
+  5. Once verified, fast-forward `main` from `staging` (`git checkout main && git merge staging && git push`) to ship.
 
-**Do not** create long-lived branches (e.g. `v3`) that accumulate many unrelated features. They drift from `main`, make merges painful, and produce previews that are a soup of half-finished work you can't test independently. Keep branches small — ideally hours to a few days, not weeks. If a feature is large, split it into stackable pieces.
+**Keep the gap between "merge to staging" and "promote to main" short.** If several features land on `staging` at once and only one is ready to ship, you can't cleanly promote just that one — the usual long-lived-branch drift problem, just contained to one branch instead of `main` itself. Don't let unrelated half-finished work pile up there.
+
+**Do not** create *additional* long-lived branches (e.g. `v3`) beyond `staging`. They drift, make merges painful, and produce previews that are a soup of half-finished work you can't test independently. Keep feature branches small — ideally hours to a few days, not weeks. If a feature is large, split it into stackable pieces.
 
 ## Branch naming
 
@@ -56,8 +62,8 @@ Preview is fully isolated from production: its own Clerk **dev instance** and it
 ## Quick reference
 
 ```bash
-# start a feature
-git checkout main
+# start a feature — branch off staging, not main
+git checkout staging
 git pull
 git checkout -b feat/comment-reactions
 
@@ -68,12 +74,19 @@ git commit -m "Add reaction picker to comments"
 # push → Vercel builds a preview URL for this branch
 git push -u origin feat/comment-reactions
 
-# open a PR, test on the preview, squash-merge, then:
-git checkout main
-git pull
+# merge into staging (PR or local), then test natively against
+# staging's stable preview URL (CAP_SERVER_URL=<staging preview url>)
+git checkout staging
+git merge feat/comment-reactions
+git push
 git branch -d feat/comment-reactions
+
+# once verified on native, promote to prod
+git checkout main
+git merge staging
+git push
 ```
 
 ## TL;DR
 
-One short-lived branch per feature off `main`. Name it `type/description`. Commit small, explain why. Open a PR, test on its preview, squash-merge, delete the branch. Never let a branch grow into a `v3` catch-all.
+Short-lived feature branches off `staging`, not `main`. Name them `type/description`. Commit small, explain why. Merge to `staging`, verify on native against its stable preview URL, then fast-forward `main` to ship. `staging` is the one long-lived branch — keep it from accumulating unrelated half-finished work. Never let another branch grow into a `v3` catch-all.

@@ -39,9 +39,11 @@ export async function initDeepLinks(): Promise<PluginListenerHandle | null> {
 
   const launchUrl = await App.getLaunchUrl();
   console.log("[Rogha debug] getLaunchUrl:", launchUrl?.url ?? "(none)");
-  // Skip <scheme>://auth* — auth return URLs are not cold-launch destinations, and Capacitor
-  // caches getLaunchUrl for the entire app session so we'd re-process stale auth tickets.
-  if (launchUrl?.url && !launchUrl.url.startsWith(`${APP_SCHEME}://auth`)) {
+  // handleDeepLink's own sessionStorage dedup (above) already guards against Capacitor
+  // replaying a cached/stale auth URL, so no need to special-case <scheme>://auth here —
+  // doing so used to drop the ticket entirely when iOS cold-launches the app from the
+  // deep-link return (e.g. it was evicted from memory while the user was in the popover).
+  if (launchUrl?.url) {
     handleDeepLink(launchUrl.url);
   }
 

@@ -1,10 +1,9 @@
 "use client";
 import { SignIn } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
-import { useClerk } from "@clerk/nextjs";
 import { getAppOrigin } from "@/lib/mobile/appOrigin";
 
 function safeRedirect(value: string | null | undefined): string {
@@ -18,8 +17,6 @@ const SESSION_STORAGE_REDIRECT = "rogha_sign_in_redirect";
 
 function SignInInner() {
   const params = useSearchParams();
-  // fromApp and redirect can be lost if Clerk's signOut strips URL params on redirect.
-  // sessionStorage is the fallback so they survive the signOut → reload cycle.
   const fromApp =
     params.get("fromApp") === "1" ||
     sessionStorage.getItem(SESSION_STORAGE_FROM_APP) === "1";
@@ -30,45 +27,15 @@ function SignInInner() {
   );
   const isNative = Capacitor.isNativePlatform();
   const browserOpenedRef = useRef(false);
-  const { session, signOut, loaded: isLoaded } = useClerk();
-  // For fromApp flows, we must clear any lingering Safari-store session before
-  // showing the sign-in form — otherwise Clerk auto-redirects without prompting.
-  // Start as false for fromApp so we wait for Clerk to fully load first.
-  const [sessionCleared, setSessionCleared] = useState(false);
-  // Guards the pre-existing-session check below to run at most once per page load.
-  // Without this, the effect re-fires the instant sign-in creates a fresh session
-  // (since it's in the deps array) and signs that one out too, looping forever.
-  const initialSessionCheckedRef = useRef(false);
 
-  console.log("[Rogha debug] sign-in/page: isNative:", isNative, "fromApp:", fromApp, "redirect:", redirect);
-
+  // Persisted so fromApp/redirect survive Clerk's SSO-callback round trip (e.g. Google),
+  // which navigates to its own URL and drops our query params.
   useEffect(() => {
-    if (!fromApp) { setSessionCleared(true); return; }
-    if (!isLoaded) return; // wait for Clerk to finish initialising before trusting session state
-
-    if (initialSessionCheckedRef.current) {
-      // Initial check already ran. If the lingering session we signed out has
-      // since cleared, reveal the form. Never sign out a *freshly created*
-      // session here — that's the sign-in we're waiting for (forceRedirectUrl
-      // carries it on to /auth/return-to-app). This recovery matters on the dev
-      // instance, where signOut clears in place without a hard reload, so the
-      // component never remounts to re-evaluate.
-      if (!session) setSessionCleared(true);
-      return;
-    }
-    initialSessionCheckedRef.current = true;
-
-    if (session) {
-      console.log("[Rogha debug] sign-in/page: fromApp session found, signing out first");
-      // Persist fromApp + redirect in sessionStorage before signOut — Clerk's redirectUrl
-      // param can be overridden by its own sign-in URL config, losing our query params.
+    if (fromApp) {
       sessionStorage.setItem(SESSION_STORAGE_FROM_APP, "1");
       sessionStorage.setItem(SESSION_STORAGE_REDIRECT, redirect);
-      signOut({ redirectUrl: window.location.href });
-    } else {
-      setSessionCleared(true);
     }
-  }, [fromApp, isLoaded, session]);
+  }, [fromApp, redirect]);
 
   useEffect(() => {
     // In the native WebView (not inside SFSafariViewController), open the real sign-in
@@ -84,16 +51,11 @@ function SignInInner() {
       Browser.open({ url, presentationStyle: "popover" })
         .then(() => console.log("[Rogha debug] sign-in/page: Browser.open resolved"))
         .catch((e) => console.error("[Rogha debug] sign-in/page: Browser.open failed:", e));
-    } else {
-      console.log("[Rogha debug] sign-in/page: rendering Clerk <SignIn>, fromApp:", fromApp, "isNative:", isNative);
     }
   }, []);
 
   // While Browser.open is opening, render nothing in the WebView
   if (isNative && !fromApp) return null;
-
-  // Wait until any existing session is cleared before rendering the sign-in form
-  if (!sessionCleared) return null;
 
   const returnUrl = fromApp
     ? `/auth/return-to-app?fromApp=1&redirect=${encodeURIComponent(redirect)}`

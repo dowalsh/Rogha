@@ -1,6 +1,6 @@
 # Spec: make native sign-in origin-aware
 
-**Status:** ready to implement
+**Status:** implemented. The origin-awareness change described below shipped as scoped; the custom-scheme/entitlement work and a later sign-in/sign-out simplification landed afterward — see "Session policy" below for the current state of that follow-on work.
 **Scope:** small, surgical. 3 call sites + 1 tiny helper.
 **Prod risk:** effectively zero (see "Why this is safe for production"). This is a no-op for the current App Store build and only changes behavior for future non-prod builds.
 
@@ -19,7 +19,7 @@ The iOS app is a Capacitor shell that loads the web app from a remote URL (`serv
 1. In the native app, the user taps **Sign In**. The app calls `Browser.open({ url: "https://rogha.dylanwalsh.ie/sign-in?fromApp=1" })` (Capacitor `@capacitor/browser`), opening SFSafariViewController on the web sign-in page.
 2. The user authenticates with Clerk in that browser.
 3. Clerk redirects to `/auth/return-to-app?fromApp=1&redirect=…` (`forceRedirectUrl`, set in `sign-in/page.tsx`).
-4. `return-to-app` fetches `/api/auth/mobile-ticket` → a short-lived Clerk sign-in token → redirects to the custom scheme `rogha://auth?ticket=…&redirect=…`, which reopens the native app.
+4. `return-to-app` fetches `/api/auth/mobile-ticket` → a short-lived Clerk sign-in token, then signs the popover's own Clerk session out, then redirects to the custom scheme `${APP_SCHEME}://auth?ticket=…&redirect=…`, which reopens the native app. See "Session policy" below for why the signOut step is there.
 5. `DeepLinkInit` routes that to `/auth/native-callback`, which consumes the ticket (`signIn.create({ strategy: "ticket" })`) and sets the active session in the WebView.
 
 The **only** environment-specific hardcoding that breaks staging is step 1: the browser is always opened at the production domain. Everything else is already environment-correct:
@@ -79,6 +79,51 @@ export function getAppOrigin(): string {
 ```
 
 All three call sites are inside `"use client"` components and fire from event handlers / effects, so `window` is always defined when they run. The SSR fallback is defensive only.
+
+## Session policy: nuke the popover session on the way out
+
+The sign-in popover (SFSafariViewController) shares Safari's persistent
+cookie jar, which is entirely separate from the native app's own WKWebView.
+That means a Clerk session created in the popover outlives an in-app Logout —
+Logout only clears the WKWebView's session, so the popover would otherwise
+stay signed in indefinitely, surfacing as a "lingering session" every time the
+sign-in popover reopens.
+
+An earlier version of this flow tried to detect and clear that lingering
+session reactively, **before** rendering the sign-in form (on the way *in*).
+That required blocking the form on an async `signOut()` call resolving inside
+the popover's WebKit context, which turned out to be unreliable enough to
+produce a real bug: a blank white popover with no form and no way forward
+when that signOut hung or didn't complete the way the code assumed.
+
+The fix was to flip when the nuke happens: sign out on the way **out**, in
+`return-to-app`, right after the ticket is minted (`src/app/auth/return-to-app/page.tsx`).
+This works because the ticket is a standalone server-minted token from that
+point on — signing out the session that minted it doesn't invalidate it, and
+`native-callback` consumes it into the app's own separate session regardless.
+Consequences of this ordering:
+
+- The sign-in page itself never has a session to fight on load — it always
+  just renders the form. This let the entire session-detection/clearing state
+  machine be deleted from `sign-in/page.tsx` outright, which is what
+  eliminates the class of bug above at the root rather than working around it.
+- **Account switching falls out for free.** Every sign-in ends with a clean
+  Safari-jar session, so the *next* popover open is always a blank form —
+  "switch account" is just "log out, sign in as someone else," no dedicated
+  UI needed.
+- This was a deliberate product decision, not just a bug fix: persisting the
+  popover session across sign-ins was considered and rejected, because this
+  app has no meaningful dual web+native-app usage pattern (e.g. someone using
+  `rogha.dylanwalsh.ie` in mobile Safari *and* the native app) where keeping
+  that session alive would matter. If that ever changes, this policy would
+  need revisiting.
+- The `signOut()` call in `return-to-app` is timeout-raced (~2s) and
+  failure-tolerant — cleanup is best-effort and must never block the user
+  getting back into the app. If it does fail occasionally, the *next* sign-in
+  attempt still routes through this same code path (even when auto-continuing
+  an existing session skips the form) and gets another chance to clear it, so
+  a one-off failure self-heals within a retry or two rather than leaving a
+  stuck state.
 
 ## Explicitly OUT of scope (do NOT change these now)
 

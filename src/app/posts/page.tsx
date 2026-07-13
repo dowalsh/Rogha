@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
-import { PostRow } from "@/components/PostRow";
+import { PostRow, PostCard } from "@/components/PostRow";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
 
@@ -102,32 +102,51 @@ export default function PostsPage() {
               No posts yet. Create your first one!
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-                  <tr>
-                    <th className="p-3 font-medium">Post</th>
-                    <th className="p-3 font-medium text-center">Status</th>
-                    <th className="p-3 font-medium text-center">Updated</th>
-                    <th className="p-3 font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(posts ?? []).map((p) => (
-                    <PostRow
-                      key={p.id}
-                      id={p.id}
-                      title={p.title ?? "Untitled Post"}
-                      status={p.status}
-                      updatedAt={new Date(p.updatedAt)}
-                      heroImageUrl={p.heroImageUrl ?? undefined}
-                      onDelete={() => handleDeletePost(p.id)}
-                      isDeleting={deletingId === p.id}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {/* Mobile: stacked cards */}
+              <div className="md:hidden space-y-3">
+                {(posts ?? []).map((p) => (
+                  <PostCard
+                    key={p.id}
+                    id={p.id}
+                    title={p.title ?? "Untitled Post"}
+                    status={p.status}
+                    updatedAt={new Date(p.updatedAt)}
+                    heroImageUrl={p.heroImageUrl ?? undefined}
+                    onDelete={() => handleDeletePost(p.id)}
+                    isDeleting={deletingId === p.id}
+                  />
+                ))}
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden md:block rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+                    <tr>
+                      <th className="p-3 font-medium">Post</th>
+                      <th className="p-3 font-medium text-center">Status</th>
+                      <th className="p-3 font-medium text-center">Updated</th>
+                      <th className="p-3 font-medium"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(posts ?? []).map((p) => (
+                      <PostRow
+                        key={p.id}
+                        id={p.id}
+                        title={p.title ?? "Untitled Post"}
+                        status={p.status}
+                        updatedAt={new Date(p.updatedAt)}
+                        heroImageUrl={p.heroImageUrl ?? undefined}
+                        onDelete={() => handleDeletePost(p.id)}
+                        isDeleting={deletingId === p.id}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </SignedIn>

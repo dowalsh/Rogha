@@ -42,7 +42,7 @@ export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
                 metaText={`${formatDistanceToNow(new Date(row.latestActivityAt))} ago`}
                 thumbUrl={row.heroThumbUrl}
                 newCount={row.newCount}
-                href={`/reader/${row.postId}?from=buzz`}
+                href={`/reader/${row.postId}/buzz`}
               />
             ))}
           </div>
@@ -62,7 +62,7 @@ export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
                 authorName={row.authorName}
                 metaText={`${formatDistanceToNow(new Date(row.latestActivityAt))} ago`}
                 thumbUrl={row.heroThumbUrl}
-                href={`/reader/${row.postId}?from=buzz`}
+                href={`/reader/${row.postId}/buzz`}
               />
             ))}
           </div>

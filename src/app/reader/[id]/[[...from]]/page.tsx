@@ -1,9 +1,9 @@
-// src/app/read/[id]/page.tsx
+// src/app/reader/[id]/[[...from]]/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { notFound, useRouter, useSearchParams } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
@@ -84,10 +84,19 @@ function validateDocJSON(raw: unknown): Validation {
   return { ok: true };
 }
 
-export default function ReadPostPage({ params }: { params: { id: string } }) {
+export default function ReadPostPage({
+  params,
+}: {
+  params: { id: string; from?: string[] };
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const from = searchParams.get("from");
+  // `from` rides the path (/reader/[id]/edition, /reader/[id]/buzz) rather
+  // than a query param — Next's client router cache strips search params
+  // when keying prefetched page segments, so a query-string version of this
+  // signal can silently serve a stale value across different entry points
+  // to the same post within the staleTimes.dynamic window (see
+  // docs/specs/data-fetching-caching.md).
+  const from = params.from?.[0] ?? null;
 
   const [editionStatus, setEditionStatus] = useState<{
     hasOpened: boolean;

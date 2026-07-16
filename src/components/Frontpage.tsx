@@ -65,7 +65,7 @@ function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post;
   if (!hasImage) {
     return (
       <section className="border-b pb-8 relative">
-        <Link href={`/reader/${post.id}?from=edition`} className="group block w-full">
+        <Link href={`/reader/${post.id}/edition`} className="group block w-full">
           <article className="transition-shadow duration-200 space-y-4">
             <h2 className="text-4xl font-black leading-tight group-hover:underline">
               {post.title ?? "Untitled Post"}
@@ -90,7 +90,7 @@ function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post;
   // With image → two-column layout
   return (
     <section className="border-b pb-8 relative">
-      <Link href={`/reader/${post.id}?from=edition`} className="group block w-full">
+      <Link href={`/reader/${post.id}/edition`} className="group block w-full">
         <article className="grid gap-6 transition-shadow duration-200  lg:grid-cols-[2fr,1fr] lg:items-stretch">
           <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
             <Image
@@ -133,7 +133,7 @@ function SecondaryStory({ post, currentUserId, onReported, onBlocked }: { post: 
 
   return (
     <div className="relative h-full">
-      <Link href={`/reader/${post.id}?from=edition`} className="group block h-full">
+      <Link href={`/reader/${post.id}/edition`} className="group block h-full">
         <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200 ">
           {post.heroImageUrl && (
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
@@ -175,7 +175,7 @@ function TertiaryStory({ post }: { post: Post }) {
   return (
     <li>
       <Link
-        href={`/reader/${post.id}?from=edition`}
+        href={`/reader/${post.id}/edition`}
         className="group flex items-start justify-between gap-3 py-3 text-sm"
       >
         <div className="space-y-1">

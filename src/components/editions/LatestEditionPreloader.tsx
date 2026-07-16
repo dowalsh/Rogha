@@ -107,7 +107,7 @@ export function LatestEditionPreloader() {
       mutate(`/api/posts/${post.id}`, buildPostDTO(post, edition), {
         revalidate: false,
       });
-      router.prefetch(`/reader/${post.id}`);
+      router.prefetch(`/reader/${post.id}/edition`);
     }
   }, [edition, router]);
 

@@ -25,7 +25,7 @@ src/
   lib/            Shared server logic: access control, editions, friends, content
                   filtering, email, push, admin checks, Prisma client
   components/     React components (shared across feature pages)
-  hooks/          Client hooks (SWR-based data fetching wrappers)
+  hooks/          Client hooks (SWR-based data fetching wrappers; see below)
   types/          Shared TS types
 prisma/
   schema.prisma   Source of truth for the data model
@@ -45,6 +45,9 @@ Centralizes visibility rules (`postAccess.ts` — `canViewPostPolicy`) so that p
 
 ### Notifications & delivery
 `src/actions/notification.action.ts` is the single place notification events are created and fanned out to in-app rows, email (`src/lib/emails/`), and push (`src/lib/push/`), gated per-user by `NotificationPreference`.
+
+### Client-side data fetching & caching
+Client components fetch through **SWR**, wired up app-wide via `SWRProvider` (`src/components/providers/SWRProvider.tsx`, mounted in `src/app/layout.tsx`) so the cache persists across client-side navigation — not every page has been migrated yet. Includes a cache-seeding technique for the editions preloader and route-prefetch/TTL tuning (`next.config.mjs`'s `experimental.staleTimes`). See [specs/data-fetching-caching.md](./specs/data-fetching-caching.md) for the full rationale and what's still on the old fetch pattern.
 
 ## Environments & branching
 

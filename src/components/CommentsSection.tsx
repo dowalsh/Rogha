@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Trash2 } from "lucide-react";
+import { Trash2, Reply as ReplyIcon } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { useLike } from "@/hooks/useLike";
 import { LikeButton } from "./LikeButton";
@@ -208,11 +208,12 @@ function CommentItem({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-2 text-xs text-muted-foreground"
+          className="h-6 gap-1 px-2 text-xs text-muted-foreground"
           onClick={() =>
             onReplyClick(comment.id, comment.author.name ?? "Unknown")
           }
         >
+          <ReplyIcon className="h-3 w-3" />
           Reply
         </Button>
       </div>

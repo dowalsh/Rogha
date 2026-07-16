@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { Heart } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import {
@@ -20,34 +21,26 @@ export function LikeButton({
   onToggle: () => void;
   fetchLikersUrl: string; // e.g. `/api/posts/[id]/likes` or `/api/comments/[id]/likes`
 }) {
-  const [likers, setLikers] = useState<
-    { id: string; name: string | null; image: string | null }[]
-  >([]);
   const [open, setOpen] = useState(false);
-  const [loadingLikers, setLoadingLikers] = useState(false);
-  const hasLoadedRef = useRef(false);
-
-  async function fetchLikers({ silent }: { silent?: boolean } = {}) {
-    if (!silent) setLoadingLikers(true);
-    const res = await fetch(fetchLikersUrl);
-    if (res.ok) {
-      setLikers(await res.json());
-      hasLoadedRef.current = true;
-    }
-    if (!silent) setLoadingLikers(false);
-  }
+  const [primed, setPrimed] = useState(false);
 
   // Prefetch the likers list in the background shortly after mount so it's
-  // already available by the time the user opens the dialog. Deferred so it
-  // doesn't compete with the post content's own fetches.
+  // already available (via the shared SWR cache) by the time the user opens
+  // the dialog. Deferred so it doesn't compete with the post content's own
+  // fetches. Passing `null` as the key keeps SWR from fetching early.
   useEffect(() => {
-    hasLoadedRef.current = false;
-    const timer = setTimeout(() => {
-      fetchLikers({ silent: true });
-    }, 400);
+    setPrimed(false);
+    const timer = setTimeout(() => setPrimed(true), 400);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchLikersUrl]);
+
+  const {
+    data: likers = [],
+    isLoading: loadingLikers,
+    mutate: refetchLikers,
+  } = useSWR<{ id: string; name: string | null; image: string | null }[]>(
+    primed || open ? fetchLikersUrl : null,
+  );
 
   return (
     <div className="flex items-center gap-1">
@@ -68,13 +61,11 @@ export function LikeButton({
         open={open}
         onOpenChange={(o) => {
           setOpen(o);
-          if (o) {
-            // Background prefetch already has data: show it instantly and
-            // silently reconcile in case it's changed since the prefetch.
-            // Otherwise (user clicked before the prefetch resolved), fall
-            // back to a normal foreground fetch with a loading state.
-            fetchLikers({ silent: hasLoadedRef.current });
-          }
+          // If the background prefetch already populated the SWR cache,
+          // this just silently revalidates in case it's changed since.
+          // Otherwise (opened before the prefetch resolved), `primed || open`
+          // above already triggers the initial foreground fetch.
+          if (o) refetchLikers();
         }}
       >
         <DialogTrigger asChild>

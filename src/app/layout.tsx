@@ -14,6 +14,7 @@ import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
 import TermsGate from "@/components/TermsGate";
 import { formatDistanceToNow } from "date-fns";
+import { SWRProvider } from "@/components/providers/SWRProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -60,6 +61,7 @@ export default async function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
+          <SWRProvider>
           <TooltipProvider delayDuration={150}>
             <ThemeProvider
               attribute="class"
@@ -133,6 +135,7 @@ export default async function RootLayout({
               document.head.appendChild(s);
             `}</Script>}
           </TooltipProvider>
+          </SWRProvider>
         </body>
       </html>
     </ClerkProvider>

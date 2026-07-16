@@ -80,7 +80,7 @@ function buildHref(e: {
   comment: { id: string } | null;
   eventType: ActivityEventType;
 }): string {
-  const base = `/reader/${e.post.id}`;
+  const base = `/reader/${e.post.id}?from=buzz`;
 
   if (isCommentTargetEvent(e.eventType) && e.comment) {
     return `${base}#comment-${e.comment.id}`;

@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -84,6 +84,8 @@ function validateDocJSON(raw: unknown): Validation {
 
 export default function ReadPostPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
 
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<PostDTO | null>(null);
@@ -146,9 +148,11 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   const isAuthor = !!(user && post && user.id === post.author?.clerkId);
   const isShareable = post?.status === "PUBLISHED";
 
-  const backHref = post?.editionId
+  const fallbackBackHref = post?.editionId
     ? `/editions/${post.editionId}`
     : "/editions";
+  const backHref = from === "buzz" ? "/" : fallbackBackHref;
+  const backLabel = from === "buzz" ? "Back to Buzz" : "Back to edition";
   const title = post?.title ?? "Untitled Post";
   const authorName = post?.author?.name ?? "Unknown author";
   const rawContent = post?.content;
@@ -240,7 +244,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
         </p>
         <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to edition
+          {backLabel}
         </Button>
       </div>
     );
@@ -250,8 +254,8 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
-      {/* Back to edition — always accessible */}
-      <div>
+      {/* Back — sticky, always accessible */}
+      <div className="sticky top-0 z-40 -mx-6 border-b bg-background/80 px-6 py-3 backdrop-blur">
         <Button
           type="button"
           variant="ghost"
@@ -260,7 +264,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
           className="flex items-center gap-2"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to edition
+          {backLabel}
         </Button>
       </div>
 

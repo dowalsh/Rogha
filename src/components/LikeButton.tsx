@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Heart } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import {
@@ -25,16 +25,29 @@ export function LikeButton({
   >([]);
   const [open, setOpen] = useState(false);
   const [loadingLikers, setLoadingLikers] = useState(false);
+  const hasLoadedRef = useRef(false);
 
-  async function fetchLikers() {
-    if (open) return;
-    setLoadingLikers(true);
+  async function fetchLikers({ silent }: { silent?: boolean } = {}) {
+    if (!silent) setLoadingLikers(true);
     const res = await fetch(fetchLikersUrl);
     if (res.ok) {
       setLikers(await res.json());
+      hasLoadedRef.current = true;
     }
-    setLoadingLikers(false);
+    if (!silent) setLoadingLikers(false);
   }
+
+  // Prefetch the likers list in the background shortly after mount so it's
+  // already available by the time the user opens the dialog. Deferred so it
+  // doesn't compete with the post content's own fetches.
+  useEffect(() => {
+    hasLoadedRef.current = false;
+    const timer = setTimeout(() => {
+      fetchLikers({ silent: true });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchLikersUrl]);
 
   return (
     <div className="flex items-center gap-1">
@@ -55,7 +68,13 @@ export function LikeButton({
         open={open}
         onOpenChange={(o) => {
           setOpen(o);
-          if (o) fetchLikers();
+          if (o) {
+            // Background prefetch already has data: show it instantly and
+            // silently reconcile in case it's changed since the prefetch.
+            // Otherwise (user clicked before the prefetch resolved), fall
+            // back to a normal foreground fetch with a loading state.
+            fetchLikers({ silent: hasLoadedRef.current });
+          }
         }}
       >
         <DialogTrigger asChild>

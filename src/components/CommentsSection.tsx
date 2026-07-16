@@ -69,49 +69,47 @@ function CommentItem({
 
   return (
     <div id={`comment-${comment.id}`} className="space-y-2 scroll-mt-60">
-      <div className="flex gap-4">
-        <Avatar className="h-10 w-10 border">
-          <AvatarImage src={comment.author.image ?? "/placeholder-user.jpg"} />
-          <AvatarFallback>{comment.author.name?.[0] ?? "?"}</AvatarFallback>
-        </Avatar>
-        <div className="grid gap-1.5">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">
-              {comment.author.name ?? "Unknown"}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {timeAgo(new Date(comment.createdAt))}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
-            {comment.content}
-          </p>
-          <div className="flex items-center gap-2">
-            <LikeButton
-              liked={liked}
-              count={count}
-              onToggle={toggle}
-              fetchLikersUrl={`/api/comments/${comment.id}/likes`}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <Avatar className="h-9 w-9 border shrink-0">
+            <AvatarImage src={comment.author.image ?? "/placeholder-user.jpg"} />
+            <AvatarFallback>{comment.author.name?.[0] ?? "?"}</AvatarFallback>
+          </Avatar>
+          <span className="font-medium truncate min-w-0">
+            {comment.author.name ?? "Unknown"}
+          </span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+            {timeAgo(new Date(comment.createdAt))}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+          {comment.content}
+        </p>
+        <div className="flex items-center gap-2">
+          <LikeButton
+            liked={liked}
+            count={count}
+            onToggle={toggle}
+            fetchLikersUrl={`/api/comments/${comment.id}/likes`}
+          />
+          {currentUserId === comment.author.id ? (
+            <button
+              onClick={() => onDelete(comment.id, undefined)}
+              className="text-muted-foreground hover:text-destructive transition-colors"
+              aria-label="Delete comment"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          ) : currentUserId ? (
+            <ContentOverflowMenu
+              contentType="COMMENT"
+              contentId={comment.id}
+              authorId={comment.author.id}
+              authorName={comment.author.name ?? comment.author.id}
+              onReported={() => setReported(true)}
+              onBlocked={() => onBlocked(comment.author.id)}
             />
-            {currentUserId === comment.author.id ? (
-              <button
-                onClick={() => onDelete(comment.id, undefined)}
-                className="text-muted-foreground hover:text-destructive transition-colors"
-                aria-label="Delete comment"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            ) : currentUserId ? (
-              <ContentOverflowMenu
-                contentType="COMMENT"
-                contentId={comment.id}
-                authorId={comment.author.id}
-                authorName={comment.author.name ?? comment.author.id}
-                onReported={() => setReported(true)}
-                onBlocked={() => onBlocked(comment.author.id)}
-              />
-            ) : null}
-          </div>
+          ) : null}
         </div>
       </div>
 
@@ -442,9 +440,9 @@ export default function CommentsSection({
 
 function timeAgo(date: Date): string {
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return "now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
   return date.toLocaleDateString();
 }

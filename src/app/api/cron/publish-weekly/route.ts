@@ -6,6 +6,7 @@ import { publishEditionForWeek } from "@/lib/editions";
 import { getWeekStartUTC } from "@/lib/utils";
 import { getDbUser } from "@/lib/getDbUser";
 import { triggerPublishedEditionEmail } from "@/lib/emails/triggers";
+import { backfillMissingHeroThumbnails } from "@/lib/heroThumbnails";
 
 function isAdminEmail(email?: string | null) {
   const list =
@@ -119,6 +120,16 @@ async function handlePublish(req: NextRequest) {
       } catch (err) {
         console.error("[cron] failed to send weekly edition email blast", err);
       }
+    }
+
+    // Self-heal any posts whose hero thumbnail never got generated (transient
+    // failure at save time, or posts older than this feature). Best-effort —
+    // must never fail the publish itself.
+    try {
+      const backfillResult = await backfillMissingHeroThumbnails();
+      console.log("[cron] hero thumbnail backfill", backfillResult);
+    } catch (err) {
+      console.error("[cron] hero thumbnail backfill failed", err);
     }
 
     return NextResponse.json(

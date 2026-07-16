@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { prisma } from "@/lib/prisma";
 
 const CLEAR_SIZE = 48;
 const TEASER_SIZE = 16;
@@ -39,4 +40,32 @@ export async function generateHeroThumbnails(
     console.error("[generateHeroThumbnails] failed", e);
     return null;
   }
+}
+
+// Self-heals posts whose hero image never got a thumbnail — e.g. a transient
+// fetch/sharp failure at save time, or posts that predate this feature.
+// Safe to call repeatedly: only touches posts where heroThumbUrl is still
+// null despite heroImageUrl being set, and a capped batch keeps each run cheap.
+export async function backfillMissingHeroThumbnails(limit = 25) {
+  const posts = await prisma.post.findMany({
+    where: {
+      heroImageUrl: { not: null },
+      heroThumbUrl: null,
+    },
+    select: { id: true, heroImageUrl: true },
+    take: limit,
+  });
+
+  let updated = 0;
+  for (const post of posts) {
+    const thumbs = await generateHeroThumbnails(post.heroImageUrl!);
+    if (!thumbs) continue;
+    await prisma.post.update({
+      where: { id: post.id },
+      data: { heroThumbUrl: thumbs.thumb, heroThumbBlurUrl: thumbs.thumbBlur },
+    });
+    updated++;
+  }
+
+  return { checked: posts.length, updated };
 }

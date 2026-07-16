@@ -4,6 +4,7 @@ import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
+import { getReadMapForPosts } from "@/lib/postReads";
 
 type DbUser = { id: string };
 
@@ -273,6 +274,18 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       likeCount: _count.likes,
       likedByMe: likes.length > 0,
     }));
+
+  // Unread first (so "pick up where you left off" surfaces unread stories
+  // immediately), read after — each group keeping its existing recency order.
+  const readMap = await getReadMapForPosts(
+    user.id,
+    visiblePosts.map((p) => p.id),
+  );
+  visiblePosts.sort((a, b) => {
+    const aRead = readMap.has(a.id) ? 1 : 0;
+    const bRead = readMap.has(b.id) ? 1 : 0;
+    return aRead - bRead;
+  });
 
   // View data for reveal overlay
   const [viewRecord, viewerPreview, viewerCount] = await Promise.all([

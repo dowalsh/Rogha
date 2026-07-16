@@ -16,7 +16,7 @@ Page order, top to bottom: **Edition hero** → (inside it) **Coming Sunday** �
 A single card at the top, always present, representing the current (latest published) edition. Layout is driven by how much of the edition the user has read; wording is driven by day/freshness — independent axes.
 
 - **State A — Not opened**: accent-bordered card, reveal-moment energy. Copy is day-dependent — release day (Sunday): "This week's edition just dropped"; later in the week: "You haven't opened this week yet." Coming Sunday renders **collapsed** in this state only.
-- **State B — Partially read**: neutral card, "Keep reading this week" + "N of M" counter + segmented progress bar + "Finish the N you missed" (deep-links straight into the first unread post). Coming Sunday renders expanded.
+- **State B — Partially read**: neutral card, "Keep reading this week" + "N of M" counter + segmented progress bar + "Finish the N you missed" (links to the edition front page, not directly into a specific post). Coming Sunday renders expanded.
 - **State C — Caught up**: quiet card, "You're all caught up this week." No CTA, no countdown — Coming Sunday conveys timing instead.
 - **Empty**: no editions published yet → first-run invite to explore/submit, no progress bar, no Coming Sunday at all.
 
@@ -44,7 +44,8 @@ Coming Sunday, New buzz, and Earlier all render the same row (`FeedPostRow`): op
 - **Data**: `src/lib/home.ts` — `getHeroData`, `getComingNext`, `getBuzzPosts`, composed by `getHomeData`, served by `GET /api/home` (`?earlierLimit=` controls the Earlier page size; the client re-fetches with a larger limit on "Show more" rather than a separate cursor-paginated endpoint).
 - **Read tracking**: new `PostRead` model (see [data-model.md](../data-model.md)), written via `POST /api/posts/[id]/read` (fired once per mount from `src/app/reader/[id]/page.tsx`, mirroring the existing `EditionView`/reveal-overlay pattern) and read via `src/lib/postReads.ts`.
 - **Buzz activity source**: reuses the friend/mutual-friend/temporal-gating logic that powered the old `getBuzz`, but restricts "activity" to `POST_COMMENTED`/`COMMENT_REPLIED` only (submit/publish events belong to the hero, not Buzz — a deliberate narrowing from the old per-event feed, which counted everything but likes).
-- **Back navigation**: reuses the existing `?from=` convention on `/reader/[id]` — Buzz rows link with `?from=buzz` (back → home), the hero's "Finish the N you missed" links with `?from=edition` (back → the edition front page).
+- **Back navigation**: reuses the existing `?from=` convention on `/reader/[id]` — Buzz rows link with `?from=buzz` (back → home); Frontpage's post links use `?from=edition` (back → the edition front page).
+- **Edition post ordering**: `getPublishedEditionById` (`src/lib/editions.ts`) sorts a viewer's edition posts unread-first, then read (each group keeping its existing recency order) — so both the hero's "Finish the N you missed" link (which now lands on the edition front page rather than a specific post) and the front page itself (`Frontpage.tsx`'s lead story slot) naturally surface what the viewer hasn't read yet.
 - **Components**: `src/components/home/` — `EditionHero`, `ComingSunday`, `BuzzList`, `FeedPostRow`, `HomeSkeleton`, `HomeContent` (the page's single `useSWR("/api/home?...")` call).
 - **Retired**: the old per-`ActivityEvent` feed (`src/components/buzz/*`, `src/lib/buzz.ts`, `GET /api/buzz`) — its actor-avatar/verb/comment-bubble shape didn't fit the new no-actor-names, per-post spec.
 

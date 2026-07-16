@@ -123,7 +123,7 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
         </div>
 
         <Button asChild>
-          <Link href={`/reader/${hero.unreadPostIds[0]}?from=edition`}>
+          <Link href={`/editions/${hero.editionId}`}>
             Finish the {hero.unreadPostIds.length} you missed
           </Link>
         </Button>

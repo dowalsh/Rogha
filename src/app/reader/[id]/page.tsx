@@ -264,7 +264,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       {/* Back — sticky, always accessible */}
-      <div className="sticky top-[calc(env(safe-area-inset-top)+4rem)] z-40 -mx-6 border-b bg-background/80 px-6 py-3 backdrop-blur">
+      <div className="sticky top-[calc(env(safe-area-inset-top)+4rem)] z-40 -mx-6 -mt-6 border-b bg-background px-6 py-3">
         <Button
           type="button"
           variant="ghost"

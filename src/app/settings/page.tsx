@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -35,7 +35,6 @@ export default function SettingsPage() {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/settings/notifications")
@@ -45,15 +44,8 @@ export default function SettingsPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
-    };
-  }, []);
-
   async function toggle(field: keyof Prefs, value: boolean) {
     if (!prefs) return;
-    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
     setPrefs({ ...prefs, [field]: value });
     setSaveStatus("saving");
     try {
@@ -64,7 +56,6 @@ export default function SettingsPage() {
       });
       if (!res.ok) throw new Error();
       setSaveStatus("saved");
-      savedTimeoutRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
     } catch {
       setPrefs({ ...prefs });
       setSaveStatus("idle");

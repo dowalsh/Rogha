@@ -66,17 +66,41 @@ export default async function RootLayout({
             >
               <div className="min-h-screen">
                 {process.env.NODE_ENV === "development" && (
-                  <div className="w-full bg-red-600 text-white text-center py-2 text-sm font-bold z-50">
+                  <div
+                    className="w-full bg-red-600 text-white text-center pb-2 text-sm font-bold z-50"
+                    style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
+                  >
                     DEV
                   </div>
                 )}
                 {process.env.VERCEL_ENV === "preview" && (
-                  <div className="w-full bg-green-400 text-black text-center py-2 text-sm font-bold z-50">
+                  <div
+                    className="w-full bg-green-400 text-black text-center pb-2 text-sm font-bold z-50"
+                    style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
+                  >
                     PREVIEW
+                    {process.env.NEXT_PUBLIC_BUILD_TIME && (
+                      <span className="font-normal">
+                        {" "}
+                        · deployed{" "}
+                        {new Date(process.env.NEXT_PUBLIC_BUILD_TIME).toLocaleString(
+                          "en-US",
+                          {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                            timeZone: "UTC",
+                          },
+                        )}{" "}
+                        UTC
+                      </span>
+                    )}
                   </div>
                 )}
                 {process.env.NEXT_PUBLIC_SHOW_UPDATE_NOTICE === "true" && (
-                  <div className="w-full bg-yellow-400 text-black text-center py-2 text-sm font-medium z-50 px-4">
+                  <div
+                    className="w-full bg-yellow-400 text-black text-center pb-2 text-sm font-medium z-50 px-4"
+                    style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
+                  >
                     Having issues? Open TestFlight → tap Update → delete &amp;
                     reinstall Rogha if sign-in still fails.
                   </div>

@@ -4,11 +4,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
+import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
+import { FetchError } from "@/lib/swr";
 
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
@@ -87,49 +89,56 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
 
-  const [loading, setLoading] = useState(true);
-  const [post, setPost] = useState<PostDTO | null>(null);
   const [editionStatus, setEditionStatus] = useState<{
     hasOpened: boolean;
     viewerCount: number;
     viewerNames: string[];
   } | null>(null);
+  const [editionStatusChecked, setEditionStatusChecked] = useState(false);
   const [editionRevealed, setEditionRevealed] = useState(true);
   const [revealFading, setRevealFading] = useState(false);
 
   const { isLoaded, isSignedIn, user } = useUser();
 
+  // Shared cache with the editor page's own `/api/posts/${id}` fetch — the
+  // route returns a superset shape covering both. Revalidates on remount
+  // once stale, so revisiting a post you already read is instant and just
+  // quietly refreshes (e.g. like counts) in the background.
+  const {
+    data: post,
+    error: postError,
+    isLoading,
+  } = useSWR<PostDTO>(`/api/posts/${params.id}`, { shouldRetryOnError: false });
+
+  if (postError instanceof FetchError && postError.status === 404) {
+    notFound();
+  }
+
   useEffect(() => {
     let cancelled = false;
+    if (!post?.editionId) {
+      setEditionStatusChecked(true);
+      return;
+    }
+    setEditionStatusChecked(false);
     (async () => {
       try {
-        const res = await fetch(`/api/posts/${params.id}`, { cache: "no-store" });
-        if (res.status === 404) return notFound();
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: PostDTO = await res.json();
-        if (cancelled) return;
-        setPost(data);
-
-        if (data.editionId) {
-          try {
-            const sr = await fetch(`/api/editions/${data.editionId}/status`, { cache: "no-store" });
-            if (!cancelled && sr.ok) {
-              const status = await sr.json();
-              setEditionStatus(status);
-              setEditionRevealed(status.hasOpened);
-            }
-          } catch {
-            // Status fetch failed — default to revealed so content is never blocked by a network error
-          }
+        const sr = await fetch(`/api/editions/${post.editionId}/status`, { cache: "no-store" });
+        if (!cancelled && sr.ok) {
+          const status = await sr.json();
+          setEditionStatus(status);
+          setEditionRevealed(status.hasOpened);
         }
-      } catch (e) {
-        console.error("Failed to load post:", e);
+      } catch {
+        // Status fetch failed — default to revealed so content is never blocked by a network error
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setEditionStatusChecked(true);
       }
     })();
     return () => { cancelled = true; };
-  }, [params.id]);
+  }, [post?.editionId]);
+
+  const loading = isLoading || !editionStatusChecked;
 
   const handleReveal = () => {
     setRevealFading(true);
@@ -255,7 +264,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       {/* Back — sticky, always accessible */}
-      <div className="sticky top-0 z-40 -mx-6 border-b bg-background/80 px-6 py-3 backdrop-blur">
+      <div className="sticky top-[calc(env(safe-area-inset-top)+4rem)] z-40 -mx-6 border-b bg-background/80 px-6 py-3 backdrop-blur">
         <Button
           type="button"
           variant="ghost"

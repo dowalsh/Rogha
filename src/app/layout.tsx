@@ -10,6 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
 import DeepLinkInit from "@/components/DeepLinkInit";
+import MePreloader from "@/components/MePreloader";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
 import TermsGate from "@/components/TermsGate";
@@ -62,6 +63,7 @@ export default async function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <SWRProvider>
+          <MePreloader />
           <TooltipProvider delayDuration={150}>
             <ThemeProvider
               attribute="class"

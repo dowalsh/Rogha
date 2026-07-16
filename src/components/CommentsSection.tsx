@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -188,10 +189,8 @@ export default function CommentsSection({
 }) {
   const router = useRouter();
   const [comments, setComments] = useState<CommentType[]>([]);
-  const [loadingComments, setLoadingComments] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
 
   function handleBlocked(authorId: string) {
@@ -202,27 +201,36 @@ export default function CommentsSection({
     setBlockedAuthorIds((prev) => new Set(Array.from(prev).concat(authorId)));
   }
 
-  useEffect(() => {
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then((d) => d.id && setCurrentUserId(d.id))
-      .catch(() => {});
-  }, []);
+  // Shared, app-wide cache — primed at the root by MePreloader, so this is
+  // instant rather than a fresh cold fetch on every article mount.
+  const { data: me } = useSWR<{ id: string }>("/api/me");
+  const currentUserId = me?.id ?? null;
 
+  // revalidateIfStale: false — comment add/reply/delete are managed via the
+  // local `comments` state below (with optimistic updates), so a background
+  // revalidation racing an in-flight optimistic update could clobber it.
+  // The upside of SWR here is instant comments on back-navigation; freshness
+  // beyond that isn't critical for a comment thread.
+  const { data: commentsData } = useSWR<CommentType[]>(
+    `/api/posts/${postId}/comments`,
+    { revalidateIfStale: false }
+  );
+
+  // Seed local state once per postId when the cached/fetched data arrives —
+  // not on every render, so it doesn't stomp on optimistic add/reply/delete.
+  const seededForIdRef = useRef<string | null>(null);
   useEffect(() => {
-    setLoadingComments(true);
-    fetch(`/api/posts/${postId}/comments`)
-      .then((res) => res.json())
-      .then((data) =>
-        setComments(
-          data.sort(
-            (a: CommentType, b: CommentType) =>
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          )
-        )
+    if (!commentsData || seededForIdRef.current === postId) return;
+    seededForIdRef.current = postId;
+    setComments(
+      [...commentsData].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       )
-      .finally(() => setLoadingComments(false));
-  }, [postId]);
+    );
+  }, [commentsData, postId]);
+
+  const loadingComments = seededForIdRef.current !== postId;
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash) {

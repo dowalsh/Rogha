@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import useSWR from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,7 @@ function ReplyItem({
     <div id={`comment-${reply.id}`} className="ml-9 space-y-1.5 scroll-mt-60">
       <div className="flex items-center gap-2">
         <Avatar className="h-6 w-6 border shrink-0">
-          <AvatarImage src={reply.author.image ?? "/placeholder-user.jpg"} />
+          <AvatarImage src={reply.author.image ?? "/avatar.png"} />
           <AvatarFallback>{reply.author.name?.[0] ?? "?"}</AvatarFallback>
         </Avatar>
         <span className="text-sm font-medium truncate min-w-0">
@@ -130,20 +131,18 @@ function ReplyItem({
 
 function CommentItem({
   comment,
-  onReply,
+  onReplyClick,
   onDelete,
   onBlocked,
   currentUserId,
 }: {
   comment: CommentType;
-  onReply: (parentId: string, content: string) => Promise<{ ok: boolean; error?: string }>;
+  onReplyClick: (commentId: string, authorName: string) => void;
   onDelete: (id: string, parentId?: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
 }) {
   const [reported, setReported] = useState(false);
-  const [showReply, setShowReply] = useState(false);
-  const [reply, setReply] = useState("");
 
   const { liked, count, toggle } = useLike({
     id: comment.id,
@@ -152,17 +151,6 @@ function CommentItem({
     initialCount: comment.likeCount,
   });
 
-  async function handleSubmitReply() {
-    if (!reply.trim()) return;
-    const { ok, error } = await onReply(comment.id, reply);
-    if (ok) {
-      setReply("");
-      setShowReply(false);
-    } else {
-      toast.error(error ?? "Failed to post reply. Please try again.");
-    }
-  }
-
   if (reported) return null;
 
   return (
@@ -170,7 +158,7 @@ function CommentItem({
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <Avatar className="h-9 w-9 border shrink-0">
-            <AvatarImage src={comment.author.image ?? "/placeholder-user.jpg"} />
+            <AvatarImage src={comment.author.image ?? "/avatar.png"} />
             <AvatarFallback>{comment.author.name?.[0] ?? "?"}</AvatarFallback>
           </Avatar>
           <span className="font-medium truncate min-w-0">
@@ -215,43 +203,18 @@ function CommentItem({
         </div>
       )}
 
-      {/* reply button + box */}
-      <div className="ml-12 mt-2 space-y-2">
+      {/* reply — hands off to the single bottom composer */}
+      <div className="ml-12 mt-2">
         <Button
           variant="ghost"
           size="sm"
           className="h-6 px-2 text-xs text-muted-foreground"
-          onClick={() => setShowReply((s) => !s)}
+          onClick={() =>
+            onReplyClick(comment.id, comment.author.name ?? "Unknown")
+          }
         >
-          {showReply ? "Cancel" : "Reply"}
+          Reply
         </Button>
-        {showReply && (
-          <div className="mt-2 space-y-2">
-            <Textarea
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-              placeholder="Write a reply..."
-              className="overflow-hidden resize-none"
-            />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSubmitReply}>
-                Submit
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowReply(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -269,10 +232,24 @@ export default function CommentsSection({
   postAudienceType: AudienceType;
 }) {
   const router = useRouter();
+  const { user } = useUser();
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
+
+  function handleReplyClick(commentId: string, authorName: string) {
+    setReplyingTo({ id: commentId, name: authorName });
+    setComposerOpen(true);
+  }
+
+  function closeComposer() {
+    setComposerOpen(false);
+    setReplyingTo(null);
+    setNewComment("");
+  }
 
   function handleBlocked(authorId: string) {
     if (authorId === postAuthorId) {
@@ -325,17 +302,15 @@ export default function CommentsSection({
     }
   }, [comments]); // runs when comments state updates
 
-  async function addComment() {
-    if (!newComment.trim() || submitting) return;
-    setSubmitting(true);
+  async function addComment(text: string): Promise<{ ok: boolean; error?: string }> {
+    if (!text.trim()) return { ok: false };
 
-    const text = newComment;
     const tempId = `temp-${Date.now()}`;
     const optimisticComment: CommentType = {
       id: tempId,
       content: text,
       createdAt: new Date().toISOString(),
-      author: { id: "me", name: "You", image: "/placeholder-user.jpg" },
+      author: { id: "me", name: "You", image: "/avatar.png" },
       replies: [],
       likeCount: 0,
       likedByMe: false,
@@ -361,13 +336,11 @@ export default function CommentsSection({
           c.id === tempId ? { ...created, likeCount: 0, likedByMe: false } : c
         )
       );
-      setNewComment("");
+      return { ok: true };
     } catch (err: any) {
       console.error("Failed to post comment:", err);
       setComments((prev) => prev.filter((c) => c.id !== tempId));
-      toast.error(err.message ?? "Failed to post comment. Please try again.");
-    } finally {
-      setSubmitting(false);
+      return { ok: false, error: err.message };
     }
   }
   async function addReply(parentId: string, content: string): Promise<{ ok: boolean; error?: string }> {
@@ -378,7 +351,7 @@ export default function CommentsSection({
       id: tempId,
       content,
       createdAt: new Date().toISOString(),
-      author: { id: "me", name: "You", image: "/placeholder-user.jpg" },
+      author: { id: "me", name: "You", image: "/avatar.png" },
       replies: [],
       likeCount: 0,
       likedByMe: false,
@@ -431,6 +404,23 @@ export default function CommentsSection({
       );
       return { ok: false, error: err.message };
     }
+  }
+
+  async function submitComposer() {
+    const text = newComment;
+    if (!text.trim() || submitting) return;
+    setSubmitting(true);
+
+    const { ok, error } = replyingTo
+      ? await addReply(replyingTo.id, text)
+      : await addComment(text);
+
+    if (ok) {
+      closeComposer();
+    } else {
+      toast.error(error ?? "Failed to post. Please try again.");
+    }
+    setSubmitting(false);
   }
 
   async function deleteComment(id: string, parentId?: string) {
@@ -492,30 +482,70 @@ export default function CommentsSection({
           comments
             .filter((c) => !blockedAuthorIds.has(c.author.id))
             .map((c) => (
-              <CommentItem key={c.id} comment={c} onReply={addReply} onDelete={deleteComment} onBlocked={handleBlocked} currentUserId={currentUserId} />
+              <CommentItem key={c.id} comment={c} onReplyClick={handleReplyClick} onDelete={deleteComment} onBlocked={handleBlocked} currentUserId={currentUserId} />
             ))
         )}
       </div>
 
-      <h2 className="text-2xl font-bold">Join the conversation</h2>
-      <div className="grid gap-2">
-        <Textarea
-          placeholder="Write your comment..."
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          onInput={(e) => {
-            const el = e.currentTarget;
-            el.style.height = "auto";
-            el.style.height = `${el.scrollHeight}px`;
-          }}
-          className="overflow-hidden resize-none"
-        />
-        <Button
-          onClick={addComment}
-          disabled={submitting || !newComment.trim()}
-        >
-          {submitting ? "Posting..." : "Submit"}
-        </Button>{" "}
+      <div className="sticky bottom-0 -mx-4 border-t bg-background px-4 pb-4 pt-3 sm:mx-0 sm:px-0">
+        {replyingTo && (
+          <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              Replying to{" "}
+              <span className="font-medium text-foreground">
+                {replyingTo.name}
+              </span>
+            </span>
+            <button
+              onClick={() => setReplyingTo(null)}
+              className="underline hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        {!composerOpen ? (
+          <button
+            onClick={() => setComposerOpen(true)}
+            className="flex w-full items-center gap-3 rounded-full border px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <Avatar className="h-7 w-7 border shrink-0">
+              <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
+              <AvatarFallback>?</AvatarFallback>
+            </Avatar>
+            Add a comment…
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <Textarea
+              key={replyingTo?.id ?? "top-level"}
+              autoFocus
+              placeholder={
+                replyingTo ? `Reply to ${replyingTo.name}...` : "Write your comment..."
+              }
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
+              className="overflow-hidden resize-none"
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={closeComposer}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={submitComposer}
+                disabled={submitting || !newComment.trim()}
+              >
+                {submitting ? "Posting..." : "Submit"}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

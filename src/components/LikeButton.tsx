@@ -88,7 +88,7 @@ export function LikeButton({
               likers.map((u) => (
                 <div key={u.id} className="flex items-center gap-2">
                   <img
-                    src={u.image ?? "/placeholder-user.jpg"}
+                    src={u.image ?? "/avatar.png"}
                     alt={u.name ?? "?"}
                     className="h-6 w-6 rounded-full border"
                   />

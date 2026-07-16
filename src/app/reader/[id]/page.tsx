@@ -1,10 +1,10 @@
 // src/app/read/[id]/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -137,6 +137,17 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     })();
     return () => { cancelled = true; };
   }, [post?.editionId]);
+
+  // Mark this post read once per mount — powers the home page's "N of M"
+  // progress and the New buzz / Earlier split.
+  const readFiredRef = useRef(false);
+  useEffect(() => {
+    if (!post?.id || readFiredRef.current) return;
+    readFiredRef.current = true;
+    fetch(`/api/posts/${post.id}/read`, { method: "POST" })
+      .then(() => mutate("/api/home"))
+      .catch(() => {});
+  }, [post?.id]);
 
   const loading = isLoading || !editionStatusChecked;
 

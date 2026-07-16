@@ -53,6 +53,7 @@ model User {
   notificationPreference NotificationPreference?
   pushDevices            PushDevice[]
   editionViews           EditionView[]
+  postReads              PostRead[]
   reports                Report[]
   blocksGiven            Block[] @relation("blocks_given")
   blocksReceived         Block[] @relation("blocks_received")
@@ -109,6 +110,19 @@ model EditionView {
   @@index([editionId])
 }
 
+model PostRead {
+  postId  String
+  userId  String
+  readAt  DateTime @default(now())
+
+  post    Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([postId])
+  @@index([userId, readAt])
+}
+
 enum PostStatus {
   DRAFT
   SUBMITTED
@@ -144,6 +158,7 @@ model Post {
   edition     Edition?   @relation(fields: [editionId], references: [id], onDelete: SetNull)
   comments    Comment[]
   likes       PostLike[]
+  postReads   PostRead[]
   notifications Notification[]
 
   audienceType  AudienceType @default(FRIENDS)

@@ -237,6 +237,8 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       circle: { select: { id: true, name: true } },
       author: { select: { id: true, clerkId: true, name: true, image: true } },
       heroImageUrl: true,
+      heroThumbUrl: true,
+      heroThumbBlurUrl: true,
       content: true,
       _count: { select: { likes: true } },
       likes: { where: { userId: user.id }, select: { id: true } },

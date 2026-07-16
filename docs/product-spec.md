@@ -78,6 +78,9 @@ Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
 - `User.role` is either `USER` or `ADMIN` (DB field). There's also a separate `ADMIN_EMAILS` env-var allowlist used specifically to gate the manual cron-trigger endpoint — these two admin checks are not the same mechanism and can drift; be aware of which one a given admin surface actually checks.
 - Circles have no internal roles — membership is binary (joined or not).
 
+### Home page (Buzz)
+The signed-in home page orients a returning user in priority order: is there new stuff to read (edition hero), what did I miss (per-post Buzz list), what's coming (Coming Sunday). It replaced an earlier flat, reverse-chronological feed of individual `ActivityEvent`s. Full behavior — hero states, read tracking, the New buzz / Earlier split — is in [specs/home-page-redesign.md](./specs/home-page-redesign.md).
+
 ## Auth (summary)
 
 Sign-in is Clerk-based. Web sign-in is standard Clerk. The native (iOS/Capacitor) app can't authenticate inline in its WebView, so it hands off to an in-app Safari browser at the app's own current origin, completes Clerk auth there, and deep-links back with a short-lived ticket that's exchanged for a session in the native WebView. Full detail, including why the flow is "origin-aware" (so a future staging build of the app can authenticate against staging instead of always bouncing to prod), is in [specs/origin-aware-signin.md](./specs/origin-aware-signin.md).

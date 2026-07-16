@@ -53,6 +53,7 @@ export async function GET(
       ...post,
       likeCount: post._count.likes,
       likedByMe: false,
+      readByMe: false,
     };
     console.log("[GET] Initial baseResponse:", baseResponse);
 
@@ -60,13 +61,18 @@ export async function GET(
     const { user } = await getDbUser().catch(() => ({ user: null }));
     console.log("[GET] Current user:", user ? user.id : "none");
 
-    // If we have a user, check if they liked
+    // If we have a user, check if they liked / read
     if (user) {
-      const liked = await prisma.postLike.findUnique({
-        where: { userId_postId: { userId: user.id, postId: id } },
-      });
+      const [liked, read] = await Promise.all([
+        prisma.postLike.findUnique({
+          where: { userId_postId: { userId: user.id, postId: id } },
+        }),
+        prisma.postRead.findUnique({
+          where: { postId_userId: { postId: id, userId: user.id } },
+        }),
+      ]);
       console.log("[GET] Liked by current user?", !!liked);
-      baseResponse = { ...baseResponse, likedByMe: !!liked };
+      baseResponse = { ...baseResponse, likedByMe: !!liked, readByMe: !!read };
     }
 
     console.log("[GET] Final baseResponse:", baseResponse);

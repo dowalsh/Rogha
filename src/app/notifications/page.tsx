@@ -68,7 +68,7 @@ function NotificationsPage() {
   if (isLoading) return <NotificationsSkeleton />;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4">
       <Card>
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">

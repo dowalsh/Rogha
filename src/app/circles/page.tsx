@@ -14,7 +14,7 @@ export default function CirclesPage() {
 
       <SignedIn>
         {/* Mobile: tabs */}
-        <div className="md:hidden">
+        <div className="md:hidden pt-4">
           <Tabs defaultValue="friends">
             <TabsList className="w-full">
               <TabsTrigger value="friends" className="flex-1">Friends</TabsTrigger>
@@ -30,7 +30,7 @@ export default function CirclesPage() {
         </div>
 
         {/* Desktop: two-column */}
-        <div className="hidden md:grid md:grid-cols-2 md:gap-6">
+        <div className="hidden md:grid md:grid-cols-2 md:gap-6 pt-4">
           <FriendsCarousel />
           <CirclesCarousel />
         </div>

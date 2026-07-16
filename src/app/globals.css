@@ -93,3 +93,9 @@
     font-size: max(16px, 1em);
   }
 }
+
+/* Disable pinch/double-tap zoom app-wide; backstop for the viewport meta tag
+   and removes the double-tap-to-zoom gesture / associated tap delay */
+html, body {
+  touch-action: manipulation;
+}

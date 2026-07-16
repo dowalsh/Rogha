@@ -153,7 +153,7 @@ function CommentItem({
                   el.style.height = `${el.scrollHeight}px`;
                 }}
                 placeholder="Write a reply..."
-                className="overflow-hidden resize-none text-sm"
+                className="overflow-hidden resize-none"
               />
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSubmitReply}>

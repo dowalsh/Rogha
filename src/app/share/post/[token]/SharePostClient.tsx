@@ -81,7 +81,7 @@ export default function SharePostClient({ post }: { post: PublicPostData }) {
         </div>
       </header>
 
-      <div className="prose prose-neutral max-w-none">{contentNode}</div>
+      <div className="prose prose-neutral max-w-none break-words">{contentNode}</div>
 
       <hr className="border-t border-muted" />
 

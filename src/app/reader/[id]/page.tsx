@@ -323,7 +323,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       </header>
 
       {/* Rendered content or diagnostics */}
-      <div className="prose prose-neutral max-w-none">{contentNode}</div>
+      <div className="prose prose-neutral max-w-none break-words">{contentNode}</div>
       {/* Post Like Button */}
       <div className="flex justify-center">
         <LikeButton

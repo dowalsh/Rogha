@@ -81,6 +81,26 @@ function CommentItem({
           <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
             {timeAgo(new Date(comment.createdAt))}
           </span>
+          {currentUserId === comment.author.id ? (
+            <button
+              onClick={() => onDelete(comment.id, undefined)}
+              className="ml-auto shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+              aria-label="Delete comment"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          ) : currentUserId ? (
+            <div className="ml-auto shrink-0">
+              <ContentOverflowMenu
+                contentType="COMMENT"
+                contentId={comment.id}
+                authorId={comment.author.id}
+                authorName={comment.author.name ?? comment.author.id}
+                onReported={() => setReported(true)}
+                onBlocked={() => onBlocked(comment.author.id)}
+              />
+            </div>
+          ) : null}
         </div>
         <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
           {comment.content}
@@ -92,24 +112,6 @@ function CommentItem({
             onToggle={toggle}
             fetchLikersUrl={`/api/comments/${comment.id}/likes`}
           />
-          {currentUserId === comment.author.id ? (
-            <button
-              onClick={() => onDelete(comment.id, undefined)}
-              className="text-muted-foreground hover:text-destructive transition-colors"
-              aria-label="Delete comment"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          ) : currentUserId ? (
-            <ContentOverflowMenu
-              contentType="COMMENT"
-              contentId={comment.id}
-              authorId={comment.author.id}
-              authorName={comment.author.name ?? comment.author.id}
-              onReported={() => setReported(true)}
-              onBlocked={() => onBlocked(comment.author.id)}
-            />
-          ) : null}
         </div>
       </div>
 

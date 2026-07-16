@@ -543,7 +543,8 @@ export default function EditionsPage() {
       <SignedIn>
         <div className="mx-auto max-w-5xl space-y-12 py-4">
           {/* Admin controls */}
-          {process.env.NODE_ENV === "development" && (
+          {(process.env.NODE_ENV === "development" ||
+            process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") && (
             <div className="flex items-center gap-3">
               <Button
                 onClick={handlePublishLastWeek}

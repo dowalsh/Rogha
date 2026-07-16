@@ -173,6 +173,8 @@ export async function getBuzz({
           audienceType: true, // ADD
           circleId: true, // ADD
           createdAt: true, // ADD
+          heroThumbUrl: true,
+          heroThumbBlurUrl: true,
           author: {
             select: {
               id: true,
@@ -269,6 +271,13 @@ export async function getBuzz({
     const postAuthorName =
       e.post!.author.name ?? e.post!.author.username ?? "Someone";
 
+    // Which thumbnail to show is decided by the event kind itself (fixed at
+    // the moment this buzz item was created), never by the post's current
+    // status — a historical "submitted" notification stays a blurred teaser
+    // forever, even after the post is later published.
+    const heroThumbUrl =
+      kind === "submit" ? e.post!.heroThumbBlurUrl : e.post!.heroThumbUrl;
+
     // Only show commentText when the event is on a comment
     const commentText = isCommentTargetEvent(e.eventType)
       ? (truncate(e.comment?.content, 160) ?? null)
@@ -288,6 +297,7 @@ export async function getBuzz({
       verbLabel,
       postTitle,
       postAuthorName,
+      heroThumbUrl,
       commentText,
       createdAt: e.createdAt.toISOString(),
       href,

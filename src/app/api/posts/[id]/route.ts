@@ -8,6 +8,7 @@ import { createSubmitNotifications } from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { canViewPost } from "@/lib/access/postAccess";
 import { isContentBlocked, extractTextFromDoc } from "@/lib/contentFilter";
+import { generateHeroThumbnails } from "@/lib/heroThumbnails";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -156,11 +157,31 @@ export async function PUT(
       }
     }
 
+    // Regenerate the inline thumbnails only when the hero image actually
+    // changes — not on every autosave — since this does a network fetch +
+    // image processing.
+    const existingHero = await prisma.post.findUnique({
+      where: { id },
+      select: { heroImageUrl: true },
+    });
+
+    let thumbUpdate: { heroThumbUrl?: string | null; heroThumbBlurUrl?: string | null } = {};
+    if (body.heroImageUrl && body.heroImageUrl !== existingHero?.heroImageUrl) {
+      const thumbs = await generateHeroThumbnails(body.heroImageUrl);
+      thumbUpdate = {
+        heroThumbUrl: thumbs?.thumb ?? null,
+        heroThumbBlurUrl: thumbs?.thumbBlur ?? null,
+      };
+    } else if (!body.heroImageUrl && existingHero?.heroImageUrl) {
+      thumbUpdate = { heroThumbUrl: null, heroThumbBlurUrl: null };
+    }
+
     const baseUpdate: any = {
       title: body.title,
       content: body.content,
       status: body.status,
       heroImageUrl: body.heroImageUrl,
+      ...thumbUpdate,
       audienceType: incomingAudience,
       circleId: incomingAudience === "CIRCLE" ? incomingCircleId : null,
     };

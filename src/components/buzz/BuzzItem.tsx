@@ -23,6 +23,7 @@ export type BuzzItemProps = {
   // post context
   postTitle: string;
   postAuthorName: string;
+  heroThumbUrl?: string | null;
 
   // if present → this event is about a comment
   commentText?: string | null;
@@ -55,6 +56,7 @@ export function BuzzItem({
   verbLabel,
   postTitle,
   postAuthorName,
+  heroThumbUrl,
   commentText,
   createdAt,
   href,
@@ -109,7 +111,15 @@ export function BuzzItem({
 
           {/* RIGHT SIDE */}
 
-          <div className="inline-flex items-baseline gap-2 bg-zinc-100/50 dark:bg-zinc-900/40 px-3 py-1.5 rounded-sm border border-zinc-200/60 dark:border-zinc-800/60">
+          <div className="inline-flex items-center gap-2 bg-zinc-100/50 dark:bg-zinc-900/40 px-3 py-1.5 rounded-sm border border-zinc-200/60 dark:border-zinc-800/60">
+            {heroThumbUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={heroThumbUrl}
+                alt=""
+                className="h-6 w-6 shrink-0 rounded-sm object-cover"
+              />
+            )}
             <span className="font-serif text-sm tracking-tight text-muted-foreground/90">
               “{postTitle}”
             </span>

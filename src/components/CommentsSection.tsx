@@ -28,20 +28,118 @@ interface CommentType {
   likedByMe: boolean;
 }
 
+function CommentActions({
+  comment,
+  currentUserId,
+  onDelete,
+  onBlocked,
+  onReported,
+}: {
+  comment: CommentType;
+  currentUserId: string | null;
+  onDelete: () => void;
+  onBlocked: (authorId: string) => void;
+  onReported: () => void;
+}) {
+  if (currentUserId === comment.author.id) {
+    return (
+      <button
+        onClick={onDelete}
+        className="ml-auto shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+        aria-label="Delete comment"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    );
+  }
+  if (currentUserId) {
+    return (
+      <div className="ml-auto shrink-0">
+        <ContentOverflowMenu
+          contentType="COMMENT"
+          contentId={comment.id}
+          authorId={comment.author.id}
+          authorName={comment.author.name ?? comment.author.id}
+          onReported={onReported}
+          onBlocked={() => onBlocked(comment.author.id)}
+        />
+      </div>
+    );
+  }
+  return null;
+}
+
+// Flat, one level deep — replies never recurse further (no reply-to-a-reply).
+function ReplyItem({
+  reply,
+  onDelete,
+  onBlocked,
+  currentUserId,
+}: {
+  reply: CommentType;
+  onDelete: (id: string) => void;
+  onBlocked: (authorId: string) => void;
+  currentUserId: string | null;
+}) {
+  const [reported, setReported] = useState(false);
+
+  const { liked, count, toggle } = useLike({
+    id: reply.id,
+    type: "comment",
+    initialLiked: reply.likedByMe,
+    initialCount: reply.likeCount,
+  });
+
+  if (reported) return null;
+
+  return (
+    <div id={`comment-${reply.id}`} className="ml-9 space-y-1.5 scroll-mt-60">
+      <div className="flex items-center gap-2">
+        <Avatar className="h-6 w-6 border shrink-0">
+          <AvatarImage src={reply.author.image ?? "/placeholder-user.jpg"} />
+          <AvatarFallback>{reply.author.name?.[0] ?? "?"}</AvatarFallback>
+        </Avatar>
+        <span className="text-sm font-medium truncate min-w-0">
+          {reply.author.name ?? "Unknown"}
+        </span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+          {timeAgo(new Date(reply.createdAt))}
+        </span>
+        <CommentActions
+          comment={reply}
+          currentUserId={currentUserId}
+          onDelete={() => onDelete(reply.id)}
+          onBlocked={onBlocked}
+          onReported={() => setReported(true)}
+        />
+      </div>
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+        {reply.content}
+      </p>
+      <div className="flex items-center gap-2">
+        <LikeButton
+          liked={liked}
+          count={count}
+          onToggle={toggle}
+          fetchLikersUrl={`/api/comments/${reply.id}/likes`}
+        />
+      </div>
+    </div>
+  );
+}
+
 function CommentItem({
   comment,
   onReply,
   onDelete,
   onBlocked,
   currentUserId,
-  depth = 0,
 }: {
   comment: CommentType;
   onReply: (parentId: string, content: string) => Promise<{ ok: boolean; error?: string }>;
   onDelete: (id: string, parentId?: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
-  depth?: number;
 }) {
   const [reported, setReported] = useState(false);
   const [showReply, setShowReply] = useState(false);
@@ -81,26 +179,13 @@ function CommentItem({
           <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
             {timeAgo(new Date(comment.createdAt))}
           </span>
-          {currentUserId === comment.author.id ? (
-            <button
-              onClick={() => onDelete(comment.id, undefined)}
-              className="ml-auto shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-              aria-label="Delete comment"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          ) : currentUserId ? (
-            <div className="ml-auto shrink-0">
-              <ContentOverflowMenu
-                contentType="COMMENT"
-                contentId={comment.id}
-                authorId={comment.author.id}
-                authorName={comment.author.name ?? comment.author.id}
-                onReported={() => setReported(true)}
-                onBlocked={() => onBlocked(comment.author.id)}
-              />
-            </div>
-          ) : null}
+          <CommentActions
+            comment={comment}
+            currentUserId={currentUserId}
+            onDelete={() => onDelete(comment.id, undefined)}
+            onBlocked={onBlocked}
+            onReported={() => setReported(true)}
+          />
         </div>
         <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
           {comment.content}
@@ -115,63 +200,59 @@ function CommentItem({
         </div>
       </div>
 
-      {/* replies */}
+      {/* replies — flat, one level, no further nesting */}
       {comment.replies?.length > 0 && (
-        <div className="ml-6 pl-4 border-l border-muted space-y-4">
+        <div className="space-y-3">
           {comment.replies.map((r) => (
-            <CommentItem
+            <ReplyItem
               key={r.id}
-              comment={r}
-              onReply={onReply}
+              reply={r}
               onDelete={(id) => onDelete(id, comment.id)}
               onBlocked={onBlocked}
               currentUserId={currentUserId}
-              depth={depth + 1}
             />
           ))}
         </div>
       )}
 
-      {/* reply button + box (top-level only) */}
-      {depth === 0 && (
-        <div className="ml-12 mt-2 space-y-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => setShowReply((s) => !s)}
-          >
-            {showReply ? "Cancel" : "Reply"}
-          </Button>
-          {showReply && (
-            <div className="mt-2 space-y-2">
-              <Textarea
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = `${el.scrollHeight}px`;
-                }}
-                placeholder="Write a reply..."
-                className="overflow-hidden resize-none"
-              />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleSubmitReply}>
-                  Submit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowReply(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
+      {/* reply button + box */}
+      <div className="ml-12 mt-2 space-y-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs text-muted-foreground"
+          onClick={() => setShowReply((s) => !s)}
+        >
+          {showReply ? "Cancel" : "Reply"}
+        </Button>
+        {showReply && (
+          <div className="mt-2 space-y-2">
+            <Textarea
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
+              placeholder="Write a reply..."
+              className="overflow-hidden resize-none"
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSubmitReply}>
+                Submit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowReply(false)}
+              >
+                Cancel
+              </Button>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

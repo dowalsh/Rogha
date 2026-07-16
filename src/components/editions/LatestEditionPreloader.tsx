@@ -10,6 +10,10 @@ type PreloadEdition = {
   posts?: { id: string; heroImageUrl?: string | null }[];
 };
 
+type FullPrefetchRouter = {
+  prefetch: (href: string, options?: { kind: "auto" | "full" | "temporary" }) => void;
+};
+
 // Silently warms the browser's cache for the latest edition's route + hero
 // images while the user is on the home feed, so opening it later feels
 // instant. Deferred so it doesn't compete with the feed's own fetches.
@@ -29,7 +33,16 @@ export function LatestEditionPreloader() {
   );
 
   useEffect(() => {
-    if (edition?.id) router.prefetch(`/editions/${edition.id}`);
+    if (!edition?.id) return;
+    // `kind: "full"` forces Next to run the target page's server render
+    // (including its Prisma query) ahead of time and cache the result, not
+    // just the static shell — the default `"auto"` kind skips dynamic data
+    // for force-dynamic routes. Not in the public `next/navigation` types,
+    // so it's cast rather than imported from Next's internal module path.
+    (router as unknown as FullPrefetchRouter).prefetch(
+      `/editions/${edition.id}`,
+      { kind: "full" },
+    );
   }, [edition?.id, router]);
 
   const posts = edition?.posts;

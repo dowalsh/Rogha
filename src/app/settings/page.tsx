@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/Spinner";
+import { Check } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Prefs = {
@@ -28,9 +29,13 @@ const rows: { label: string; email: keyof Prefs; push: keyof Prefs }[] = [
   { label: "Friend requests", email: "emailFriendRequests", push: "pushFriendRequests" },
 ];
 
+type SaveStatus = "idle" | "saving" | "saved";
+
 export default function SettingsPage() {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/settings/notifications")
@@ -40,9 +45,17 @@ export default function SettingsPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+    };
+  }, []);
+
   async function toggle(field: keyof Prefs, value: boolean) {
     if (!prefs) return;
+    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
     setPrefs({ ...prefs, [field]: value });
+    setSaveStatus("saving");
     try {
       const res = await fetch("/api/settings/notifications", {
         method: "PATCH",
@@ -50,8 +63,11 @@ export default function SettingsPage() {
         body: JSON.stringify({ [field]: value }),
       });
       if (!res.ok) throw new Error();
+      setSaveStatus("saved");
+      savedTimeoutRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
     } catch {
       setPrefs({ ...prefs });
+      setSaveStatus("idle");
       toast.error("Failed to save");
     }
   }
@@ -76,8 +92,18 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Notifications</CardTitle>
+          {saveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Spinner className="h-3 w-3" /> Saving…
+            </span>
+          )}
+          {saveStatus === "saved" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="h-3 w-3" /> Saved
+            </span>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {/* Header row */}

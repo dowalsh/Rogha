@@ -469,7 +469,10 @@ export default function CommentsSection({
   );
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-8">
+    <div
+      className="mx-auto max-w-2xl space-y-8 pt-8"
+      style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}
+    >
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-bold">Comments</h2>
@@ -508,62 +511,67 @@ export default function CommentsSection({
         )}
       </div>
 
-      <div className="sticky bottom-0 -mx-4 border-t bg-background px-4 pb-4 pt-3 sm:mx-0 sm:px-0">
-        {replyingTo && (
-          <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <button
-              onClick={() => scrollToComment(replyingTo.id)}
-              className="hover:text-foreground"
-            >
-              Replying to{" "}
-              <span className="font-medium text-foreground">
-                {replyingTo.name}
-              </span>
-            </button>
-          </div>
-        )}
-        {!composerOpen ? (
-          <button
-            onClick={() => setComposerOpen(true)}
-            className="flex w-full items-center gap-3 rounded-full border px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
-          >
-            <Avatar className="h-7 w-7 border shrink-0">
-              <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
-              <AvatarFallback>?</AvatarFallback>
-            </Avatar>
-            Add a comment…
-          </button>
-        ) : (
-          <div className="space-y-2">
-            <Textarea
-              key={replyingTo?.id ?? "top-level"}
-              autoFocus
-              placeholder={
-                replyingTo ? `Reply to ${replyingTo.name}...` : "Write your comment..."
-              }
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-              className="overflow-hidden resize-none"
-            />
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={closeComposer}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={submitComposer}
-                disabled={submitting || !newComment.trim()}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background">
+        <div
+          className="mx-auto max-w-2xl px-4 pt-3"
+          style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        >
+          {replyingTo && (
+            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <button
+                onClick={() => scrollToComment(replyingTo.id)}
+                className="hover:text-foreground"
               >
-                {submitting ? "Posting..." : "Submit"}
-              </Button>
+                Replying to{" "}
+                <span className="font-medium text-foreground">
+                  {replyingTo.name}
+                </span>
+              </button>
             </div>
-          </div>
-        )}
+          )}
+          {!composerOpen ? (
+            <button
+              onClick={() => setComposerOpen(true)}
+              className="flex w-full items-center gap-3 rounded-full border px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
+            >
+              <Avatar className="h-7 w-7 border shrink-0">
+                <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
+                <AvatarFallback>?</AvatarFallback>
+              </Avatar>
+              Add a comment…
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <Textarea
+                key={replyingTo?.id ?? "top-level"}
+                autoFocus
+                placeholder={
+                  replyingTo ? `Reply to ${replyingTo.name}...` : "Write your comment..."
+                }
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = `${el.scrollHeight}px`;
+                }}
+                className="overflow-hidden resize-none"
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={closeComposer}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={submitComposer}
+                  disabled={submitting || !newComment.trim()}
+                >
+                  {submitting ? "Posting..." : "Submit"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

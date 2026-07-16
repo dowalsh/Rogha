@@ -25,6 +25,9 @@ const config: CapacitorConfig = {
       launchShowDuration: 8000,
       backgroundColor: "#ffffff",
     },
+    Keyboard: {
+      resize: "native",
+    },
   },
 };
 

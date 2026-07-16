@@ -12,6 +12,7 @@ import { LikeButton } from "./LikeButton";
 import { ContentOverflowMenu } from "./ContentOverflowMenu";
 import toast from "react-hot-toast";
 import type { AudienceType } from "@/types/index";
+import { cn } from "@/lib/utils";
 
 interface Author {
   id: string;
@@ -94,7 +95,7 @@ function ReplyItem({
   if (reported) return null;
 
   return (
-    <div id={`comment-${reply.id}`} className="ml-9 space-y-1.5 scroll-mt-60">
+    <div id={`comment-${reply.id}`} className="space-y-1.5 scroll-mt-60">
       <div className="flex items-center gap-2">
         <Avatar className="h-6 w-6 border shrink-0">
           <AvatarImage src={reply.author.image ?? "/avatar.png"} />
@@ -135,12 +136,14 @@ function CommentItem({
   onDelete,
   onBlocked,
   currentUserId,
+  pulsing,
 }: {
   comment: CommentType;
   onReplyClick: (commentId: string, authorName: string) => void;
   onDelete: (id: string, parentId?: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
+  pulsing: boolean;
 }) {
   const [reported, setReported] = useState(false);
 
@@ -154,7 +157,13 @@ function CommentItem({
   if (reported) return null;
 
   return (
-    <div id={`comment-${comment.id}`} className="space-y-2 scroll-mt-60">
+    <div
+      id={`comment-${comment.id}`}
+      className={cn(
+        "space-y-2 scroll-mt-60 scroll-mb-32 rounded-md transition-colors duration-700",
+        pulsing ? "bg-muted/70" : "bg-transparent"
+      )}
+    >
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <Avatar className="h-9 w-9 border shrink-0">
@@ -188,9 +197,10 @@ function CommentItem({
         </div>
       </div>
 
-      {/* replies — flat, one level, no further nesting */}
+      {/* replies — flat, one level; thin line groups them under the parent */}
       {comment.replies?.length > 0 && (
-        <div className="space-y-3">
+        <div className="relative space-y-3 pl-9">
+          <div className="absolute left-4 top-0 bottom-2 w-px bg-border" />
           {comment.replies.map((r) => (
             <ReplyItem
               key={r.id}
@@ -240,10 +250,20 @@ export default function CommentsSection({
   const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
   const [composerOpen, setComposerOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
+  const [pulsingId, setPulsingId] = useState<string | null>(null);
+
+  function scrollToComment(id: string) {
+    const el = document.getElementById(`comment-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "end" });
+    setPulsingId(id);
+    setTimeout(() => setPulsingId((cur) => (cur === id ? null : cur)), 900);
+  }
 
   function handleReplyClick(commentId: string, authorName: string) {
     setReplyingTo({ id: commentId, name: authorName });
     setComposerOpen(true);
+    scrollToComment(commentId);
   }
 
   function closeComposer() {
@@ -483,7 +503,7 @@ export default function CommentsSection({
           comments
             .filter((c) => !blockedAuthorIds.has(c.author.id))
             .map((c) => (
-              <CommentItem key={c.id} comment={c} onReplyClick={handleReplyClick} onDelete={deleteComment} onBlocked={handleBlocked} currentUserId={currentUserId} />
+              <CommentItem key={c.id} comment={c} onReplyClick={handleReplyClick} onDelete={deleteComment} onBlocked={handleBlocked} currentUserId={currentUserId} pulsing={pulsingId === c.id} />
             ))
         )}
       </div>
@@ -491,17 +511,14 @@ export default function CommentsSection({
       <div className="sticky bottom-0 -mx-4 border-t bg-background px-4 pb-4 pt-3 sm:mx-0 sm:px-0">
         {replyingTo && (
           <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>
+            <button
+              onClick={() => scrollToComment(replyingTo.id)}
+              className="hover:text-foreground"
+            >
               Replying to{" "}
               <span className="font-medium text-foreground">
                 {replyingTo.name}
               </span>
-            </span>
-            <button
-              onClick={() => setReplyingTo(null)}
-              className="underline hover:text-foreground"
-            >
-              Cancel
             </button>
           </div>
         )}

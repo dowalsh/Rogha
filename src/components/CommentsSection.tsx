@@ -407,8 +407,8 @@ export default function CommentsSection({
   }
 
   async function submitComposer() {
-    const text = newComment;
-    if (!text.trim() || submitting) return;
+    const text = newComment.trim();
+    if (!text || submitting) return;
     setSubmitting(true);
 
     const { ok, error } = replyingTo

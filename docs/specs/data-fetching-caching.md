@@ -34,10 +34,13 @@ had to be explicitly reconciled).
 - `src/components/buzz/BuzzSection.tsx` — home feed.
 - `src/components/LikeButton.tsx` — likers list (see "Delayed-key priming" below).
 - `src/components/editions/LatestEditionPreloader.tsx` + `src/app/editions/page.tsx` — see "Editions" below.
+- `src/app/reader/[id]/page.tsx` — reads `/api/posts/${id}` via `useSWR`,
+  which is what makes it possible to seed that cache key from the edition
+  payload; see "Seeding reader caches from the edition payload" below.
 
 ### Not yet migrated
 Still on the old `useEffect`+`fetch` pattern, no cross-navigation cache:
-`src/app/posts/page.tsx`, `src/app/reader/[id]/page.tsx`,
+`src/app/posts/page.tsx`,
 `src/components/CommentsSection.tsx`, `src/app/settings/page.tsx`,
 `src/app/admin/*`, `src/components/FriendsCarousel.tsx`,
 `src/components/ShareLinkControls.tsx`, and a few smaller ones. Migrating
@@ -106,6 +109,53 @@ image preloading only pays off if every consumer of that image renders it
 through `next/image` with matching `sizes` — a raw `<img>` or a different
 `sizes` value produces a different request URL and silently misses the
 warm cache.
+
+## Seeding reader caches from the edition payload
+
+Same pattern as the editions cache-seed above, one level deeper: the first
+click into *any post* from the latest edition used to be a cold
+`/api/posts/${id}` fetch, because SWR only speeds up re-visits — a flow
+that's inherently all-first-visits (open app → latest edition → read post)
+never benefited from it.
+
+`getPublishedEditionById` (`src/lib/editions.ts`) already selects each
+post's full `content`, plus (as of this change) `_count.likes` and a
+viewer-scoped `likes` join, mapped into `likeCount`/`likedByMe` on each
+returned post; `author` now also selects `clerkId`. In other words,
+`LatestEditionPreloader` already has every post body in hand once
+`/api/editions/latest` resolves — it was just being discarded after
+warming images and the route.
+
+`LatestEditionPreloader` now maps each post through a local `buildPostDTO()`
+into the exact shape `/api/posts/[id]` returns, and seeds that endpoint's
+SWR cache directly, plus prefetches the reader route's shell:
+
+```ts
+for (const post of edition.posts ?? []) {
+  mutate(`/api/posts/${post.id}`, buildPostDTO(post, edition), {
+    revalidate: false,
+  });
+  router.prefetch(`/reader/${post.id}`);
+}
+```
+
+This only works end-to-end because `src/app/reader/[id]/page.tsx` reads
+through `useSWR(`/api/posts/${id}`)` (not a `cache: "no-store"` fetch) —
+if that ever regresses back to a bypassing fetch, the seed becomes dead
+weight.
+
+**Scope guardrail, same reasoning as the archive list above:** this only
+covers the *current* latest edition's posts (bounded — one edition's worth
+of posts, already being fetched anyway for images/route-warming). It does
+not extend to older editions or `/posts` (the personal posts list) — those
+would need their own bounded justification before preloading.
+
+**Side effect of reusing this data:** the edition detail page
+(`src/app/editions/[id]/page.tsx`) spreads each post's full DB row
+(`...p`) into the client-facing `EditionResponse` payload, so `content`,
+`likeCount`, `likedByMe`, and `author.clerkId` now ride along in that
+page's RSC payload too — not new exposure (`content` was already selected
+and spread before this change), just a few more bytes per post.
 
 ## Route prefetch tuning
 

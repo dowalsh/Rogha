@@ -5,10 +5,55 @@ import useSWR, { mutate } from "swr";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
+type PreloadPost = {
+  id: string;
+  title?: string | null;
+  content?: unknown;
+  status?: string;
+  heroImageUrl?: string | null;
+  audienceType?: string;
+  circleId?: string | null;
+  author?: {
+    id: string;
+    clerkId?: string | null;
+    name?: string | null;
+    image?: string | null;
+  } | null;
+  likeCount?: number;
+  likedByMe?: boolean;
+};
+
 type PreloadEdition = {
   id: string;
-  posts?: { id: string; heroImageUrl?: string | null }[];
+  publishedAt?: string | null;
+  posts?: PreloadPost[];
 };
+
+// Shape /api/posts/[id] actually returns — kept local since this is only
+// used to seed that endpoint's SWR cache, not to read the response.
+function buildPostDTO(post: PreloadPost, edition: PreloadEdition) {
+  return {
+    id: post.id,
+    title: post.title ?? null,
+    content: post.content,
+    status: post.status,
+    editionId: edition.id,
+    heroImageUrl: post.heroImageUrl ?? null,
+    audienceType: post.audienceType,
+    circleId: post.circleId ?? null,
+    author: post.author
+      ? {
+          id: post.author.id,
+          clerkId: post.author.clerkId ?? null,
+          name: post.author.name ?? null,
+          image: post.author.image ?? null,
+        }
+      : null,
+    likeCount: post.likeCount ?? 0,
+    likedByMe: post.likedByMe ?? false,
+    edition: { publishedAt: edition.publishedAt ?? null },
+  };
+}
 
 type FullPrefetchRouter = {
   prefetch: (href: string, options?: { kind: "auto" | "full" | "temporary" }) => void;
@@ -52,6 +97,18 @@ export function LatestEditionPreloader() {
     // /editions page's "Latest Edition" preview (fetched via that key) is
     // instant if the user lands there instead of /editions/[id] directly.
     mutate(`/api/editions/${edition.id}`, edition, { revalidate: false });
+
+    // getPublishedEditionById already selects each post's full content,
+    // like count, and likedByMe — the same data the reader's own
+    // `/api/posts/${id}` fetch would return. Seed that cache key directly so
+    // the first click into any post from this edition is instant too,
+    // instead of only benefiting revisits (which is all SWR alone gives you).
+    for (const post of edition.posts ?? []) {
+      mutate(`/api/posts/${post.id}`, buildPostDTO(post, edition), {
+        revalidate: false,
+      });
+      router.prefetch(`/reader/${post.id}`);
+    }
   }, [edition, router]);
 
   const posts = edition?.posts;

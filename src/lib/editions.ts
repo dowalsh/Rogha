@@ -235,9 +235,11 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       audienceType: true,
       circleId: true,
       circle: { select: { id: true, name: true } },
-      author: { select: { id: true, name: true, image: true } },
+      author: { select: { id: true, clerkId: true, name: true, image: true } },
       heroImageUrl: true,
       content: true,
+      _count: { select: { likes: true } },
+      likes: { where: { userId: user.id }, select: { id: true } },
     },
   });
 
@@ -252,16 +254,23 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
   ]);
 
   // Temporal gate + reporter/block exclusion
-  const visiblePosts = posts.filter((p) => {
-    if (reportedPostIds.has(p.id)) return false;
-    if (blockedAuthorIds.has(p.authorId)) return false;
-    if (p.authorId === user.id) return true;
-    if (p.audienceType === "ALL_USERS") return true;
-    if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query
-    // FRIENDS: check friendship date
-    const friendshipDate = friendMap.get(p.authorId);
-    return friendshipDate !== undefined && friendshipDate <= p.createdAt;
-  });
+  const visiblePosts = posts
+    .filter((p) => {
+      if (reportedPostIds.has(p.id)) return false;
+      if (blockedAuthorIds.has(p.authorId)) return false;
+      if (p.authorId === user.id) return true;
+      if (p.audienceType === "ALL_USERS") return true;
+      if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query
+      // FRIENDS: check friendship date
+      const friendshipDate = friendMap.get(p.authorId);
+      return friendshipDate !== undefined && friendshipDate <= p.createdAt;
+    })
+    .map(({ _count, likes, ...p }) => ({
+      ...p,
+      editionId: edition.id,
+      likeCount: _count.likes,
+      likedByMe: likes.length > 0,
+    }));
 
   // View data for reveal overlay
   const [viewRecord, viewerPreview, viewerCount] = await Promise.all([

@@ -131,9 +131,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     setSaved(false);
   };
 
-  // Save (blocked when editor is locked)
-  const handleSave = async () => {
-    if (editorLocked) return;
+  // Save (blocked when editor is locked). Returns whether the save succeeded
+  // so callers (e.g. submit) can flush pending changes before moving on.
+  const handleSave = async (): Promise<boolean> => {
+    if (editorLocked) return true;
     try {
       setIsSaving(true);
       const res = await fetch(`/api/posts/${params.id}`, {
@@ -150,8 +151,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       });
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
       setSaved(true);
+      return true;
     } catch (err) {
       console.error("Failed to save:", err);
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -173,6 +176,16 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
     try {
       setIsSaving(true);
+
+      // Flush any pending changes (e.g. a hero image the user just picked)
+      // through the normal save flow first, so the current status's PUT
+      // isn't the first time this content/image has ever been persisted.
+      const saveOk = await handleSave();
+      if (!saveOk) {
+        toast.error("Failed to save changes. Please try again.");
+        return;
+      }
+
       const res = await fetch(`/api/posts/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

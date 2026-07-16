@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
 const CLEAR_SIZE = 48;
-const TEASER_SIZE = 8;
+const TEASER_SIZE = 16;
 
 async function toDataUri(buffer: Buffer): Promise<string> {
   return `data:image/jpeg;base64,${buffer.toString("base64")}`;

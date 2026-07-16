@@ -1,4 +1,4 @@
 # Rogha — Claude guidelines
 
 ## After every code change
-Always provide a suggested commit message at the end of your response.
+Always end the response with a clear list of the files changed and a suggested commit message.

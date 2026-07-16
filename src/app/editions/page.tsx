@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import useSWR from "swr";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -356,11 +358,13 @@ function StoryLead({ post }: { post: FullEditionPost }) {
   return (
     <div className="border-b pb-8">
       {post.heroImageUrl && (
-        <div className="aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
-          <img
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
+          <Image
             src={post.heroImageUrl}
             alt={post.title ?? ""}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 1024px) 640px, 100vw"
+            className="object-cover"
           />
         </div>
       )}
@@ -378,11 +382,13 @@ function StoryCard({ post }: { post: FullEditionPost }) {
   return (
     <div className="border bg-card p-3 space-y-2">
       {post.heroImageUrl && (
-        <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-          <img
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+          <Image
             src={post.heroImageUrl}
             alt={post.title ?? ""}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
+            className="object-cover"
           />
         </div>
       )}
@@ -459,46 +465,26 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function EditionsPage() {
-  const [editions, setEditions] = useState<EditionRow[] | null>(null);
-  const [latestEdition, setLatestEdition] = useState<FullEdition | null>(null);
-  const [loadingList, setLoadingList] = useState(true);
-  const [loadingLatest, setLoadingLatest] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   useUser();
 
-  const fetchEditions = useCallback(async () => {
-    setLoadingList(true);
-    setMsg(null);
-    try {
-      const res = await fetch("/api/editions", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: EditionRow[] = await res.json();
-      setEditions(data);
+  // The full archive list — not preloaded from the home feed (unbounded,
+  // per-edition query), but cached here so revisiting /editions is instant.
+  const {
+    data: editions,
+    isLoading: loadingList,
+    mutate: mutateEditions,
+  } = useSWR<EditionRow[]>("/api/editions");
 
-      // Fetch full data for the latest edition so we can render story cards
-      if (data.length > 0) {
-        setLoadingLatest(true);
-        try {
-          const r2 = await fetch(`/api/editions/${data[0].id}`, {
-            cache: "no-store",
-          });
-          if (r2.ok) setLatestEdition(await r2.json());
-        } finally {
-          setLoadingLatest(false);
-        }
-      }
-    } catch {
-      setEditions([]);
-    } finally {
-      setLoadingList(false);
-    }
-  }, []);
+  const latestId = editions?.[0]?.id;
 
-  useEffect(() => {
-    fetchEditions();
-  }, [fetchEditions]);
+  // Same key LatestEditionPreloader seeds from the home feed (it returns
+  // identical data to this endpoint for the latest edition) — if that ran
+  // first, this resolves from cache instantly instead of refetching.
+  const { data: latestEdition, isLoading: loadingLatest } =
+    useSWR<FullEdition>(latestId ? `/api/editions/${latestId}` : null);
 
   const handlePublishLastWeek = async () => {
     setPublishing(true);
@@ -524,7 +510,10 @@ export default function EditionsPage() {
             : "Nothing to publish for last week.",
         );
       }
-      await fetchEditions();
+      // Revalidating the list is enough — if a new edition just got
+      // published, `latestId` changes and useSWR refetches under the new
+      // key automatically.
+      await mutateEditions();
     } catch (e: any) {
       setMsg(e.message || "Publish failed.");
     } finally {

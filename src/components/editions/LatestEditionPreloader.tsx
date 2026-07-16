@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -34,16 +34,25 @@ export function LatestEditionPreloader() {
 
   useEffect(() => {
     if (!edition?.id) return;
+    const fullRouter = router as unknown as FullPrefetchRouter;
     // `kind: "full"` forces Next to run the target page's server render
     // (including its Prisma query) ahead of time and cache the result, not
     // just the static shell — the default `"auto"` kind skips dynamic data
     // for force-dynamic routes. Not in the public `next/navigation` types,
     // so it's cast rather than imported from Next's internal module path.
-    (router as unknown as FullPrefetchRouter).prefetch(
-      `/editions/${edition.id}`,
-      { kind: "full" },
-    );
-  }, [edition?.id, router]);
+    fullRouter.prefetch(`/editions/${edition.id}`, { kind: "full" });
+    // Also warm the /editions list route's JS/shell — its own data (the
+    // archive list) isn't safe to prefetch speculatively since it's an
+    // unbounded per-edition query, but the route shell itself is cheap.
+    fullRouter.prefetch("/editions", { kind: "full" });
+
+    // /api/editions/latest and /api/editions/[id] both return the exact
+    // same shape (same server function) for the latest edition, so seed the
+    // SWR cache under the [id] key too — no extra request, but the
+    // /editions page's "Latest Edition" preview (fetched via that key) is
+    // instant if the user lands there instead of /editions/[id] directly.
+    mutate(`/api/editions/${edition.id}`, edition, { revalidate: false });
+  }, [edition, router]);
 
   const posts = edition?.posts;
   if (!posts || posts.length === 0) return null;

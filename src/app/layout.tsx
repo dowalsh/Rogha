@@ -13,6 +13,7 @@ import DeepLinkInit from "@/components/DeepLinkInit";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
 import TermsGate from "@/components/TermsGate";
+import { formatDistanceToNow } from "date-fns";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -91,7 +92,12 @@ export default async function RootLayout({
                             timeZone: "UTC",
                           },
                         )}{" "}
-                        UTC
+                        UTC (
+                        {formatDistanceToNow(
+                          new Date(process.env.NEXT_PUBLIC_BUILD_TIME),
+                          { addSuffix: true },
+                        )}
+                        )
                       </span>
                     )}
                   </div>

@@ -1,4 +1,5 @@
 // src/components/PostRow.tsx
+import Image from "next/image";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
@@ -37,11 +38,13 @@ export function PostRow({
       <td className="p-3">
         <Link href={`/editor/${id}`} className="flex items-center gap-3">
           {heroImageUrl && (
-            <div className="h-14 w-20 overflow-hidden ">
-              <img
+            <div className="relative h-14 w-20 overflow-hidden ">
+              <Image
                 src={heroImageUrl}
                 alt=""
-                className="h-full w-full object-cover"
+                fill
+                sizes="80px"
+                className="object-cover"
               />
             </div>
           )}
@@ -131,11 +134,13 @@ export function PostCard({
     <div className="rounded-md border p-3 space-y-3">
       <Link href={`/editor/${id}`} className="flex items-center gap-3">
         {heroImageUrl && (
-          <div className="h-14 w-20 shrink-0 overflow-hidden">
-            <img
+          <div className="relative h-14 w-20 shrink-0 overflow-hidden">
+            <Image
               src={heroImageUrl}
               alt=""
-              className="h-full w-full object-cover"
+              fill
+              sizes="80px"
+              className="object-cover"
             />
           </div>
         )}

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
@@ -91,11 +92,14 @@ function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post;
     <section className="border-b pb-8 relative">
       <Link href={`/reader/${post.id}`} className="group block w-full">
         <article className="grid gap-6 transition-shadow duration-200  lg:grid-cols-[2fr,1fr] lg:items-stretch">
-          <div className="aspect-[16/9] w-full overflow-hidden bg-muted">
-            <img
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+            <Image
               src={post.heroImageUrl!}
               alt={post.title ?? "Story image"}
-              className="h-full w-full object-cover"
+              fill
+              sizes="(min-width: 1024px) 640px, 100vw"
+              className="object-cover"
+              priority
             />
           </div>
 
@@ -132,11 +136,13 @@ function SecondaryStory({ post, currentUserId, onReported, onBlocked }: { post: 
       <Link href={`/reader/${post.id}`} className="group block h-full">
         <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200 ">
           {post.heroImageUrl && (
-            <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-              <img
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+              <Image
                 src={post.heroImageUrl}
                 alt={post.title ?? "Story image"}
-                className="h-full w-full object-cover"
+                fill
+                sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
+                className="object-cover"
               />
             </div>
           )}

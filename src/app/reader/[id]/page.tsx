@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
@@ -278,12 +279,14 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       {/* HERO IMAGE */}
       {heroImageUrl && (
         <div className="space-y-2">
-          <div className="relative w-full h-96 overflow-hidden rounded-lg flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative w-full h-96 overflow-hidden rounded-lg">
+            <Image
               src={heroImageUrl}
               alt="Hero"
-              className="max-h-full max-w-full object-contain"
+              fill
+              sizes="768px"
+              className="object-contain"
+              priority
             />
           </div>
         </div>

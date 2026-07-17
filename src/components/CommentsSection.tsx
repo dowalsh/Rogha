@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { Capacitor } from "@capacitor/core";
+import { Keyboard } from "@capacitor/keyboard";
 import useSWR from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -160,7 +162,7 @@ function CommentItem({
     <div
       id={`comment-${comment.id}`}
       className={cn(
-        "space-y-2 scroll-mt-60 scroll-mb-32 rounded-md transition-colors duration-700",
+        "space-y-2 scroll-mt-60 rounded-md transition-colors duration-700",
         pulsing ? "bg-muted/70" : "bg-transparent"
       )}
     >
@@ -251,13 +253,56 @@ export default function CommentsSection({
   const [composerOpen, setComposerOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const keyboardOpenRef = useRef(false);
+  const pendingScrollIdRef = useRef<string | null>(null);
 
-  function scrollToComment(id: string) {
+  // Native keyboard open/close lags behind focus by an animation — scrolling
+  // before it settles (and the WKWebView's resize:"native" frame shrink lands)
+  // computes against the wrong viewport height. Wait for keyboardDidShow.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const didShow = Keyboard.addListener("keyboardDidShow", () => {
+      keyboardOpenRef.current = true;
+      if (pendingScrollIdRef.current) {
+        const id = pendingScrollIdRef.current;
+        pendingScrollIdRef.current = null;
+        performScroll(id);
+      }
+    });
+    const didHide = Keyboard.addListener("keyboardDidHide", () => {
+      keyboardOpenRef.current = false;
+    });
+
+    return () => {
+      didShow.then((l) => l.remove());
+      didHide.then((l) => l.remove());
+    };
+  }, []);
+
+  // Scrolls so the target comment's bottom edge sits flush against the
+  // composer's top — anchored to the bottom, showing as much thread above
+  // as fits rather than centering or overscrolling past it.
+  function performScroll(id: string) {
     const el = document.getElementById(`comment-${id}`);
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "end" });
+    const composerHeight = composerRef.current?.getBoundingClientRect().height ?? 0;
+    const desiredBottom = window.innerHeight - composerHeight;
+    const delta = el.getBoundingClientRect().bottom - desiredBottom;
+    window.scrollBy({ top: delta, behavior: "smooth" });
     setPulsingId(id);
     setTimeout(() => setPulsingId((cur) => (cur === id ? null : cur)), 900);
+  }
+
+  function scrollToComment(id: string) {
+    // On native, if the keyboard isn't up yet, the composer is about to
+    // expand and the keyboard is about to open — defer until it settles.
+    if (Capacitor.isNativePlatform() && !keyboardOpenRef.current) {
+      pendingScrollIdRef.current = id;
+      return;
+    }
+    performScroll(id);
   }
 
   function handleReplyClick(commentId: string, authorName: string) {
@@ -511,7 +556,7 @@ export default function CommentsSection({
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background">
+      <div ref={composerRef} className="fixed inset-x-0 bottom-0 z-10 border-t bg-background">
         <div
           className="mx-auto max-w-2xl px-4 pt-3"
           style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}

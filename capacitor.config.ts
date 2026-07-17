@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import { KeyboardResize } from "@capacitor/keyboard";
 
 const serverUrl = process.env.CAP_SERVER_URL || "https://rogha.dylanwalsh.ie";
 
@@ -26,7 +27,7 @@ const config: CapacitorConfig = {
       backgroundColor: "#ffffff",
     },
     Keyboard: {
-      resize: "native",
+      resize: KeyboardResize.Native,
     },
   },
 };

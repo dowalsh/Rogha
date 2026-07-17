@@ -7,6 +7,7 @@ const config: CapacitorConfig = {
   appId: "ie.dylanwalsh.rogha",
   appName: "Rogha",
   webDir: "public",
+  backgroundColor: "#ffffff",
   server: {
     url: serverUrl,
     cleartext: false,
@@ -28,6 +29,7 @@ const config: CapacitorConfig = {
     },
     Keyboard: {
       resize: KeyboardResize.Native,
+      autoBackdropColor: "auto",
     },
   },
 };

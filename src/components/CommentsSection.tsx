@@ -538,10 +538,7 @@ export default function CommentsSection({
   );
 
   return (
-    <div
-      className="mx-auto max-w-2xl space-y-8 pt-8"
-      style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}
-    >
+    <div className="mx-auto max-w-2xl space-y-8 py-8">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-bold">Comments</h2>
@@ -580,7 +577,7 @@ export default function CommentsSection({
         )}
       </div>
 
-      <div ref={composerRef} className="fixed inset-x-0 bottom-0 z-10 border-t bg-background">
+      <div ref={composerRef} className="sticky bottom-0 z-10 -mx-4 border-t bg-background sm:mx-0">
         <div
           className="mx-auto max-w-2xl px-4 pt-3"
           style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}

@@ -281,19 +281,16 @@ export default function CommentsSection({
     return () => window.removeEventListener("touchmove", handleTouchMove);
   }, []);
 
-  // Native keyboard open/close lags behind focus by an animation — scrolling
-  // before it settles (and the WKWebView's resize:"native" frame shrink lands)
-  // computes against the wrong viewport height. Wait for keyboardDidShow.
+  // keyboardDidShow only tells us the keyboard's OWN animation finished —
+  // not that the WKWebView's resize:"native" frame shrink (and therefore
+  // window.innerHeight) has actually landed yet. Those are separate
+  // subsystems bridged asynchronously, so use it only for open/closed
+  // bookkeeping, never as the trigger for our scroll math.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const didShow = Keyboard.addListener("keyboardDidShow", () => {
       keyboardOpenRef.current = true;
-      if (pendingScrollIdRef.current) {
-        const id = pendingScrollIdRef.current;
-        pendingScrollIdRef.current = null;
-        performScroll(id);
-      }
     });
     const didHide = Keyboard.addListener("keyboardDidHide", () => {
       keyboardOpenRef.current = false;
@@ -305,16 +302,40 @@ export default function CommentsSection({
     };
   }, []);
 
+  // The real signal that the viewport actually shrank (post keyboard-open)
+  // is a window resize event, not the keyboard bridge event. Debounced so we
+  // act once size has settled, not on every intermediate frame.
+  useEffect(() => {
+    let settleTimeout: ReturnType<typeof setTimeout>;
+    function handleResize() {
+      clearTimeout(settleTimeout);
+      settleTimeout = setTimeout(() => {
+        if (pendingScrollIdRef.current) {
+          const id = pendingScrollIdRef.current;
+          pendingScrollIdRef.current = null;
+          // Instant — the keyboard already animated in; stacking a smooth
+          // scroll on top of that reads as lag, not polish.
+          performScroll(id, "auto");
+        }
+      }, 50);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => {
+      clearTimeout(settleTimeout);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   // Scrolls so the target comment's bottom edge sits flush against the
   // composer's top — anchored to the bottom, showing as much thread above
   // as fits rather than centering or overscrolling past it.
-  function performScroll(id: string) {
+  function performScroll(id: string, behavior: ScrollBehavior = "smooth") {
     const el = document.getElementById(`comment-${id}`);
     if (!el) return;
     const composerHeight = composerRef.current?.getBoundingClientRect().height ?? 0;
     const desiredBottom = window.innerHeight - composerHeight;
     const delta = el.getBoundingClientRect().bottom - desiredBottom;
-    window.scrollBy({ top: delta, behavior: "smooth" });
+    window.scrollBy({ top: delta, behavior });
     setPulsingId(id);
     setTimeout(() => setPulsingId((cur) => (cur === id ? null : cur)), 900);
   }
@@ -324,6 +345,13 @@ export default function CommentsSection({
     // expand and the keyboard is about to open — defer until it settles.
     if (Capacitor.isNativePlatform() && !keyboardOpenRef.current) {
       pendingScrollIdRef.current = id;
+      // Safety net: if a resize event never fires, don't leave this stuck.
+      setTimeout(() => {
+        if (pendingScrollIdRef.current === id) {
+          pendingScrollIdRef.current = null;
+          performScroll(id, "auto");
+        }
+      }, 500);
       return;
     }
     performScroll(id);

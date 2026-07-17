@@ -257,6 +257,9 @@ export default function CommentsSection({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const keyboardOpenRef = useRef(false);
   const pendingScrollIdRef = useRef<string | null>(null);
+  // Last-observed real keyboard height this session. Lets every Reply after
+  // the first one lay out optimistically instead of waiting on a resize.
+  const cachedKeyboardHeightRef = useRef<number | null>(null);
 
   // Imperative focus with preventScroll — the browser's own "scroll focused
   // input into view" (which autoFocus would trigger) stacks on top of our
@@ -285,10 +288,15 @@ export default function CommentsSection({
   // not that the WKWebView's resize:"native" frame shrink (and therefore
   // window.innerHeight) has actually landed yet. Those are separate
   // subsystems bridged asynchronously, so use it only for open/closed
-  // bookkeeping, never as the trigger for our scroll math.
+  // bookkeeping, never as the trigger for our scroll math. keyboardWillShow
+  // fires earlier and carries keyboardHeight — that's what we cache for next
+  // time, not for triggering anything on this show.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
+    const willShow = Keyboard.addListener("keyboardWillShow", (info) => {
+      cachedKeyboardHeightRef.current = info.keyboardHeight;
+    });
     const didShow = Keyboard.addListener("keyboardDidShow", () => {
       keyboardOpenRef.current = true;
     });
@@ -297,6 +305,7 @@ export default function CommentsSection({
     });
 
     return () => {
+      willShow.then((l) => l.remove());
       didShow.then((l) => l.remove());
       didHide.then((l) => l.remove());
     };
@@ -314,8 +323,10 @@ export default function CommentsSection({
           const id = pendingScrollIdRef.current;
           pendingScrollIdRef.current = null;
           // Instant — the keyboard already animated in; stacking a smooth
-          // scroll on top of that reads as lag, not polish.
-          performScroll(id, "auto");
+          // scroll on top of that reads as lag, not polish. This also acts
+          // as reconciliation for the optimistic branch below: if our cached
+          // keyboard-height guess was off, the *real* resize corrects it here.
+          performScroll(id, { behavior: "auto" });
         }
       }, 50);
     }
@@ -328,12 +339,19 @@ export default function CommentsSection({
 
   // Scrolls so the target comment's bottom edge sits flush against the
   // composer's top — anchored to the bottom, showing as much thread above
-  // as fits rather than centering or overscrolling past it.
-  function performScroll(id: string, behavior: ScrollBehavior = "smooth") {
+  // as fits rather than centering or overscrolling past it. Pass
+  // assumedViewportHeight to lay out for a keyboard that hasn't opened yet
+  // (the optimistic path below); omit it to measure the real, current one.
+  function performScroll(
+    id: string,
+    options: { behavior?: ScrollBehavior; assumedViewportHeight?: number } = {}
+  ) {
+    const { behavior = "smooth", assumedViewportHeight } = options;
     const el = document.getElementById(`comment-${id}`);
     if (!el) return;
     const composerHeight = composerRef.current?.getBoundingClientRect().height ?? 0;
-    const desiredBottom = window.innerHeight - composerHeight;
+    const viewportHeight = assumedViewportHeight ?? window.innerHeight;
+    const desiredBottom = viewportHeight - composerHeight;
     const delta = el.getBoundingClientRect().bottom - desiredBottom;
     window.scrollBy({ top: delta, behavior });
     setPulsingId(id);
@@ -342,14 +360,33 @@ export default function CommentsSection({
 
   function scrollToComment(id: string) {
     // On native, if the keyboard isn't up yet, the composer is about to
-    // expand and the keyboard is about to open — defer until it settles.
+    // expand and the keyboard is about to open.
     if (Capacitor.isNativePlatform() && !keyboardOpenRef.current) {
       pendingScrollIdRef.current = id;
-      // Safety net: if a resize event never fires, don't leave this stuck.
+
+      // Optimistic path: we've seen a real keyboard height before this
+      // session, so lay out for it *now* — assume the resize that's about
+      // to happen — instead of waiting on it. The keyboard then animates in
+      // underneath content that's already sitting in its final spot, rather
+      // than the content jumping into place after the fact. The resize
+      // listener above still runs once the real resize lands and corrects
+      // this if the cached height turns out to be stale (rotation, a
+      // predictive-text bar toggling, a different keyboard, etc.).
+      const cachedHeight = cachedKeyboardHeightRef.current;
+      if (cachedHeight != null) {
+        performScroll(id, {
+          behavior: "auto",
+          assumedViewportHeight: window.innerHeight - cachedHeight,
+        });
+      }
+
+      // Safety net: if a resize event never fires (or this is the first
+      // keyboard show of the session, with no cached height to go on yet),
+      // don't leave this stuck pending forever.
       setTimeout(() => {
         if (pendingScrollIdRef.current === id) {
           pendingScrollIdRef.current = null;
-          performScroll(id, "auto");
+          performScroll(id, { behavior: "auto" });
         }
       }, 500);
       return;

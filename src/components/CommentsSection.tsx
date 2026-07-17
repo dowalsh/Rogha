@@ -130,6 +130,70 @@ function ReplyItem({
   );
 }
 
+function InlineReplyComposer({
+  name,
+  value,
+  onChange,
+  onCancel,
+  onSubmit,
+  submitting,
+}: {
+  name: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+  submitting: boolean;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus on mount (no preventScroll) — iOS lifts this above the keyboard,
+  // and since it's the DOM node right after the target comment, the target
+  // ends up sitting directly on top of it. No scroll math needed.
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  return (
+    <div className="pl-9 mt-2 space-y-2">
+      {/* Actions above the textarea: iOS only guarantees the focused input
+          itself sits above the keyboard — anything rendered below it can
+          end up hidden behind it. */}
+      <div className="flex items-center gap-2 text-xs">
+        <button
+          onClick={onCancel}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          Cancel
+        </button>
+        <span className="flex-1 truncate text-muted-foreground">
+          Replying to{" "}
+          <span className="font-medium text-foreground">{name}</span>
+        </span>
+        <Button
+          size="sm"
+          onClick={onSubmit}
+          disabled={submitting || !value.trim()}
+        >
+          {submitting ? "Posting..." : "Submit"}
+        </Button>
+      </div>
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onInput={(e) => {
+          const el = e.currentTarget;
+          el.style.height = "auto";
+          el.style.height = `${el.scrollHeight}px`;
+        }}
+        placeholder={`Reply to ${name}...`}
+        className="overflow-hidden resize-none"
+      />
+    </div>
+  );
+}
+
 function CommentItem({
   comment,
   onReplyClick,
@@ -137,13 +201,27 @@ function CommentItem({
   onBlocked,
   currentUserId,
   pulsing,
+  isReplying,
+  replyingToName,
+  replyText,
+  onReplyTextChange,
+  onSubmitReply,
+  onCancelReply,
+  replySubmitting,
 }: {
   comment: CommentType;
-  onReplyClick: (commentId: string, authorName: string) => void;
+  onReplyClick: (commentId: string, authorName: string, parentId: string) => void;
   onDelete: (id: string, parentId?: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
   pulsing: boolean;
+  isReplying: boolean;
+  replyingToName: string;
+  replyText: string;
+  onReplyTextChange: (value: string) => void;
+  onSubmitReply: () => void;
+  onCancelReply: () => void;
+  replySubmitting: boolean;
 }) {
   const [reported, setReported] = useState(false);
 
@@ -213,20 +291,33 @@ function CommentItem({
         </div>
       )}
 
-      {/* reply — hands off to the single bottom composer */}
-      <div className="ml-12 mt-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-          onClick={() =>
-            onReplyClick(comment.id, comment.author.name ?? "Unknown")
-          }
-        >
-          <ReplyIcon className="h-3 w-3" />
-          Reply
-        </Button>
-      </div>
+      {/* inline, in-place reply composer — renders right after this
+          thread's replies so the target is directly above it by DOM
+          order, replacing the Reply button while active */}
+      {isReplying ? (
+        <InlineReplyComposer
+          name={replyingToName}
+          value={replyText}
+          onChange={onReplyTextChange}
+          onCancel={onCancelReply}
+          onSubmit={onSubmitReply}
+          submitting={replySubmitting}
+        />
+      ) : (
+        <div className="ml-12 mt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+            onClick={() =>
+              onReplyClick(comment.id, comment.author.name ?? "Unknown", comment.id)
+            }
+          >
+            <ReplyIcon className="h-3 w-3" />
+            Reply
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -249,27 +340,31 @@ export default function CommentsSection({
   const [submitting, setSubmitting] = useState(false);
   const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
   const [composerOpen, setComposerOpen] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
+  // parentId is always the top-level comment a reply attaches to (threading
+  // is flat/one-level) — id is whichever comment/reply was actually tapped,
+  // used for the highlight pulse.
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string; parentId: string } | null>(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
-  const composerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // No preventScroll here — letting the browser's native "scroll focused
   // input into view" run is the point: on iOS it lifts the focused textarea
-  // above the keyboard on its own, no scroll math needed.
+  // above the keyboard on its own, no scroll math needed. Only the bottom
+  // (new top-level comment) composer uses this ref/effect — the inline
+  // reply composer focuses itself on mount.
   useEffect(() => {
     if (composerOpen) {
       textareaRef.current?.focus();
     }
-  }, [composerOpen, replyingTo?.id]);
+  }, [composerOpen]);
 
   // Dragging the thread while the keyboard is up should dismiss it (like
   // Mail/Messages) rather than fight it — blur lets the keyboard hide and
-  // the composer settle back at the true bottom, in-progress draft intact.
+  // the composer (or inline reply box) settle back in place, draft intact.
   useEffect(() => {
     function handleTouchMove() {
       const active = document.activeElement;
-      if (active instanceof HTMLElement && composerRef.current?.contains(active)) {
+      if (active instanceof HTMLTextAreaElement) {
         active.blur();
       }
     }
@@ -277,9 +372,8 @@ export default function CommentsSection({
     return () => window.removeEventListener("touchmove", handleTouchMove);
   }, []);
 
-  function handleReplyClick(commentId: string, authorName: string) {
-    setReplyingTo({ id: commentId, name: authorName });
-    setComposerOpen(true);
+  function handleReplyClick(commentId: string, authorName: string, parentId: string) {
+    setReplyingTo({ id: commentId, name: authorName, parentId });
     setPulsingId(commentId);
     setTimeout(() => setPulsingId((cur) => (cur === commentId ? null : cur)), 900);
   }
@@ -451,7 +545,7 @@ export default function CommentsSection({
     setSubmitting(true);
 
     const { ok, error } = replyingTo
-      ? await addReply(replyingTo.id, text)
+      ? await addReply(replyingTo.parentId, text)
       : await addComment(text);
 
     if (ok) {
@@ -512,7 +606,7 @@ export default function CommentsSection({
         )}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 pb-[50vh]">
         {loadingComments ? (
           <div className="flex justify-center p-4">
             <Spinner />
@@ -521,77 +615,76 @@ export default function CommentsSection({
           comments
             .filter((c) => !blockedAuthorIds.has(c.author.id))
             .map((c) => (
-              <CommentItem key={c.id} comment={c} onReplyClick={handleReplyClick} onDelete={deleteComment} onBlocked={handleBlocked} currentUserId={currentUserId} pulsing={pulsingId === c.id} />
+              <CommentItem
+                key={c.id}
+                comment={c}
+                onReplyClick={handleReplyClick}
+                onDelete={deleteComment}
+                onBlocked={handleBlocked}
+                currentUserId={currentUserId}
+                pulsing={pulsingId === c.id}
+                isReplying={replyingTo?.parentId === c.id}
+                replyingToName={replyingTo?.name ?? ""}
+                replyText={newComment}
+                onReplyTextChange={setNewComment}
+                onSubmitReply={submitComposer}
+                onCancelReply={closeComposer}
+                replySubmitting={submitting}
+              />
             ))
         )}
       </div>
 
-      <div ref={composerRef} className="sticky bottom-0 z-10 -mx-4 border-t bg-background sm:mx-0">
-        <div
-          className="mx-auto max-w-2xl px-4 pt-3"
-          style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
-        >
-          {replyingTo && (
-            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+      {/* Bottom sticky composer — new top-level comments only. Hidden while
+          replying so it doesn't float over the inline reply composer. */}
+      {!replyingTo && (
+        <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background sm:mx-0">
+          <div
+            className="mx-auto max-w-2xl px-4 pt-3"
+            style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+          >
+            {!composerOpen ? (
               <button
-                onClick={() =>
-                  document
-                    .getElementById(`comment-${replyingTo.id}`)
-                    ?.scrollIntoView({ block: "center" })
-                }
-                className="hover:text-foreground"
+                onClick={() => setComposerOpen(true)}
+                className="flex w-full items-center gap-3 rounded-full border px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
               >
-                Replying to{" "}
-                <span className="font-medium text-foreground">
-                  {replyingTo.name}
-                </span>
+                <Avatar className="h-7 w-7 border shrink-0">
+                  <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
+                  <AvatarFallback>?</AvatarFallback>
+                </Avatar>
+                Add a comment…
               </button>
-            </div>
-          )}
-          {!composerOpen ? (
-            <button
-              onClick={() => setComposerOpen(true)}
-              className="flex w-full items-center gap-3 rounded-full border px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
-            >
-              <Avatar className="h-7 w-7 border shrink-0">
-                <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
-                <AvatarFallback>?</AvatarFallback>
-              </Avatar>
-              Add a comment…
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <Textarea
-                key={replyingTo?.id ?? "top-level"}
-                ref={textareaRef}
-                placeholder={
-                  replyingTo ? `Reply to ${replyingTo.name}...` : "Write your comment..."
-                }
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = `${el.scrollHeight}px`;
-                }}
-                className="overflow-hidden resize-none"
-              />
-              <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={closeComposer}>
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={submitComposer}
-                  disabled={submitting || !newComment.trim()}
-                >
-                  {submitting ? "Posting..." : "Submit"}
-                </Button>
+            ) : (
+              <div className="space-y-2">
+                <Textarea
+                  ref={textareaRef}
+                  placeholder="Write your comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = `${el.scrollHeight}px`;
+                  }}
+                  className="overflow-hidden resize-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={closeComposer}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={submitComposer}
+                    disabled={submitting || !newComment.trim()}
+                  >
+                    {submitting ? "Posting..." : "Submit"}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

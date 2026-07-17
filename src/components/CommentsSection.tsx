@@ -254,8 +254,32 @@ export default function CommentsSection({
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
   const composerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const keyboardOpenRef = useRef(false);
   const pendingScrollIdRef = useRef<string | null>(null);
+
+  // Imperative focus with preventScroll — the browser's own "scroll focused
+  // input into view" (which autoFocus would trigger) stacks on top of our
+  // own performScroll math and overshoots the target off-screen.
+  useEffect(() => {
+    if (composerOpen) {
+      textareaRef.current?.focus({ preventScroll: true });
+    }
+  }, [composerOpen, replyingTo?.id]);
+
+  // Dragging the thread while the keyboard is up should dismiss it (like
+  // Mail/Messages) rather than fight it — blur lets keyboardDidHide fire and
+  // the composer settle back at the true bottom, in-progress draft intact.
+  useEffect(() => {
+    function handleTouchMove() {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && composerRef.current?.contains(active)) {
+        active.blur();
+      }
+    }
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    return () => window.removeEventListener("touchmove", handleTouchMove);
+  }, []);
 
   // Native keyboard open/close lags behind focus by an animation — scrolling
   // before it settles (and the WKWebView's resize:"native" frame shrink lands)
@@ -589,7 +613,7 @@ export default function CommentsSection({
             <div className="space-y-2">
               <Textarea
                 key={replyingTo?.id ?? "top-level"}
-                autoFocus
+                ref={textareaRef}
                 placeholder={
                   replyingTo ? `Reply to ${replyingTo.name}...` : "Write your comment..."
                 }

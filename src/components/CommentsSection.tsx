@@ -5,12 +5,12 @@ import useSWR from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Trash2, Reply as ReplyIcon } from "lucide-react";
+import { Trash2, Reply as ReplyIcon, AlertCircle } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { useLike } from "@/hooks/useLike";
 import { LikeButton } from "./LikeButton";
 import { ContentOverflowMenu } from "./ContentOverflowMenu";
-import toast from "react-hot-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { AudienceType } from "@/types/index";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,12 @@ interface CommentType {
   replies: CommentType[];
   likeCount: number;
   likedByMe: boolean;
+  // Client-only, never sent to/from the server, and deliberately not named
+  // `status` — the API's Comment.status ("ACTIVE"/"REMOVED"/…) already
+  // spreads onto every real comment via `...c` in the GET normalizer, and a
+  // same-named client field would collide with it (every real comment would
+  // read as truthy → "failed"). Absent = confirmed/real.
+  deliveryStatus?: "sending" | "failed";
 }
 
 function CommentActions({
@@ -71,19 +77,89 @@ function CommentActions({
   return null;
 }
 
+// Lives where the timestamp normally sits, while sending.
+function SendingIndicator() {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap shrink-0">
+      <Spinner className="h-3 w-3" />
+      Sending…
+    </span>
+  );
+}
+
+// Failed state: a red exclamation icon in the same top-right slot the "…"
+// overflow menu normally occupies (Instagram/iMessage style) — tapping it,
+// or anywhere else on the (dimmed) row, opens Retry/Delete. Controlled from
+// the parent row so both triggers can open the same popover.
+function FailedCommentActions({
+  open,
+  onOpenChange,
+  onRetry,
+  onDiscard,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onRetry: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className="ml-auto shrink-0 text-destructive"
+          aria-label="Failed to send"
+        >
+          <AlertCircle className="h-4 w-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-36 p-1"
+        align="end"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+          onClick={() => {
+            onOpenChange(false);
+            onRetry();
+          }}
+        >
+          Retry
+        </button>
+        <button
+          className="w-full rounded-sm px-3 py-2 text-left text-sm text-destructive hover:bg-muted transition-colors"
+          onClick={() => {
+            onOpenChange(false);
+            onDiscard();
+          }}
+        >
+          Delete
+        </button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // Flat, one level deep — replies never recurse further (no reply-to-a-reply).
 function ReplyItem({
   reply,
   onDelete,
   onBlocked,
   currentUserId,
+  onRetry,
+  onDiscard,
 }: {
   reply: CommentType;
   onDelete: (id: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
+  onRetry: (id: string) => void;
+  onDiscard: (id: string) => void;
 }) {
   const [reported, setReported] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const failed = reply.deliveryStatus === "failed";
 
   const { liked, count, toggle } = useLike({
     id: reply.id,
@@ -95,7 +171,11 @@ function ReplyItem({
   if (reported) return null;
 
   return (
-    <div id={`comment-${reply.id}`} className="space-y-1.5 scroll-mt-60">
+    <div
+      id={`comment-${reply.id}`}
+      onClick={failed ? () => setActionsOpen(true) : undefined}
+      className={cn("space-y-1.5 scroll-mt-60", failed && "opacity-50")}
+    >
       <div className="flex items-center gap-2">
         <Avatar className="h-6 w-6 border shrink-0">
           <AvatarImage src={reply.author.image ?? "/avatar.png"} />
@@ -104,28 +184,44 @@ function ReplyItem({
         <span className="text-sm font-medium truncate min-w-0">
           {reply.author.name ?? "Unknown"}
         </span>
-        <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-          {timeAgo(new Date(reply.createdAt))}
-        </span>
-        <CommentActions
-          comment={reply}
-          currentUserId={currentUserId}
-          onDelete={() => onDelete(reply.id)}
-          onBlocked={onBlocked}
-          onReported={() => setReported(true)}
-        />
+        {reply.deliveryStatus === "sending" ? (
+          <SendingIndicator />
+        ) : !reply.deliveryStatus ? (
+          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+            {timeAgo(new Date(reply.createdAt))}
+          </span>
+        ) : null}
+        {!reply.deliveryStatus && (
+          <CommentActions
+            comment={reply}
+            currentUserId={currentUserId}
+            onDelete={() => onDelete(reply.id)}
+            onBlocked={onBlocked}
+            onReported={() => setReported(true)}
+          />
+        )}
+        {failed && (
+          <FailedCommentActions
+            open={actionsOpen}
+            onOpenChange={setActionsOpen}
+            onRetry={() => onRetry(reply.id)}
+            onDiscard={() => onDiscard(reply.id)}
+          />
+        )}
       </div>
       <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
         {reply.content}
       </p>
-      <div className="flex items-center gap-2">
-        <LikeButton
-          liked={liked}
-          count={count}
-          onToggle={toggle}
-          fetchLikersUrl={`/api/comments/${reply.id}/likes`}
-        />
-      </div>
+      {!reply.deliveryStatus && (
+        <div className="flex items-center gap-2">
+          <LikeButton
+            liked={liked}
+            count={count}
+            onToggle={toggle}
+            fetchLikersUrl={`/api/comments/${reply.id}/likes`}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -136,14 +232,12 @@ function InlineReplyComposer({
   onChange,
   onCancel,
   onSubmit,
-  submitting,
 }: {
   name: string;
   value: string;
   onChange: (value: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
-  submitting: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -170,12 +264,8 @@ function InlineReplyComposer({
           Replying to{" "}
           <span className="font-medium text-foreground">{name}</span>
         </span> */}
-        <Button
-          size="sm"
-          onClick={onSubmit}
-          disabled={submitting || !value.trim()}
-        >
-          {submitting ? "Posting..." : "Submit"}
+        <Button size="sm" onClick={onSubmit} disabled={!value.trim()}>
+          Submit
         </Button>
       </div>
       <Textarea
@@ -207,7 +297,8 @@ function CommentItem({
   onReplyTextChange,
   onSubmitReply,
   onCancelReply,
-  replySubmitting,
+  onRetry,
+  onDiscard,
 }: {
   comment: CommentType;
   onReplyClick: (
@@ -225,9 +316,12 @@ function CommentItem({
   onReplyTextChange: (value: string) => void;
   onSubmitReply: () => void;
   onCancelReply: () => void;
-  replySubmitting: boolean;
+  onRetry: (id: string, parentId?: string) => void;
+  onDiscard: (id: string, parentId?: string) => void;
 }) {
   const [reported, setReported] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const failed = comment.deliveryStatus === "failed";
 
   const { liked, count, toggle } = useLike({
     id: comment.id,
@@ -241,9 +335,11 @@ function CommentItem({
   return (
     <div
       id={`comment-${comment.id}`}
+      onClick={failed ? () => setActionsOpen(true) : undefined}
       className={cn(
         "space-y-2 scroll-mt-60 rounded-md transition-colors duration-700",
         pulsing ? "bg-muted/70" : "bg-transparent",
+        failed && "opacity-50",
       )}
     >
       <div className="space-y-1.5">
@@ -255,28 +351,44 @@ function CommentItem({
           <span className="font-medium truncate min-w-0">
             {comment.author.name ?? "Unknown"}
           </span>
-          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-            {timeAgo(new Date(comment.createdAt))}
-          </span>
-          <CommentActions
-            comment={comment}
-            currentUserId={currentUserId}
-            onDelete={() => onDelete(comment.id, undefined)}
-            onBlocked={onBlocked}
-            onReported={() => setReported(true)}
-          />
+          {comment.deliveryStatus === "sending" ? (
+            <SendingIndicator />
+          ) : !comment.deliveryStatus ? (
+            <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+              {timeAgo(new Date(comment.createdAt))}
+            </span>
+          ) : null}
+          {!comment.deliveryStatus && (
+            <CommentActions
+              comment={comment}
+              currentUserId={currentUserId}
+              onDelete={() => onDelete(comment.id, undefined)}
+              onBlocked={onBlocked}
+              onReported={() => setReported(true)}
+            />
+          )}
+          {failed && (
+            <FailedCommentActions
+              open={actionsOpen}
+              onOpenChange={setActionsOpen}
+              onRetry={() => onRetry(comment.id)}
+              onDiscard={() => onDiscard(comment.id)}
+            />
+          )}
         </div>
         <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
           {comment.content}
         </p>
-        <div className="flex items-center gap-2">
-          <LikeButton
-            liked={liked}
-            count={count}
-            onToggle={toggle}
-            fetchLikersUrl={`/api/comments/${comment.id}/likes`}
-          />
-        </div>
+        {!comment.deliveryStatus && (
+          <div className="flex items-center gap-2">
+            <LikeButton
+              liked={liked}
+              count={count}
+              onToggle={toggle}
+              fetchLikersUrl={`/api/comments/${comment.id}/likes`}
+            />
+          </div>
+        )}
       </div>
 
       {/* replies — flat, one level; thin line groups them under the parent */}
@@ -290,6 +402,8 @@ function CommentItem({
               onDelete={(id) => onDelete(id, comment.id)}
               onBlocked={onBlocked}
               currentUserId={currentUserId}
+              onRetry={(id) => onRetry(id, comment.id)}
+              onDiscard={(id) => onDiscard(id, comment.id)}
             />
           ))}
         </div>
@@ -298,34 +412,34 @@ function CommentItem({
       {/* inline, in-place reply composer — renders right after this
           thread's replies so the target is directly above it by DOM
           order, replacing the Reply button while active */}
-      {isReplying ? (
-        <InlineReplyComposer
-          name={replyingToName}
-          value={replyText}
-          onChange={onReplyTextChange}
-          onCancel={onCancelReply}
-          onSubmit={onSubmitReply}
-          submitting={replySubmitting}
-        />
-      ) : (
-        <div className="ml-12 mt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-            onClick={() =>
-              onReplyClick(
-                comment.id,
-                comment.author.name ?? "Unknown",
-                comment.id,
-              )
-            }
-          >
-            <ReplyIcon className="h-3 w-3" />
-            Reply
-          </Button>
-        </div>
-      )}
+      {!comment.deliveryStatus &&
+        (isReplying ? (
+          <InlineReplyComposer
+            name={replyingToName}
+            value={replyText}
+            onChange={onReplyTextChange}
+            onCancel={onCancelReply}
+            onSubmit={onSubmitReply}
+          />
+        ) : (
+          <div className="ml-12 mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+              onClick={() =>
+                onReplyClick(
+                  comment.id,
+                  comment.author.name ?? "Unknown",
+                  comment.id,
+                )
+              }
+            >
+              <ReplyIcon className="h-3 w-3" />
+              Reply
+            </Button>
+          </div>
+        ))}
     </div>
   );
 }
@@ -345,7 +459,6 @@ export default function CommentsSection({
   const { user } = useUser();
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(
     new Set(),
   );
@@ -456,29 +569,39 @@ export default function CommentsSection({
     }
   }, [comments]); // runs when comments state updates
 
-  async function addComment(
-    text: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    if (!text.trim()) return { ok: false };
+  // Updates one local comment/reply in place — a top-level comment
+  // (parentId undefined) or a reply nested under parentId. Shared by the
+  // success swap-in and the sending/failed status flips below.
+  function updateLocalComment(
+    id: string,
+    parentId: string | undefined,
+    updater: (c: CommentType) => CommentType,
+  ) {
+    setComments((prev) =>
+      prev.map((c) => {
+        if (parentId) {
+          if (c.id !== parentId) return c;
+          return {
+            ...c,
+            replies: c.replies.map((r) => (r.id === id ? updater(r) : r)),
+          };
+        }
+        return c.id === id ? updater(c) : c;
+      }),
+    );
+  }
 
-    const tempId = `temp-${Date.now()}`;
-    const optimisticComment: CommentType = {
-      id: tempId,
-      content: text,
-      createdAt: new Date().toISOString(),
-      author: { id: "me", name: "You", image: "/avatar.png" },
-      replies: [],
-      likeCount: 0,
-      likedByMe: false,
-    };
-
-    setComments((prev) => [...prev, optimisticComment]);
-
+  // Fires the actual POST for an already-inserted optimistic item (id) and
+  // reconciles it in place — real server data on success, deliveryStatus:
+  // "failed" (never removed) on failure so Retry/Delete have something to
+  // act on. `created` carries the API's own `status` field (moderation
+  // status) — left as-is on the object; it's a different field from ours.
+  async function postComment(id: string, content: string, parentId?: string) {
     try {
       const res = await fetch(`/api/posts/${postId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify(parentId ? { content, parentId } : { content }),
       });
 
       if (!res.ok) {
@@ -487,26 +610,26 @@ export default function CommentsSection({
       }
       const created = await res.json();
 
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === tempId ? { ...created, likeCount: 0, likedByMe: false } : c,
-        ),
-      );
-      return { ok: true };
-    } catch (err: any) {
+      updateLocalComment(id, parentId, () => ({
+        ...created,
+        likeCount: 0,
+        likedByMe: false,
+      }));
+    } catch (err) {
       console.error("Failed to post comment:", err);
-      setComments((prev) => prev.filter((c) => c.id !== tempId));
-      return { ok: false, error: err.message };
+      updateLocalComment(id, parentId, (c) => ({
+        ...c,
+        deliveryStatus: "failed",
+      }));
     }
   }
-  async function addReply(
-    parentId: string,
-    content: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    if (!content.trim()) return { ok: false };
 
+  // Inserts the optimistic item with deliveryStatus: "sending" and kicks off
+  // the POST in the background — the composer closes immediately regardless
+  // of outcome, so this never blocks on the network.
+  function submitDraft(content: string, parentId?: string) {
     const tempId = `temp-${Date.now()}`;
-    const optimisticReply: CommentType = {
+    const optimistic: CommentType = {
       id: tempId,
       content,
       createdAt: new Date().toISOString(),
@@ -514,72 +637,59 @@ export default function CommentsSection({
       replies: [],
       likeCount: 0,
       likedByMe: false,
+      deliveryStatus: "sending",
     };
 
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === parentId
-          ? { ...c, replies: [...c.replies, optimisticReply] }
-          : c,
-      ),
-    );
-
-    try {
-      const res = await fetch(`/api/posts/${postId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, parentId }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${res.status}`);
-      }
-      const created = await res.json();
-
+    if (parentId) {
       setComments((prev) =>
         prev.map((c) =>
           c.id === parentId
-            ? {
-                ...c,
-                replies: c.replies.map((r) =>
-                  r.id === tempId
-                    ? { ...created, likeCount: 0, likedByMe: false }
-                    : r,
-                ),
-              }
+            ? { ...c, replies: [...c.replies, optimistic] }
             : c,
         ),
       );
-      return { ok: true };
-    } catch (err: any) {
-      console.error("Failed to post reply:", err);
+    } else {
+      setComments((prev) => [...prev, optimistic]);
+    }
+
+    postComment(tempId, content, parentId);
+  }
+
+  // Re-sends a failed item in place — same id/slot, not a new duplicate.
+  function retryComment(id: string, parentId?: string) {
+    const source = parentId
+      ? comments.find((c) => c.id === parentId)?.replies.find((r) => r.id === id)
+      : comments.find((c) => c.id === id);
+    if (!source) return;
+
+    updateLocalComment(id, parentId, (c) => ({
+      ...c,
+      deliveryStatus: "sending",
+    }));
+    postComment(id, source.content, parentId);
+  }
+
+  // Removes a local-only failed item outright — nothing was ever persisted,
+  // so no server call and no confirm dialog (unlike deleting a real comment).
+  function discardComment(id: string, parentId?: string) {
+    if (parentId) {
       setComments((prev) =>
         prev.map((c) =>
           c.id === parentId
-            ? { ...c, replies: c.replies.filter((r) => r.id !== tempId) }
+            ? { ...c, replies: c.replies.filter((r) => r.id !== id) }
             : c,
         ),
       );
-      return { ok: false, error: err.message };
+    } else {
+      setComments((prev) => prev.filter((c) => c.id !== id));
     }
   }
 
-  async function submitComposer() {
+  function submitComposer() {
     const text = newComment.trim();
-    if (!text || submitting) return;
-    setSubmitting(true);
-
-    const { ok, error } = replyingTo
-      ? await addReply(replyingTo.parentId, text)
-      : await addComment(text);
-
-    if (ok) {
-      closeComposer();
-    } else {
-      toast.error(error ?? "Failed to post. Please try again.");
-    }
-    setSubmitting(false);
+    if (!text) return;
+    submitDraft(text, replyingTo?.parentId);
+    closeComposer();
   }
 
   async function deleteComment(id: string, parentId?: string) {
@@ -657,7 +767,8 @@ export default function CommentsSection({
                 onReplyTextChange={setNewComment}
                 onSubmitReply={submitComposer}
                 onCancelReply={closeComposer}
-                replySubmitting={submitting}
+                onRetry={retryComment}
+                onDiscard={discardComment}
               />
             ))
         )}
@@ -705,9 +816,9 @@ export default function CommentsSection({
                   <Button
                     size="sm"
                     onClick={submitComposer}
-                    disabled={submitting || !newComment.trim()}
+                    disabled={!newComment.trim()}
                   >
-                    {submitting ? "Posting..." : "Submit"}
+                    Submit
                   </Button>
                 </div>
               </div>

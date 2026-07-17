@@ -159,17 +159,17 @@ function InlineReplyComposer({
       {/* Actions above the textarea: iOS only guarantees the focused input
           itself sits above the keyboard — anything rendered below it can
           end up hidden behind it. */}
-      <div className="flex items-center gap-2 text-xs">
+      <div className="flex items-center gap-2 text-xs justify-end">
         <button
           onClick={onCancel}
           className="text-muted-foreground hover:text-foreground"
         >
           Cancel
         </button>
-        <span className="flex-1 truncate text-muted-foreground">
+        {/* <span className="flex-1 truncate text-muted-foreground">
           Replying to{" "}
           <span className="font-medium text-foreground">{name}</span>
-        </span>
+        </span> */}
         <Button
           size="sm"
           onClick={onSubmit}
@@ -210,7 +210,11 @@ function CommentItem({
   replySubmitting,
 }: {
   comment: CommentType;
-  onReplyClick: (commentId: string, authorName: string, parentId: string) => void;
+  onReplyClick: (
+    commentId: string,
+    authorName: string,
+    parentId: string,
+  ) => void;
   onDelete: (id: string, parentId?: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
@@ -239,7 +243,7 @@ function CommentItem({
       id={`comment-${comment.id}`}
       className={cn(
         "space-y-2 scroll-mt-60 rounded-md transition-colors duration-700",
-        pulsing ? "bg-muted/70" : "bg-transparent"
+        pulsing ? "bg-muted/70" : "bg-transparent",
       )}
     >
       <div className="space-y-1.5">
@@ -310,7 +314,11 @@ function CommentItem({
             size="sm"
             className="h-6 gap-1 px-2 text-xs text-muted-foreground"
             onClick={() =>
-              onReplyClick(comment.id, comment.author.name ?? "Unknown", comment.id)
+              onReplyClick(
+                comment.id,
+                comment.author.name ?? "Unknown",
+                comment.id,
+              )
             }
           >
             <ReplyIcon className="h-3 w-3" />
@@ -338,12 +346,18 @@ export default function CommentsSection({
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(new Set());
+  const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [composerOpen, setComposerOpen] = useState(false);
   // parentId is always the top-level comment a reply attaches to (threading
   // is flat/one-level) — id is whichever comment/reply was actually tapped,
   // used for the highlight pulse.
-  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string; parentId: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    name: string;
+    parentId: string;
+  } | null>(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -372,10 +386,17 @@ export default function CommentsSection({
     return () => window.removeEventListener("touchmove", handleTouchMove);
   }, []);
 
-  function handleReplyClick(commentId: string, authorName: string, parentId: string) {
+  function handleReplyClick(
+    commentId: string,
+    authorName: string,
+    parentId: string,
+  ) {
     setReplyingTo({ id: commentId, name: authorName, parentId });
     setPulsingId(commentId);
-    setTimeout(() => setPulsingId((cur) => (cur === commentId ? null : cur)), 900);
+    setTimeout(
+      () => setPulsingId((cur) => (cur === commentId ? null : cur)),
+      900,
+    );
   }
 
   function closeComposer() {
@@ -404,7 +425,7 @@ export default function CommentsSection({
   // beyond that isn't critical for a comment thread.
   const { data: commentsData } = useSWR<CommentType[]>(
     `/api/posts/${postId}/comments`,
-    { revalidateIfStale: false }
+    { revalidateIfStale: false },
   );
 
   // Seed local state once per postId when the cached/fetched data arrives —
@@ -416,8 +437,8 @@ export default function CommentsSection({
     setComments(
       [...commentsData].sort(
         (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      )
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      ),
     );
   }, [commentsData, postId]);
 
@@ -435,7 +456,9 @@ export default function CommentsSection({
     }
   }, [comments]); // runs when comments state updates
 
-  async function addComment(text: string): Promise<{ ok: boolean; error?: string }> {
+  async function addComment(
+    text: string,
+  ): Promise<{ ok: boolean; error?: string }> {
     if (!text.trim()) return { ok: false };
 
     const tempId = `temp-${Date.now()}`;
@@ -466,8 +489,8 @@ export default function CommentsSection({
 
       setComments((prev) =>
         prev.map((c) =>
-          c.id === tempId ? { ...created, likeCount: 0, likedByMe: false } : c
-        )
+          c.id === tempId ? { ...created, likeCount: 0, likedByMe: false } : c,
+        ),
       );
       return { ok: true };
     } catch (err: any) {
@@ -476,7 +499,10 @@ export default function CommentsSection({
       return { ok: false, error: err.message };
     }
   }
-  async function addReply(parentId: string, content: string): Promise<{ ok: boolean; error?: string }> {
+  async function addReply(
+    parentId: string,
+    content: string,
+  ): Promise<{ ok: boolean; error?: string }> {
     if (!content.trim()) return { ok: false };
 
     const tempId = `temp-${Date.now()}`;
@@ -494,8 +520,8 @@ export default function CommentsSection({
       prev.map((c) =>
         c.id === parentId
           ? { ...c, replies: [...c.replies, optimisticReply] }
-          : c
-      )
+          : c,
+      ),
     );
 
     try {
@@ -519,11 +545,11 @@ export default function CommentsSection({
                 replies: c.replies.map((r) =>
                   r.id === tempId
                     ? { ...created, likeCount: 0, likedByMe: false }
-                    : r
+                    : r,
                 ),
               }
-            : c
-        )
+            : c,
+        ),
       );
       return { ok: true };
     } catch (err: any) {
@@ -532,8 +558,8 @@ export default function CommentsSection({
         prev.map((c) =>
           c.id === parentId
             ? { ...c, replies: c.replies.filter((r) => r.id !== tempId) }
-            : c
-        )
+            : c,
+        ),
       );
       return { ok: false, error: err.message };
     }
@@ -559,7 +585,9 @@ export default function CommentsSection({
   async function deleteComment(id: string, parentId?: string) {
     if (!confirm("Delete this comment?")) return;
 
-    const res = await fetch(`/api/comments/${id}/replies`, { method: "DELETE" });
+    const res = await fetch(`/api/comments/${id}/replies`, {
+      method: "DELETE",
+    });
     if (!res.ok) return;
 
     if (parentId) {
@@ -567,8 +595,8 @@ export default function CommentsSection({
         prev.map((c) =>
           c.id === parentId
             ? { ...c, replies: c.replies.filter((r) => r.id !== id) }
-            : c
-        )
+            : c,
+        ),
       );
     } else {
       setComments((prev) => prev.filter((c) => c.id !== id));
@@ -577,7 +605,7 @@ export default function CommentsSection({
 
   const totalComments = comments.reduce(
     (acc, c) => acc + 1 + c.replies.length,
-    0
+    0,
   );
 
   return (
@@ -641,7 +669,9 @@ export default function CommentsSection({
         <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background sm:mx-0">
           <div
             className="mx-auto max-w-2xl px-4 pt-3"
-            style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+            style={{
+              paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+            }}
           >
             {!composerOpen ? (
               <button

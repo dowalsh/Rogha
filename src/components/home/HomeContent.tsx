@@ -7,6 +7,7 @@ import { EditionHero } from "@/components/home/EditionHero";
 import { BuzzList } from "@/components/home/BuzzList";
 import { HomeSkeleton } from "@/components/home/HomeSkeleton";
 import { LatestEditionPreloader } from "@/components/editions/LatestEditionPreloader";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { HomeData } from "@/lib/home";
 
 const EARLIER_PAGE_SIZE = 15;
@@ -18,8 +19,13 @@ export function HomeContent() {
     `/api/home?earlierLimit=${earlierLimit}`,
   );
 
-  if (isLoading || !data) {
+  const showSkeleton = useDelayedLoading(isLoading || !data);
+
+  if (showSkeleton) {
     return <HomeSkeleton />;
+  }
+  if (isLoading || !data) {
+    return null;
   }
 
   return (

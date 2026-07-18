@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Spinner } from "@/components/Spinner";
+import { AdminTableSkeleton } from "@/components/admin/AdminTableSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import toast from "react-hot-toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -115,7 +116,9 @@ function PostsTab() {
     }
   }
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
+  const showSkeleton = useDelayedLoading(loading);
+  if (showSkeleton) return <AdminTableSkeleton columns={5} />;
+  if (loading) return null;
 
   return (
     <div className="overflow-x-auto">
@@ -189,7 +192,9 @@ function CommentsTab() {
     }
   }
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
+  const showSkeleton = useDelayedLoading(loading);
+  if (showSkeleton) return <AdminTableSkeleton columns={6} />;
+  if (loading) return null;
 
   return (
     <div className="overflow-x-auto">
@@ -280,7 +285,9 @@ function ReportsTab() {
     }
   }
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
+  const showSkeleton = useDelayedLoading(loading);
+  if (showSkeleton) return <AdminTableSkeleton columns={9} />;
+  if (loading) return null;
 
   return (
     <div className="overflow-x-auto">

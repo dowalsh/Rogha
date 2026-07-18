@@ -13,6 +13,8 @@ import { AudienceType } from "@/types";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { Spinner } from "@/components/Spinner";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
+import { EditorSkeleton } from "@/components/editor/EditorSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import toast from "react-hot-toast";
 import { FetchError } from "@/lib/swr";
 
@@ -110,6 +112,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   if (postError instanceof FetchError && postError.status === 404) {
     notFound();
   }
+
+  const showSkeleton = useDelayedLoading(loading);
 
   // Seed the editable form fields once per post id, when the data first
   // arrives — not on every render, so it doesn't stomp on user edits.
@@ -280,12 +284,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [editorLocked, isSaving, saved, title, doc]);
 
+  if (showSkeleton) {
+    return <EditorSkeleton />;
+  }
   if (loading) {
-    return (
-      <div className="flex justify-center p-12">
-        <Spinner />
-      </div>
-    );
+    return null;
   }
 
   return (

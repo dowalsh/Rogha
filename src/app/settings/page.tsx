@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/Spinner";
+import { SettingsSkeleton } from "@/components/settings/SettingsSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { Check } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -63,15 +65,13 @@ export default function SettingsPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <Spinner />
-      </div>
-    );
+  const showSkeleton = useDelayedLoading(isLoading);
+
+  if (showSkeleton) {
+    return <SettingsSkeleton />;
   }
 
-  if (!prefs) return null;
+  if (isLoading || !prefs) return null;
 
   return (
     <>

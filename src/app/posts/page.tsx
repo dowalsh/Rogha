@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { PostRow, PostCard } from "@/components/PostRow";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/Spinner";
+import { PostsSkeleton } from "@/components/posts/PostsSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 // ✅ rename to avoid shadowing the component & match API shape
 type PostRowData = {
@@ -76,6 +77,15 @@ export default function PostsPage() {
     }
   }
 
+  const showSkeleton = useDelayedLoading(loading);
+
+  if (showSkeleton) {
+    return <PostsSkeleton />;
+  }
+  if (loading) {
+    return null;
+  }
+
   return (
     <>
       <SignedOut>
@@ -93,11 +103,7 @@ export default function PostsPage() {
             </Button>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center p-6">
-              <Spinner />
-            </div>
-          ) :posts && posts.length === 0 ? (
+          {posts && posts.length === 0 ? (
             <div className="rounded-md border p-6 text-sm text-muted-foreground">
               No posts yet. Create your first one!
             </div>
@@ -153,3 +159,4 @@ export default function PostsPage() {
     </>
   );
 }
+

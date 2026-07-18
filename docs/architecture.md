@@ -49,6 +49,9 @@ Centralizes visibility rules (`postAccess.ts` — `canViewPostPolicy`) so that p
 ### Client-side data fetching & caching
 Client components fetch through **SWR**, wired up app-wide via `SWRProvider` (`src/components/providers/SWRProvider.tsx`, mounted in `src/app/layout.tsx`) so the cache persists across client-side navigation — not every page has been migrated yet. Includes a cache-seeding technique for the editions preloader and route-prefetch/TTL tuning (`next.config.mjs`'s `experimental.staleTimes`). See [specs/data-fetching-caching.md](./specs/data-fetching-caching.md) for the full rationale and what's still on the old fetch pattern.
 
+### Loading UI
+Every route that fetches its own data (editions list, reader, editor, posts, settings, notifications, admin) owns a skeleton component mirroring its loaded layout, shown via `useDelayedLoading` (`src/hooks/useDelayedLoading.ts`) rather than a raw `isLoading` check — that hook holds the skeleton back for a short grace window (so fast/prefetched loads never flash a placeholder) and then, once shown, keeps it up for a minimum duration (so it can't flicker). The root `src/app/loading.tsx` is a neutral, layout-stable fallback only — no route should rely on it as real loading UI. `editions/[id]` is the one route with a genuine server-render delay (force-dynamic Prisma query) and uses a route-level `loading.tsx` skeleton instead of the hook.
+
 ## Environments & branching
 
 Three environments: local, Vercel preview (per-branch, isolated Clerk dev instance + separate database), and `staging` (a long-lived branch with a stable preview URL, needed because the native app's `CAP_SERVER_URL` must point at one fixed URL). Full branching model in [development-conventions.md](./development-conventions.md); preview environment wiring (Clerk key scoping, database separation, admin-role promotion, webhook/lazy-sync behavior) in [preview-testing.md](./preview-testing.md).

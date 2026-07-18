@@ -19,7 +19,9 @@ import { Spinner } from "@/components/Spinner";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
+import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { useLike } from "@/hooks/useLike";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { AudienceType } from "@/types/index";
 
 type PostDTO = {
@@ -159,6 +161,7 @@ export default function ReadPostPage({
   }, [post?.id]);
 
   const loading = isLoading || !editionStatusChecked;
+  const showSkeleton = useDelayedLoading(loading);
 
   const handleReveal = () => {
     setRevealFading(true);
@@ -250,12 +253,11 @@ export default function ReadPostPage({
     );
   }
 
+  if (showSkeleton) {
+    return <ReaderSkeleton />;
+  }
   if (loading) {
-    return (
-      <div className="flex justify-center p-12">
-        <Spinner />
-      </div>
-    );
+    return null;
   }
   if (!post) {
     return (

@@ -8,7 +8,8 @@ import useSWR from "swr";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/Spinner";
+import { EditionsListSkeleton } from "@/components/editions/EditionsListSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -522,6 +523,8 @@ export default function EditionsPage() {
   };
 
   const archiveEditions = editions?.slice(1) ?? [];
+  const loading = loadingList || loadingLatest;
+  const showSkeleton = useDelayedLoading(loading);
 
   return (
     <>
@@ -530,54 +533,54 @@ export default function EditionsPage() {
       </SignedOut>
 
       <SignedIn>
-        <div className="mx-auto max-w-5xl space-y-12 py-4">
-          {/* Admin controls */}
-          {(process.env.NODE_ENV === "development" ||
-            process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") && (
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={handlePublishLastWeek}
-                disabled={publishing}
-                variant="outline"
-                size="sm"
-              >
-                {publishing ? "Publishing…" : "Manually publish last week"}
-              </Button>
-              {msg && (
-                <span className="text-sm text-muted-foreground">{msg}</span>
-              )}
-            </div>
-          )}
-
-          {/* ── Section 1: Latest Edition ─────────────────────────────── */}
-          <section className="space-y-4">
-            <h2 className="font-serif text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
-              Latest Edition
-            </h2>
-
-            {loadingList || loadingLatest ? (
-              <div className="flex justify-center py-12">
-                <Spinner />
+        {showSkeleton ? (
+          <EditionsListSkeleton />
+        ) : loading ? null : (
+          <div className="mx-auto max-w-5xl space-y-12 py-4">
+            {/* Admin controls */}
+            {(process.env.NODE_ENV === "development" ||
+              process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") && (
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handlePublishLastWeek}
+                  disabled={publishing}
+                  variant="outline"
+                  size="sm"
+                >
+                  {publishing ? "Publishing…" : "Manually publish last week"}
+                </Button>
+                {msg && (
+                  <span className="text-sm text-muted-foreground">{msg}</span>
+                )}
               </div>
-            ) : latestEdition ? (
-              <LatestEditionPreview edition={latestEdition} />
-            ) : (
-              <p className="py-12 text-center text-muted-foreground">
-                No editions published yet.
-              </p>
             )}
-          </section>
 
-          {/* ── Section 2: Past Editions ──────────────────────────────── */}
-          {!loadingList && archiveEditions.length > 0 && (
-            <section className="space-y-4 font-serif">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
-                Past Editions
+            {/* ── Section 1: Latest Edition ─────────────────────────────── */}
+            <section className="space-y-4">
+              <h2 className="font-serif text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
+                Latest Edition
               </h2>
-              <EditionsArchive editions={archiveEditions} />
+
+              {latestEdition ? (
+                <LatestEditionPreview edition={latestEdition} />
+              ) : (
+                <p className="py-12 text-center text-muted-foreground">
+                  No editions published yet.
+                </p>
+              )}
             </section>
-          )}
-        </div>
+
+            {/* ── Section 2: Past Editions ──────────────────────────────── */}
+            {archiveEditions.length > 0 && (
+              <section className="space-y-4 font-serif">
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
+                  Past Editions
+                </h2>
+                <EditionsArchive editions={archiveEditions} />
+              </section>
+            )}
+          </div>
+        )}
       </SignedIn>
     </>
   );

@@ -4,13 +4,14 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 
 // Clerk → email → db user (your existing pattern)
-async function getMeId() {
-  const { userId } = await auth();
+async function getMeId(rid: string) {
+  const { userId } = await time("follows.auth", rid, () => auth());
   if (!userId) return { status: 401 as const, error: "Unauthorized" as const };
 
-  const user = await currentUser();
+  const user = await time("follows.currentUser", rid, () => currentUser());
   const email = user?.emailAddresses?.[0]?.emailAddress ?? null;
   if (!email)
     return { status: 400 as const, error: "User email not found" as const };
@@ -30,8 +31,10 @@ async function getMeId() {
 
 // GET /api/follows → list who I follow
 export async function GET() {
+  const rid = requestIdFromHeaders();
+  const start = performance.now();
   try {
-    const me = await getMeId();
+    const me = await getMeId(rid);
     if ("error" in me)
       return NextResponse.json({ error: me.error }, { status: me.status });
 
@@ -53,13 +56,16 @@ export async function GET() {
       { error: "Internal Server Error" },
       { status: 500 }
     );
+  } finally {
+    logTiming("follows.GET.total", rid, performance.now() - start);
   }
 }
 
 // POST /api/follows { email } → follow by exact email (idempotent)
 export async function POST(req: NextRequest) {
+  const rid = requestIdFromHeaders();
   try {
-    const me = await getMeId();
+    const me = await getMeId(rid);
     if ("error" in me)
       return NextResponse.json({ error: me.error }, { status: me.status });
 
@@ -117,8 +123,9 @@ export async function POST(req: NextRequest) {
 
 // DELETE /api/follows  { userId: string } → unfollow target
 export async function DELETE(req: NextRequest) {
+  const rid = requestIdFromHeaders();
   try {
-    const me = await getMeId();
+    const me = await getMeId(rid);
     if ("error" in me)
       return NextResponse.json({ error: me.error }, { status: me.status });
 

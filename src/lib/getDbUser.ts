@@ -1,19 +1,23 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { time, requestIdFromHeaders } from "@/lib/timing";
 
 export async function getDbUser() {
+  const rid = requestIdFromHeaders();
   try {
-    const { userId } = await auth();
+    const { userId } = await time("getDbUser.auth", rid, () => auth());
     if (!userId) {
       return { user: null, error: { code: "UNAUTHORIZED", status: 401 } };
     }
 
     // Fast path: clerkId is already current
-    let dbUser = await prisma.user.findUnique({ where: { clerkId: userId } });
+    let dbUser = await time("getDbUser.fastPathQuery", rid, () =>
+      prisma.user.findUnique({ where: { clerkId: userId } })
+    );
 
     // Fallback: first login after Clerk instance switch — clerkId changed
     if (!dbUser) {
-      const clerkUser = await currentUser();
+      const clerkUser = await time("getDbUser.currentUser", rid, () => currentUser());
       const email = clerkUser?.primaryEmailAddress?.emailAddress;
       if (!email) {
         return { user: null, error: { code: "NOT_FOUND", status: 404 } };

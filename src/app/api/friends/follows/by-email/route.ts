@@ -4,15 +4,17 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { time, requestIdFromHeaders } from "@/lib/timing";
 
 export async function POST(req: NextRequest) {
+  const rid = requestIdFromHeaders();
   try {
     // Auth → email → db user
-    const { userId } = await auth();
+    const { userId } = await time("followsByEmail.auth", rid, () => auth());
     if (!userId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const user = await currentUser();
+    const user = await time("followsByEmail.currentUser", rid, () => currentUser());
     const myEmail = user?.emailAddresses?.[0]?.emailAddress ?? null;
     if (!myEmail)
       return NextResponse.json(

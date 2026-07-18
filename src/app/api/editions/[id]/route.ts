@@ -4,11 +4,14 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
+import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const rid = requestIdFromHeaders();
+  const start = performance.now();
   console.log("[DEBUG] GET /api/editions/[id] called with params:", params);
   try {
     const { user, error } = await getDbUser();
@@ -18,7 +21,9 @@ export async function GET(
       return NextResponse.json({ error: error.code }, { status: error.status });
     }
 
-    const edition = await getPublishedEditionById(user, params.id);
+    const edition = await time("editions.api.getPublishedEditionById", rid, () =>
+      getPublishedEditionById(user, params.id)
+    );
     console.log("[DEBUG] getFilteredEditionById result:", edition);
     if (!edition) {
       console.log("[DEBUG] Edition not found for id:", params.id);
@@ -33,5 +38,7 @@ export async function GET(
       { error: "Internal Server Error" },
       { status: 500 }
     );
+  } finally {
+    logTiming("editions.api.GET.total", rid, performance.now() - start, { editionId: params.id });
   }
 }

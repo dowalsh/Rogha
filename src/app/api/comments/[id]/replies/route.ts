@@ -6,6 +6,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getUserByClerkId } from "@/actions/user.action";
 import { getAcceptedFriendIds } from "@/lib/friends";
+import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 
 /**
  * GET a single comment (with replies) if it's by the user or their friends.
@@ -14,8 +15,10 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const rid = requestIdFromHeaders();
+  const start = performance.now();
   try {
-    const clerkUser = await currentUser();
+    const clerkUser = await time("replies.currentUser", rid, () => currentUser());
     if (!clerkUser) return new NextResponse("Unauthorized", { status: 401 });
 
     const dbUser = await getUserByClerkId(clerkUser.id);
@@ -24,19 +27,21 @@ export async function GET(
     const friendIds = await getAcceptedFriendIds(dbUser.id);
     const allowedIds = [dbUser.id, ...friendIds];
 
-    const comment = await prisma.comment.findFirst({
-      where: { id: params.id, authorId: { in: allowedIds } },
-      include: {
-        author: { select: { id: true, name: true, image: true } },
-        replies: {
-          where: { authorId: { in: allowedIds } },
-          include: {
-            author: { select: { id: true, name: true, image: true } },
+    const comment = await time("replies.prisma", rid, () =>
+      prisma.comment.findFirst({
+        where: { id: params.id, authorId: { in: allowedIds } },
+        include: {
+          author: { select: { id: true, name: true, image: true } },
+          replies: {
+            where: { authorId: { in: allowedIds } },
+            include: {
+              author: { select: { id: true, name: true, image: true } },
+            },
+            orderBy: { createdAt: "asc" },
           },
-          orderBy: { createdAt: "asc" },
         },
-      },
-    });
+      })
+    );
 
     if (!comment) return new NextResponse("Not found", { status: 404 });
 
@@ -44,6 +49,8 @@ export async function GET(
   } catch (err) {
     console.error("[COMMENT_GET]", err);
     return new NextResponse("Internal Error", { status: 500 });
+  } finally {
+    logTiming("replies.GET.total", rid, performance.now() - start, { route: "comments/[id]/replies" });
   }
 }
 
@@ -54,8 +61,9 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const rid = requestIdFromHeaders();
   try {
-    const clerkUser = await currentUser();
+    const clerkUser = await time("replies.currentUser", rid, () => currentUser());
     if (!clerkUser) return new NextResponse("Unauthorized", { status: 401 });
 
     const dbUser = await getUserByClerkId(clerkUser.id);
@@ -95,8 +103,9 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const rid = requestIdFromHeaders();
   try {
-    const clerkUser = await currentUser();
+    const clerkUser = await time("replies.currentUser", rid, () => currentUser());
     if (!clerkUser) return new NextResponse("Unauthorized", { status: 401 });
 
     const dbUser = await getUserByClerkId(clerkUser.id);

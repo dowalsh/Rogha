@@ -9,6 +9,7 @@ import { Toaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
+import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 import DeepLinkInit from "@/components/DeepLinkInit";
 import MePreloader from "@/components/MePreloader";
 import PushNotificationInit from "@/components/PushNotificationInit";
@@ -48,13 +49,20 @@ export default async function RootLayout({
 }) {
   // // 👇 Only run this lazy sync in development
 
-  const user = await currentUser().catch((err) => {
-    console.error("[layout] currentUser() failed:", err);
-    return null;
-  });
+  const rid = requestIdFromHeaders();
+  const layoutStart = performance.now();
+
+  const user = await time("layout.currentUser", rid, () =>
+    currentUser().catch((err) => {
+      console.error("[layout] currentUser() failed:", err);
+      return null;
+    })
+  );
   if (user) {
-    await upsertClerkUser(user);
+    await time("layout.upsertClerkUser", rid, () => upsertClerkUser(user));
   }
+
+  logTiming("layout.total", rid, performance.now() - layoutStart);
 
   return (
     <ClerkProvider>

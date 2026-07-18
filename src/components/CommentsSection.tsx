@@ -226,14 +226,17 @@ function ReplyItem({
   );
 }
 
-function InlineReplyComposer({
-  name,
+// Shared by the inline reply composer and the top-level "new comment"
+// composer — same focus-on-mount, actions-above-textarea shape, differing
+// only in placeholder text and how the caller wraps/indents it.
+function InlineComposer({
+  placeholder,
   value,
   onChange,
   onCancel,
   onSubmit,
 }: {
-  name: string;
+  placeholder: string;
   value: string;
   onChange: (value: string) => void;
   onCancel: () => void;
@@ -242,14 +245,15 @@ function InlineReplyComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Focus on mount (no preventScroll) — iOS lifts this above the keyboard,
-  // and since it's the DOM node right after the target comment, the target
-  // ends up sitting directly on top of it. No scroll math needed.
+  // and since it's the DOM node right after the target comment (or at the
+  // top of the thread), whatever it should sit under ends up directly on
+  // top of it. No scroll math needed.
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
 
   return (
-    <div className="pl-9 mt-2 space-y-2">
+    <div className="space-y-2">
       {/* Actions above the textarea: iOS only guarantees the focused input
           itself sits above the keyboard — anything rendered below it can
           end up hidden behind it. */}
@@ -260,10 +264,6 @@ function InlineReplyComposer({
         >
           Cancel
         </button>
-        {/* <span className="flex-1 truncate text-muted-foreground">
-          Replying to{" "}
-          <span className="font-medium text-foreground">{name}</span>
-        </span> */}
         <Button size="sm" onClick={onSubmit} disabled={!value.trim()}>
           Submit
         </Button>
@@ -277,7 +277,7 @@ function InlineReplyComposer({
           el.style.height = "auto";
           el.style.height = `${el.scrollHeight}px`;
         }}
-        placeholder={`Reply to ${name}...`}
+        placeholder={placeholder}
         className="overflow-hidden resize-none"
       />
     </div>
@@ -414,13 +414,15 @@ function CommentItem({
           order, replacing the Reply button while active */}
       {!comment.deliveryStatus &&
         (isReplying ? (
-          <InlineReplyComposer
-            name={replyingToName}
-            value={replyText}
-            onChange={onReplyTextChange}
-            onCancel={onCancelReply}
-            onSubmit={onSubmitReply}
-          />
+          <div className="pl-9 mt-2">
+            <InlineComposer
+              placeholder={`Reply to ${replyingToName}...`}
+              value={replyText}
+              onChange={onReplyTextChange}
+              onCancel={onCancelReply}
+              onSubmit={onSubmitReply}
+            />
+          </div>
         ) : (
           <div className="ml-12 mt-2">
             <Button
@@ -462,28 +464,14 @@ export default function CommentsSection({
   const [blockedAuthorIds, setBlockedAuthorIds] = useState<Set<string>>(
     new Set(),
   );
-  const [composerOpen, setComposerOpen] = useState(false);
-  // parentId is always the top-level comment a reply attaches to (threading
-  // is flat/one-level) — id is whichever comment/reply was actually tapped,
-  // used for the highlight pulse.
-  const [replyingTo, setReplyingTo] = useState<{
-    id: string;
-    name: string;
-    parentId: string;
-  } | null>(null);
+  // Only one composer is ever open at a time — the top-level "new comment"
+  // prompt or a reply to some comment — fully symmetric: tapping either
+  // kind of trigger always closes whatever's open and switches to the new
+  // target, carrying the draft text along either way.
+  const [activeComposer, setActiveComposer] = useState<
+    { kind: "new" } | { kind: "reply"; id: string; name: string; parentId: string } | null
+  >(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // No preventScroll here — letting the browser's native "scroll focused
-  // input into view" run is the point: on iOS it lifts the focused textarea
-  // above the keyboard on its own, no scroll math needed. Only the bottom
-  // (new top-level comment) composer uses this ref/effect — the inline
-  // reply composer focuses itself on mount.
-  useEffect(() => {
-    if (composerOpen) {
-      textareaRef.current?.focus();
-    }
-  }, [composerOpen]);
 
   // Dragging the thread while the keyboard is up should dismiss it (like
   // Mail/Messages) rather than fight it — blur lets the keyboard hide and
@@ -499,12 +487,16 @@ export default function CommentsSection({
     return () => window.removeEventListener("touchmove", handleTouchMove);
   }, []);
 
+  function openNewComment() {
+    setActiveComposer({ kind: "new" });
+  }
+
   function handleReplyClick(
     commentId: string,
     authorName: string,
     parentId: string,
   ) {
-    setReplyingTo({ id: commentId, name: authorName, parentId });
+    setActiveComposer({ kind: "reply", id: commentId, name: authorName, parentId });
     setPulsingId(commentId);
     setTimeout(
       () => setPulsingId((cur) => (cur === commentId ? null : cur)),
@@ -513,8 +505,7 @@ export default function CommentsSection({
   }
 
   function closeComposer() {
-    setComposerOpen(false);
-    setReplyingTo(null);
+    setActiveComposer(null);
     setNewComment("");
   }
 
@@ -688,7 +679,9 @@ export default function CommentsSection({
   function submitComposer() {
     const text = newComment.trim();
     if (!text) return;
-    submitDraft(text, replyingTo?.parentId);
+    const parentId =
+      activeComposer?.kind === "reply" ? activeComposer.parentId : undefined;
+    submitDraft(text, parentId);
     closeComposer();
   }
 
@@ -744,7 +737,33 @@ export default function CommentsSection({
         )}
       </div>
 
-      <div className="space-y-6 pb-[50vh]">
+      <div className="space-y-6 pb-8">
+        {/* New top-level comment — inline, in-place at the top of the
+            thread, same convention as replies. Reads as "almost like the
+            first comment" rather than a separate pill/bar. */}
+        {activeComposer?.kind === "new" ? (
+          <InlineComposer
+            placeholder="Write a comment..."
+            value={newComment}
+            onChange={setNewComment}
+            onCancel={closeComposer}
+            onSubmit={submitComposer}
+          />
+        ) : (
+          <button
+            onClick={openNewComment}
+            className="flex w-full items-center gap-2 text-left"
+          >
+            <Avatar className="h-9 w-9 border shrink-0">
+              <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
+              <AvatarFallback>?</AvatarFallback>
+            </Avatar>
+            <span className="text-sm italic text-muted-foreground">
+              Add a comment…
+            </span>
+          </button>
+        )}
+
         {loadingComments ? (
           <div className="flex justify-center p-4">
             <Spinner />
@@ -761,8 +780,13 @@ export default function CommentsSection({
                 onBlocked={handleBlocked}
                 currentUserId={currentUserId}
                 pulsing={pulsingId === c.id}
-                isReplying={replyingTo?.parentId === c.id}
-                replyingToName={replyingTo?.name ?? ""}
+                isReplying={
+                  activeComposer?.kind === "reply" &&
+                  activeComposer.parentId === c.id
+                }
+                replyingToName={
+                  activeComposer?.kind === "reply" ? activeComposer.name : ""
+                }
                 replyText={newComment}
                 onReplyTextChange={setNewComment}
                 onSubmitReply={submitComposer}
@@ -773,59 +797,6 @@ export default function CommentsSection({
             ))
         )}
       </div>
-
-      {/* Bottom sticky composer — new top-level comments only. Hidden while
-          replying so it doesn't float over the inline reply composer. */}
-      {!replyingTo && (
-        <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background sm:mx-0">
-          <div
-            className="mx-auto max-w-2xl px-4 pt-3"
-            style={{
-              paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
-            }}
-          >
-            {!composerOpen ? (
-              <button
-                onClick={() => setComposerOpen(true)}
-                className="flex w-full items-center gap-3 rounded-full border px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
-              >
-                <Avatar className="h-7 w-7 border shrink-0">
-                  <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
-                  <AvatarFallback>?</AvatarFallback>
-                </Avatar>
-                Add a comment…
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <Textarea
-                  ref={textareaRef}
-                  placeholder="Write your comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onInput={(e) => {
-                    const el = e.currentTarget;
-                    el.style.height = "auto";
-                    el.style.height = `${el.scrollHeight}px`;
-                  }}
-                  className="overflow-hidden resize-none"
-                />
-                <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={closeComposer}>
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={submitComposer}
-                    disabled={!newComment.trim()}
-                  >
-                    Submit
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

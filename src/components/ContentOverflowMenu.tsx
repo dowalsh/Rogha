@@ -23,6 +23,9 @@ type Props = {
   authorName: string;
   onReported: () => void;
   onBlocked: () => void;
+  // When set, this is the viewer's own content — the menu shows Delete
+  // instead of Report/Block.
+  onDelete?: () => void;
 };
 
 type Dialog = "report" | "block" | null;
@@ -34,6 +37,7 @@ export function ContentOverflowMenu({
   authorName,
   onReported,
   onBlocked,
+  onDelete,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -117,18 +121,33 @@ export function ContentOverflowMenu({
           align="end"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
-            onClick={(e) => { e.stopPropagation(); openDialog("report"); }}
-          >
-            Report
-          </button>
-          <button
-            className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
-            onClick={(e) => { e.stopPropagation(); openDialog("block"); }}
-          >
-            Block {authorName}
-          </button>
+          {onDelete ? (
+            <button
+              className="w-full rounded-sm px-3 py-2 text-left text-sm text-destructive hover:bg-muted transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+                onDelete();
+              }}
+            >
+              Delete
+            </button>
+          ) : (
+            <>
+              <button
+                className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+                onClick={(e) => { e.stopPropagation(); openDialog("report"); }}
+              >
+                Report
+              </button>
+              <button
+                className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+                onClick={(e) => { e.stopPropagation(); openDialog("block"); }}
+              >
+                Block {authorName}
+              </button>
+            </>
+          )}
         </PopoverContent>
       </Popover>
 

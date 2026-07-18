@@ -5,10 +5,10 @@ import useSWR from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Trash2, Reply as ReplyIcon, AlertCircle } from "lucide-react";
+import { Reply as ReplyIcon, AlertCircle } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { useLike } from "@/hooks/useLike";
-import { LikeButton } from "./LikeButton";
+import { LikeHeart, LikeCount } from "./LikeButton";
 import { ContentOverflowMenu } from "./ContentOverflowMenu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { AudienceType } from "@/types/index";
@@ -49,32 +49,21 @@ function CommentActions({
   onBlocked: (authorId: string) => void;
   onReported: () => void;
 }) {
-  if (currentUserId === comment.author.id) {
-    return (
-      <button
-        onClick={onDelete}
-        className="ml-auto shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-        aria-label="Delete comment"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    );
-  }
-  if (currentUserId) {
-    return (
-      <div className="ml-auto shrink-0">
-        <ContentOverflowMenu
-          contentType="COMMENT"
-          contentId={comment.id}
-          authorId={comment.author.id}
-          authorName={comment.author.name ?? comment.author.id}
-          onReported={onReported}
-          onBlocked={() => onBlocked(comment.author.id)}
-        />
-      </div>
-    );
-  }
-  return null;
+  if (!currentUserId) return null;
+  const isOwn = currentUserId === comment.author.id;
+  return (
+    <div className="shrink-0">
+      <ContentOverflowMenu
+        contentType="COMMENT"
+        contentId={comment.id}
+        authorId={comment.author.id}
+        authorName={comment.author.name ?? comment.author.id}
+        onReported={onReported}
+        onBlocked={() => onBlocked(comment.author.id)}
+        onDelete={isOwn ? onDelete : undefined}
+      />
+    </div>
+  );
 }
 
 // Lives where the timestamp normally sits, while sending.
@@ -174,54 +163,59 @@ function ReplyItem({
     <div
       id={`comment-${reply.id}`}
       onClick={failed ? () => setActionsOpen(true) : undefined}
-      className={cn("space-y-1.5 scroll-mt-60", failed && "opacity-50")}
+      className={cn("scroll-mt-60", failed && "opacity-50")}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <Avatar className="h-6 w-6 border shrink-0">
           <AvatarImage src={reply.author.image ?? "/avatar.png"} />
           <AvatarFallback>{reply.author.name?.[0] ?? "?"}</AvatarFallback>
         </Avatar>
-        <span className="text-sm font-medium truncate min-w-0">
-          {reply.author.name ?? "Unknown"}
-        </span>
-        {reply.deliveryStatus === "sending" ? (
-          <SendingIndicator />
-        ) : !reply.deliveryStatus ? (
-          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-            {timeAgo(new Date(reply.createdAt))}
-          </span>
-        ) : null}
-        {!reply.deliveryStatus && (
-          <CommentActions
-            comment={reply}
-            currentUserId={currentUserId}
-            onDelete={() => onDelete(reply.id)}
-            onBlocked={onBlocked}
-            onReported={() => setReported(true)}
-          />
-        )}
-        {failed && (
-          <FailedCommentActions
-            open={actionsOpen}
-            onOpenChange={setActionsOpen}
-            onRetry={() => onRetry(reply.id)}
-            onDiscard={() => onDiscard(reply.id)}
-          />
-        )}
-      </div>
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
-        {reply.content}
-      </p>
-      {!reply.deliveryStatus && (
-        <div className="flex items-center gap-2">
-          <LikeButton
-            liked={liked}
-            count={count}
-            onToggle={toggle}
-            fetchLikersUrl={`/api/comments/${reply.id}/likes`}
-          />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate min-w-0">
+              {reply.author.name ?? "Unknown"}
+            </span>
+            {reply.deliveryStatus === "sending" ? (
+              <SendingIndicator />
+            ) : !reply.deliveryStatus ? (
+              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                {timeAgo(new Date(reply.createdAt))}
+              </span>
+            ) : null}
+            <div className="flex items-center gap-2 ml-auto">
+              {!reply.deliveryStatus && (
+                <>
+                  <LikeHeart liked={liked} onToggle={toggle} />
+                  <CommentActions
+                    comment={reply}
+                    currentUserId={currentUserId}
+                    onDelete={() => onDelete(reply.id)}
+                    onBlocked={onBlocked}
+                    onReported={() => setReported(true)}
+                  />
+                </>
+              )}
+              {failed && (
+                <FailedCommentActions
+                  open={actionsOpen}
+                  onOpenChange={setActionsOpen}
+                  onRetry={() => onRetry(reply.id)}
+                  onDiscard={() => onDiscard(reply.id)}
+                />
+              )}
+            </div>
+          </div>
+          <p className="text-sm leading-snug text-foreground whitespace-pre-wrap break-words">
+            {reply.content}
+          </p>
+          {!reply.deliveryStatus && (
+            <LikeCount
+              count={count}
+              fetchLikersUrl={`/api/comments/${reply.id}/likes`}
+            />
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -342,53 +336,56 @@ function CommentItem({
         failed && "opacity-50",
       )}
     >
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-9 w-9 border shrink-0">
-            <AvatarImage src={comment.author.image ?? "/avatar.png"} />
-            <AvatarFallback>{comment.author.name?.[0] ?? "?"}</AvatarFallback>
-          </Avatar>
-          <span className="font-medium truncate min-w-0">
-            {comment.author.name ?? "Unknown"}
-          </span>
-          {comment.deliveryStatus === "sending" ? (
-            <SendingIndicator />
-          ) : !comment.deliveryStatus ? (
-            <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-              {timeAgo(new Date(comment.createdAt))}
+      <div className="flex items-start gap-2">
+        <Avatar className="h-9 w-9 border shrink-0">
+          <AvatarImage src={comment.author.image ?? "/avatar.png"} />
+          <AvatarFallback>{comment.author.name?.[0] ?? "?"}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate min-w-0">
+              {comment.author.name ?? "Unknown"}
             </span>
-          ) : null}
+            {comment.deliveryStatus === "sending" ? (
+              <SendingIndicator />
+            ) : !comment.deliveryStatus ? (
+              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                {timeAgo(new Date(comment.createdAt))}
+              </span>
+            ) : null}
+            <div className="flex items-center gap-2 ml-auto">
+              {!comment.deliveryStatus && (
+                <>
+                  <LikeHeart liked={liked} onToggle={toggle} />
+                  <CommentActions
+                    comment={comment}
+                    currentUserId={currentUserId}
+                    onDelete={() => onDelete(comment.id, undefined)}
+                    onBlocked={onBlocked}
+                    onReported={() => setReported(true)}
+                  />
+                </>
+              )}
+              {failed && (
+                <FailedCommentActions
+                  open={actionsOpen}
+                  onOpenChange={setActionsOpen}
+                  onRetry={() => onRetry(comment.id)}
+                  onDiscard={() => onDiscard(comment.id)}
+                />
+              )}
+            </div>
+          </div>
+          <p className="text-sm leading-snug text-foreground whitespace-pre-wrap break-words">
+            {comment.content}
+          </p>
           {!comment.deliveryStatus && (
-            <CommentActions
-              comment={comment}
-              currentUserId={currentUserId}
-              onDelete={() => onDelete(comment.id, undefined)}
-              onBlocked={onBlocked}
-              onReported={() => setReported(true)}
-            />
-          )}
-          {failed && (
-            <FailedCommentActions
-              open={actionsOpen}
-              onOpenChange={setActionsOpen}
-              onRetry={() => onRetry(comment.id)}
-              onDiscard={() => onDiscard(comment.id)}
+            <LikeCount
+              count={count}
+              fetchLikersUrl={`/api/comments/${comment.id}/likes`}
             />
           )}
         </div>
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
-          {comment.content}
-        </p>
-        {!comment.deliveryStatus && (
-          <div className="flex items-center gap-2">
-            <LikeButton
-              liked={liked}
-              count={count}
-              onToggle={toggle}
-              fetchLikersUrl={`/api/comments/${comment.id}/likes`}
-            />
-          </div>
-        )}
       </div>
 
       {/* replies — flat, one level; thin line groups them under the parent */}

@@ -26,10 +26,11 @@ Convention: SWR keys are just the request URL (e.g. `/api/circles`,
 `/api/posts/${id}`). Two components fetching the same URL automatically
 share one cache entry — no manual coordination needed, which is why keeping
 API endpoints 1:1 with what they return matters (see the editions case
-below, where two *different* endpoints happen to return identical data and
+below, where two _different_ endpoints happen to return identical data and
 had to be explicitly reconciled).
 
 ### Migrated so far
+
 - `src/app/editor/[id]/page.tsx` — post + circles data.
 - `src/components/buzz/BuzzSection.tsx` — home feed.
 - `src/components/LikeButton.tsx` — likers list (see "Delayed-key priming" below).
@@ -39,6 +40,7 @@ had to be explicitly reconciled).
   payload; see "Seeding reader caches from the edition payload" below.
 
 ### Not yet migrated
+
 Still on the old `useEffect`+`fetch` pattern, no cross-navigation cache:
 `src/app/posts/page.tsx`,
 `src/components/CommentsSection.tsx`, `src/app/settings/page.tsx`,
@@ -50,7 +52,7 @@ no further plumbing needed, the provider is already global.
 ## Non-obvious technique: seeding the cache instead of double-fetching
 
 `LikeButton` and `LatestEditionPreloader` both need to fetch data
-*speculatively*, ahead of the user needing it, without blocking or
+_speculatively_, ahead of the user needing it, without blocking or
 double-fetching. Pattern used in both:
 
 ```ts
@@ -101,7 +103,7 @@ dedupe window), just not warmed ahead of time.
 **Image cache mismatch (bug found and fixed):** `LatestEditionPreloader`
 warms hero images by rendering invisible `next/image` tags — but
 `/editions/page.tsx`'s preview originally used raw `<img>` tags, which
-request the *original* unoptimized URL, not the `next/image`-optimized URL
+request the _original_ unoptimized URL, not the `next/image`-optimized URL
 the preloader actually warms. These are different URLs entirely, so nothing
 was shared until the preview was switched to `next/image` with the same
 `sizes` prop `Frontpage` (the real `/editions/[id]` page) uses. Any future
@@ -113,7 +115,7 @@ warm cache.
 ## Seeding reader caches from the edition payload
 
 Same pattern as the editions cache-seed above, one level deeper: the first
-click into *any post* from the latest edition used to be a cold
+click into _any post_ from the latest edition used to be a cold
 `/api/posts/${id}` fetch, because SWR only speeds up re-visits — a flow
 that's inherently all-first-visits (open app → latest edition → read post)
 never benefited from it.
@@ -145,7 +147,7 @@ if that ever regresses back to a bypassing fetch, the seed becomes dead
 weight.
 
 **Scope guardrail, same reasoning as the archive list above:** this only
-covers the *current* latest edition's posts (bounded — one edition's worth
+covers the _current_ latest edition's posts (bounded — one edition's worth
 of posts, already being fetched anyway for images/route-warming). It does
 not extend to older editions or `/posts` (the personal posts list) — those
 would need their own bounded justification before preloading.
@@ -177,13 +179,13 @@ rather than importing Next's internal module — avoids a dependency on an
 internal file path that could move between Next versions.
 
 **`next.config.mjs`: `experimental.staleTimes.dynamic = 60`.** Next's
-default TTL for a prefetched *dynamic* route in the client router cache is
+default TTL for a prefetched _dynamic_ route in the client router cache is
 30s. The preloader fires ~1s after the home feed loads, but a realistic
 gap between that and the user actually clicking through (reading the feed,
 checking a notification, etc.) can easily exceed 30s — at which point the
 prefetch is silently discarded and the click falls back to a cold fetch,
 defeating the whole point. Bumped to 60s. This setting is global — it
-affects the staleness window for *any* dynamically prefetched route in the
+affects the staleness window for _any_ dynamically prefetched route in the
 app (including default `<Link>` hover-prefetches elsewhere), trading a
 larger window for potentially-stale data on navigation. Acceptable here
 because nothing in this app needs second-to-second freshness; revisit if
@@ -193,6 +195,7 @@ that changes for some future route.
 
 No automated tests added — this is a perceived-performance change, verified
 by:
+
 - `tsc --noEmit` and `next build` after each change (catches wiring/type
   regressions, not perf).
 - Manual Network-tab inspection: confirming background prefetch requests

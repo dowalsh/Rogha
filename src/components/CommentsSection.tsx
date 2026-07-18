@@ -184,16 +184,13 @@ function ReplyItem({
             ) : null}
             <div className="flex items-center gap-2 ml-auto">
               {!reply.deliveryStatus && (
-                <>
-                  <LikeHeart liked={liked} onToggle={toggle} />
-                  <CommentActions
-                    comment={reply}
-                    currentUserId={currentUserId}
-                    onDelete={() => onDelete(reply.id)}
-                    onBlocked={onBlocked}
-                    onReported={() => setReported(true)}
-                  />
-                </>
+                <CommentActions
+                  comment={reply}
+                  currentUserId={currentUserId}
+                  onDelete={() => onDelete(reply.id)}
+                  onBlocked={onBlocked}
+                  onReported={() => setReported(true)}
+                />
               )}
               {failed && (
                 <FailedCommentActions
@@ -209,10 +206,13 @@ function ReplyItem({
             {reply.content}
           </p>
           {!reply.deliveryStatus && (
-            <LikeCount
-              count={count}
-              fetchLikersUrl={`/api/comments/${reply.id}/likes`}
-            />
+            <div className="flex items-center gap-1">
+              <LikeHeart liked={liked} onToggle={toggle} />
+              <LikeCount
+                count={count}
+                fetchLikersUrl={`/api/comments/${reply.id}/likes`}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -355,16 +355,13 @@ function CommentItem({
             ) : null}
             <div className="flex items-center gap-2 ml-auto">
               {!comment.deliveryStatus && (
-                <>
-                  <LikeHeart liked={liked} onToggle={toggle} />
-                  <CommentActions
-                    comment={comment}
-                    currentUserId={currentUserId}
-                    onDelete={() => onDelete(comment.id, undefined)}
-                    onBlocked={onBlocked}
-                    onReported={() => setReported(true)}
-                  />
-                </>
+                <CommentActions
+                  comment={comment}
+                  currentUserId={currentUserId}
+                  onDelete={() => onDelete(comment.id, undefined)}
+                  onBlocked={onBlocked}
+                  onReported={() => setReported(true)}
+                />
               )}
               {failed && (
                 <FailedCommentActions
@@ -380,10 +377,13 @@ function CommentItem({
             {comment.content}
           </p>
           {!comment.deliveryStatus && (
-            <LikeCount
-              count={count}
-              fetchLikersUrl={`/api/comments/${comment.id}/likes`}
-            />
+            <div className="flex items-center gap-1">
+              <LikeHeart liked={liked} onToggle={toggle} />
+              <LikeCount
+                count={count}
+                fetchLikersUrl={`/api/comments/${comment.id}/likes`}
+              />
+            </div>
           )}
         </div>
       </div>

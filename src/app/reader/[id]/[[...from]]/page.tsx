@@ -1,13 +1,16 @@
-// src/app/read/[id]/page.tsx
+// src/app/reader/[id]/[[...from]]/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
+import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
+import { FetchError } from "@/lib/swr";
 
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
@@ -16,7 +19,9 @@ import { Spinner } from "@/components/Spinner";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
+import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { useLike } from "@/hooks/useLike";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { AudienceType } from "@/types/index";
 
 type PostDTO = {
@@ -81,52 +86,82 @@ function validateDocJSON(raw: unknown): Validation {
   return { ok: true };
 }
 
-export default function ReadPostPage({ params }: { params: { id: string } }) {
+export default function ReadPostPage({
+  params,
+}: {
+  params: { id: string; from?: string[] };
+}) {
   const router = useRouter();
+  // `from` rides the path (/reader/[id]/edition, /reader/[id]/buzz) rather
+  // than a query param — Next's client router cache strips search params
+  // when keying prefetched page segments, so a query-string version of this
+  // signal can silently serve a stale value across different entry points
+  // to the same post within the staleTimes.dynamic window (see
+  // docs/specs/data-fetching-caching.md).
+  const from = params.from?.[0] ?? null;
 
-  const [loading, setLoading] = useState(true);
-  const [post, setPost] = useState<PostDTO | null>(null);
   const [editionStatus, setEditionStatus] = useState<{
     hasOpened: boolean;
     viewerCount: number;
     viewerNames: string[];
   } | null>(null);
+  const [editionStatusChecked, setEditionStatusChecked] = useState(false);
   const [editionRevealed, setEditionRevealed] = useState(true);
   const [revealFading, setRevealFading] = useState(false);
 
   const { isLoaded, isSignedIn, user } = useUser();
 
+  // Shared cache with the editor page's own `/api/posts/${id}` fetch — the
+  // route returns a superset shape covering both. Revalidates on remount
+  // once stale, so revisiting a post you already read is instant and just
+  // quietly refreshes (e.g. like counts) in the background.
+  const {
+    data: post,
+    error: postError,
+    isLoading,
+  } = useSWR<PostDTO>(`/api/posts/${params.id}`, { shouldRetryOnError: false });
+
+  if (postError instanceof FetchError && postError.status === 404) {
+    notFound();
+  }
+
   useEffect(() => {
     let cancelled = false;
+    if (!post?.editionId) {
+      setEditionStatusChecked(true);
+      return;
+    }
+    setEditionStatusChecked(false);
     (async () => {
       try {
-        const res = await fetch(`/api/posts/${params.id}`, { cache: "no-store" });
-        if (res.status === 404) return notFound();
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: PostDTO = await res.json();
-        if (cancelled) return;
-        setPost(data);
-
-        if (data.editionId) {
-          try {
-            const sr = await fetch(`/api/editions/${data.editionId}/status`, { cache: "no-store" });
-            if (!cancelled && sr.ok) {
-              const status = await sr.json();
-              setEditionStatus(status);
-              setEditionRevealed(status.hasOpened);
-            }
-          } catch {
-            // Status fetch failed — default to revealed so content is never blocked by a network error
-          }
+        const sr = await fetch(`/api/editions/${post.editionId}/status`, { cache: "no-store" });
+        if (!cancelled && sr.ok) {
+          const status = await sr.json();
+          setEditionStatus(status);
+          setEditionRevealed(status.hasOpened);
         }
-      } catch (e) {
-        console.error("Failed to load post:", e);
+      } catch {
+        // Status fetch failed — default to revealed so content is never blocked by a network error
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setEditionStatusChecked(true);
       }
     })();
     return () => { cancelled = true; };
-  }, [params.id]);
+  }, [post?.editionId]);
+
+  // Mark this post read once per mount — powers the home page's "N of M"
+  // progress and the New buzz / Earlier split.
+  const readFiredRef = useRef(false);
+  useEffect(() => {
+    if (!post?.id || readFiredRef.current) return;
+    readFiredRef.current = true;
+    fetch(`/api/posts/${post.id}/read`, { method: "POST" })
+      .then(() => mutate("/api/home"))
+      .catch(() => {});
+  }, [post?.id]);
+
+  const loading = isLoading || !editionStatusChecked;
+  const showSkeleton = useDelayedLoading(loading);
 
   const handleReveal = () => {
     setRevealFading(true);
@@ -145,9 +180,11 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
   const isAuthor = !!(user && post && user.id === post.author?.clerkId);
   const isShareable = post?.status === "PUBLISHED";
 
-  const backHref = post?.editionId
+  const fallbackBackHref = post?.editionId
     ? `/editions/${post.editionId}`
     : "/editions";
+  const backHref = from === "buzz" ? "/" : fallbackBackHref;
+  const backLabel = from === "buzz" ? "Back to Buzz" : "Back to edition";
   const title = post?.title ?? "Untitled Post";
   const authorName = post?.author?.name ?? "Unknown author";
   const rawContent = post?.content;
@@ -216,12 +253,11 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
     );
   }
 
+  if (showSkeleton) {
+    return <ReaderSkeleton />;
+  }
   if (loading) {
-    return (
-      <div className="flex justify-center p-12">
-        <Spinner />
-      </div>
-    );
+    return null;
   }
   if (!post) {
     return (
@@ -239,7 +275,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
         </p>
         <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to edition
+          {backLabel}
         </Button>
       </div>
     );
@@ -249,8 +285,8 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
-      {/* Back to edition — always accessible */}
-      <div>
+      {/* Back — sticky, always accessible */}
+      <div className="sticky top-[calc(env(safe-area-inset-top)+4rem)] z-40 -mx-6 -mt-6 border-b bg-background px-6 py-3">
         <Button
           type="button"
           variant="ghost"
@@ -259,7 +295,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
           className="flex items-center gap-2"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to edition
+          {backLabel}
         </Button>
       </div>
 
@@ -278,12 +314,14 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       {/* HERO IMAGE */}
       {heroImageUrl && (
         <div className="space-y-2">
-          <div className="relative w-full h-96 overflow-hidden rounded-lg flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative w-full h-96 overflow-hidden rounded-lg">
+            <Image
               src={heroImageUrl}
               alt="Hero"
-              className="max-h-full max-w-full object-contain"
+              fill
+              sizes="768px"
+              className="object-contain"
+              priority
             />
           </div>
         </div>
@@ -323,7 +361,7 @@ export default function ReadPostPage({ params }: { params: { id: string } }) {
       </header>
 
       {/* Rendered content or diagnostics */}
-      <div className="prose prose-neutral max-w-none">{contentNode}</div>
+      <div className="prose prose-neutral max-w-none break-words">{contentNode}</div>
       {/* Post Like Button */}
       <div className="flex justify-center">
         <LikeButton

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
@@ -64,7 +65,7 @@ function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post;
   if (!hasImage) {
     return (
       <section className="border-b pb-8 relative">
-        <Link href={`/reader/${post.id}`} className="group block w-full">
+        <Link href={`/reader/${post.id}/edition`} className="group block w-full">
           <article className="transition-shadow duration-200 space-y-4">
             <h2 className="text-4xl font-black leading-tight group-hover:underline">
               {post.title ?? "Untitled Post"}
@@ -89,13 +90,16 @@ function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post;
   // With image → two-column layout
   return (
     <section className="border-b pb-8 relative">
-      <Link href={`/reader/${post.id}`} className="group block w-full">
+      <Link href={`/reader/${post.id}/edition`} className="group block w-full">
         <article className="grid gap-6 transition-shadow duration-200  lg:grid-cols-[2fr,1fr] lg:items-stretch">
-          <div className="aspect-[16/9] w-full overflow-hidden bg-muted">
-            <img
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+            <Image
               src={post.heroImageUrl!}
               alt={post.title ?? "Story image"}
-              className="h-full w-full object-cover"
+              fill
+              sizes="(min-width: 1024px) 640px, 100vw"
+              className="object-cover"
+              priority
             />
           </div>
 
@@ -129,14 +133,16 @@ function SecondaryStory({ post, currentUserId, onReported, onBlocked }: { post: 
 
   return (
     <div className="relative h-full">
-      <Link href={`/reader/${post.id}`} className="group block h-full">
+      <Link href={`/reader/${post.id}/edition`} className="group block h-full">
         <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200 ">
           {post.heroImageUrl && (
-            <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-              <img
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+              <Image
                 src={post.heroImageUrl}
                 alt={post.title ?? "Story image"}
-                className="h-full w-full object-cover"
+                fill
+                sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
+                className="object-cover"
               />
             </div>
           )}
@@ -169,7 +175,7 @@ function TertiaryStory({ post }: { post: Post }) {
   return (
     <li>
       <Link
-        href={`/reader/${post.id}`}
+        href={`/reader/${post.id}/edition`}
         className="group flex items-start justify-between gap-3 py-3 text-sm"
       >
         <div className="space-y-1">

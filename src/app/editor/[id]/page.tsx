@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
+import useSWR from "swr";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,19 @@ import { AudienceType } from "@/types";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { Spinner } from "@/components/Spinner";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
+import { EditorSkeleton } from "@/components/editor/EditorSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import toast from "react-hot-toast";
+import { FetchError } from "@/lib/swr";
+
+type PostData = {
+  content?: Content;
+  title?: string;
+  status?: PostStatus;
+  heroImageUrl?: string | null;
+  audienceType?: AudienceType;
+  circleId?: string | null;
+};
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 
@@ -64,11 +77,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [status, setStatus] = useState<PostStatus>("DRAFT");
   const [audienceType, setAudienceType] = useState<AudienceType>("FRIENDS");
   const [circleId, setCircleId] = useState<string | null>(null);
-  const [myCircles, setMyCircles] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
 
-  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -86,38 +95,50 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     [status],
   );
 
-  // Load post
-  useEffect(() => {
-    fetch(`/api/posts/${params.id}`)
-      .then((res) => {
-        if (res.status === 404) notFound();
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (data?.content !== undefined) setDoc(data.content);
-        if (typeof data?.title === "string") setTitle(data.title);
-        if (data?.status) setStatus(data.status as PostStatus);
-        if (typeof data?.heroImageUrl === "string")
-          setHeroImageUrl(data.heroImageUrl);
-        else setHeroImageUrl(null);
-        if (data?.audienceType)
-          setAudienceType(data.audienceType as AudienceType);
-        setCircleId(data?.circleId ?? null);
+  // Load post. revalidateOnFocus/revalidateIfStale disabled: this data seeds
+  // an editable form, so we don't want a background refetch to clobber
+  // in-progress edits — the cache just saves a refetch when navigating back
+  // into a post the user already opened.
+  const {
+    data: postData,
+    error: postError,
+    isLoading: loading,
+  } = useSWR<PostData>(`/api/posts/${params.id}`, {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    shouldRetryOnError: false,
+  });
 
-        setSaved(true);
-      })
-      .catch((err) => console.error("Failed to load post:", err))
-      .finally(() => setLoading(false));
-  }, [params.id]);
+  if (postError instanceof FetchError && postError.status === 404) {
+    notFound();
+  }
 
-  // Load my circles
+  const showSkeleton = useDelayedLoading(loading);
+
+  // Seed the editable form fields once per post id, when the data first
+  // arrives — not on every render, so it doesn't stomp on user edits.
+  const seededForIdRef = useRef<string | null>(null);
   useEffect(() => {
-    fetch("/api/circles")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setMyCircles)
-      .catch(() => setMyCircles([]));
-  }, []);
+    if (!postData || seededForIdRef.current === params.id) return;
+    seededForIdRef.current = params.id;
+
+    if (postData.content !== undefined) setDoc(postData.content);
+    if (typeof postData.title === "string") setTitle(postData.title);
+    if (postData.status) setStatus(postData.status);
+    if (typeof postData.heroImageUrl === "string")
+      setHeroImageUrl(postData.heroImageUrl);
+    else setHeroImageUrl(null);
+    if (postData.audienceType) setAudienceType(postData.audienceType);
+    setCircleId(postData.circleId ?? null);
+
+    setSaved(true);
+  }, [postData, params.id]);
+
+  // Load my circles — shared SWR cache means this is instant if the user
+  // already visited another page that fetched the same list.
+  const { data: myCircles = [] } = useSWR<Array<{ id: string; name: string }>>(
+    "/api/circles",
+  );
 
   const isShareable = status === "PUBLISHED";
 
@@ -131,9 +152,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     setSaved(false);
   };
 
-  // Save (blocked when editor is locked)
-  const handleSave = async () => {
-    if (editorLocked) return;
+  // Save (blocked when editor is locked). Returns whether the save succeeded
+  // so callers (e.g. submit) can flush pending changes before moving on.
+  const handleSave = async (): Promise<boolean> => {
+    if (editorLocked) return true;
     try {
       setIsSaving(true);
       const res = await fetch(`/api/posts/${params.id}`, {
@@ -150,8 +172,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       });
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
       setSaved(true);
+      return true;
     } catch (err) {
       console.error("Failed to save:", err);
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -173,6 +197,16 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
     try {
       setIsSaving(true);
+
+      // Flush any pending changes (e.g. a hero image the user just picked)
+      // through the normal save flow first, so the current status's PUT
+      // isn't the first time this content/image has ever been persisted.
+      const saveOk = await handleSave();
+      if (!saveOk) {
+        toast.error("Failed to save changes. Please try again.");
+        return;
+      }
+
       const res = await fetch(`/api/posts/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -250,12 +284,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [editorLocked, isSaving, saved, title, doc]);
 
+  if (showSkeleton) {
+    return <EditorSkeleton />;
+  }
   if (loading) {
-    return (
-      <div className="flex justify-center p-12">
-        <Spinner />
-      </div>
-    );
+    return null;
   }
 
   return (

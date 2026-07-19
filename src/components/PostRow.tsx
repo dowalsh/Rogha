@@ -1,4 +1,5 @@
 // src/components/PostRow.tsx
+import Image from "next/image";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
@@ -37,11 +38,13 @@ export function PostRow({
       <td className="p-3">
         <Link href={`/editor/${id}`} className="flex items-center gap-3">
           {heroImageUrl && (
-            <div className="h-14 w-20 overflow-hidden ">
-              <img
+            <div className="relative h-14 w-20 overflow-hidden ">
+              <Image
                 src={heroImageUrl}
                 alt=""
-                className="h-full w-full object-cover"
+                fill
+                sizes="80px"
+                className="object-cover"
               />
             </div>
           )}
@@ -112,5 +115,78 @@ export function PostRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+// Mobile card layout — same data as PostRow, stacked full-width instead of
+// squeezed into table columns (avoids the horizontal-scroll-to-reach-actions
+// problem a <table> has on narrow viewports).
+export function PostCard({
+  id,
+  title,
+  status,
+  updatedAt,
+  heroImageUrl,
+  onDelete,
+  isDeleting,
+}: PostRowProps) {
+  return (
+    <div className="rounded-md border p-3 space-y-3">
+      <Link href={`/editor/${id}`} className="flex items-center gap-3">
+        {heroImageUrl && (
+          <div className="relative h-14 w-20 shrink-0 overflow-hidden">
+            <Image
+              src={heroImageUrl}
+              alt=""
+              fill
+              sizes="80px"
+              className="object-cover"
+            />
+          </div>
+        )}
+        <div className="min-w-0">
+          <div className="font-serif text-base leading-snug underline-offset-4 hover:underline truncate">
+            {title}
+          </div>
+        </div>
+      </Link>
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span
+          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] ${statusStyles[status]}`}
+        >
+          {status.toLowerCase()}
+        </span>
+        <span>
+          {updatedAt.toLocaleString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      </div>
+
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" asChild className="flex-1">
+          <Link href={status === "PUBLISHED" ? `/reader/${id}` : `/editor/${id}`}>
+            {status === "PUBLISHED" ? "View" : "Edit"}
+          </Link>
+        </Button>
+
+        <ConfirmDelete
+          trigger={
+            <Button variant="outline" size="sm" disabled={isDeleting}>
+              <Trash2 className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          }
+          onConfirm={onDelete!}
+          isLoading={isDeleting}
+          title="Delete post?"
+          description="This action cannot be undone."
+        />
+      </div>
+    </div>
   );
 }

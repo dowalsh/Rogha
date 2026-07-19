@@ -8,6 +8,7 @@ import { createSubmitNotifications } from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { canViewPost } from "@/lib/access/postAccess";
 import { isContentBlocked, extractTextFromDoc } from "@/lib/contentFilter";
+import { generateHeroThumbnails } from "@/lib/heroThumbnails";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -52,6 +53,7 @@ export async function GET(
       ...post,
       likeCount: post._count.likes,
       likedByMe: false,
+      readByMe: false,
     };
     console.log("[GET] Initial baseResponse:", baseResponse);
 
@@ -59,13 +61,18 @@ export async function GET(
     const { user } = await getDbUser().catch(() => ({ user: null }));
     console.log("[GET] Current user:", user ? user.id : "none");
 
-    // If we have a user, check if they liked
+    // If we have a user, check if they liked / read
     if (user) {
-      const liked = await prisma.postLike.findUnique({
-        where: { userId_postId: { userId: user.id, postId: id } },
-      });
+      const [liked, read] = await Promise.all([
+        prisma.postLike.findUnique({
+          where: { userId_postId: { userId: user.id, postId: id } },
+        }),
+        prisma.postRead.findUnique({
+          where: { postId_userId: { postId: id, userId: user.id } },
+        }),
+      ]);
       console.log("[GET] Liked by current user?", !!liked);
-      baseResponse = { ...baseResponse, likedByMe: !!liked };
+      baseResponse = { ...baseResponse, likedByMe: !!liked, readByMe: !!read };
     }
 
     console.log("[GET] Final baseResponse:", baseResponse);
@@ -156,11 +163,31 @@ export async function PUT(
       }
     }
 
+    // Regenerate the inline thumbnails only when the hero image actually
+    // changes — not on every autosave — since this does a network fetch +
+    // image processing.
+    const existingHero = await prisma.post.findUnique({
+      where: { id },
+      select: { heroImageUrl: true },
+    });
+
+    let thumbUpdate: { heroThumbUrl?: string | null; heroThumbBlurUrl?: string | null } = {};
+    if (body.heroImageUrl && body.heroImageUrl !== existingHero?.heroImageUrl) {
+      const thumbs = await generateHeroThumbnails(body.heroImageUrl);
+      thumbUpdate = {
+        heroThumbUrl: thumbs?.thumb ?? null,
+        heroThumbBlurUrl: thumbs?.thumbBlur ?? null,
+      };
+    } else if (!body.heroImageUrl && existingHero?.heroImageUrl) {
+      thumbUpdate = { heroThumbUrl: null, heroThumbBlurUrl: null };
+    }
+
     const baseUpdate: any = {
       title: body.title,
       content: body.content,
       status: body.status,
       heroImageUrl: body.heroImageUrl,
+      ...thumbUpdate,
       audienceType: incomingAudience,
       circleId: incomingAudience === "CIRCLE" ? incomingCircleId : null,
     };

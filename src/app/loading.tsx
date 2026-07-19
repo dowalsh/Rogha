@@ -1,9 +1,7 @@
-import { Spinner } from "@/components/Spinner";
-
+// Neutral fallback only — nav chrome lives outside this route segment in
+// the root layout, so this just needs to hold the content area's height
+// steady. Routes should own a real skeleton (see docs/loading-ui.md)
+// rather than relying on this ever being the user-visible loading state.
 export default function Loading() {
-  return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Spinner className="h-8 w-8" />
-    </div>
-  );
+  return <div className="min-h-[60vh]" />;
 }

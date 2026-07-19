@@ -5,6 +5,7 @@ import {
   markNotificationsAsRead,
 } from "@/actions/notification.action";
 import { NotificationsSkeleton } from "@/components/NotificationSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -65,10 +66,13 @@ function NotificationsPage() {
     fetchNotifications();
   }, []);
 
-  if (isLoading) return <NotificationsSkeleton />;
+  const showSkeleton = useDelayedLoading(isLoading);
+
+  if (showSkeleton) return <NotificationsSkeleton />;
+  if (isLoading) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4">
       <Card>
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">

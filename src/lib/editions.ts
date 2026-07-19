@@ -4,6 +4,7 @@ import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
+import { getReadMapForPosts } from "@/lib/postReads";
 
 type DbUser = { id: string };
 
@@ -235,9 +236,13 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       audienceType: true,
       circleId: true,
       circle: { select: { id: true, name: true } },
-      author: { select: { id: true, name: true, image: true } },
+      author: { select: { id: true, clerkId: true, name: true, image: true } },
       heroImageUrl: true,
+      heroThumbUrl: true,
+      heroThumbBlurUrl: true,
       content: true,
+      _count: { select: { likes: true } },
+      likes: { where: { userId: user.id }, select: { id: true } },
     },
   });
 
@@ -252,15 +257,34 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
   ]);
 
   // Temporal gate + reporter/block exclusion
-  const visiblePosts = posts.filter((p) => {
-    if (reportedPostIds.has(p.id)) return false;
-    if (blockedAuthorIds.has(p.authorId)) return false;
-    if (p.authorId === user.id) return true;
-    if (p.audienceType === "ALL_USERS") return true;
-    if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query
-    // FRIENDS: check friendship date
-    const friendshipDate = friendMap.get(p.authorId);
-    return friendshipDate !== undefined && friendshipDate <= p.createdAt;
+  const visiblePosts = posts
+    .filter((p) => {
+      if (reportedPostIds.has(p.id)) return false;
+      if (blockedAuthorIds.has(p.authorId)) return false;
+      if (p.authorId === user.id) return true;
+      if (p.audienceType === "ALL_USERS") return true;
+      if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query
+      // FRIENDS: check friendship date
+      const friendshipDate = friendMap.get(p.authorId);
+      return friendshipDate !== undefined && friendshipDate <= p.createdAt;
+    })
+    .map(({ _count, likes, ...p }) => ({
+      ...p,
+      editionId: edition.id,
+      likeCount: _count.likes,
+      likedByMe: likes.length > 0,
+    }));
+
+  // Unread first (so "pick up where you left off" surfaces unread stories
+  // immediately), read after — each group keeping its existing recency order.
+  const readMap = await getReadMapForPosts(
+    user.id,
+    visiblePosts.map((p) => p.id),
+  );
+  visiblePosts.sort((a, b) => {
+    const aRead = readMap.has(a.id) ? 1 : 0;
+    const bRead = readMap.has(b.id) ? 1 : 0;
+    return aRead - bRead;
   });
 
   // View data for reveal overlay

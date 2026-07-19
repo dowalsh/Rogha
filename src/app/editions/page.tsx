@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import useSWR from "swr";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/Spinner";
+import { EditionsListSkeleton } from "@/components/editions/EditionsListSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -356,11 +359,13 @@ function StoryLead({ post }: { post: FullEditionPost }) {
   return (
     <div className="border-b pb-8">
       {post.heroImageUrl && (
-        <div className="aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
-          <img
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
+          <Image
             src={post.heroImageUrl}
             alt={post.title ?? ""}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 1024px) 640px, 100vw"
+            className="object-cover"
           />
         </div>
       )}
@@ -378,11 +383,13 @@ function StoryCard({ post }: { post: FullEditionPost }) {
   return (
     <div className="border bg-card p-3 space-y-2">
       {post.heroImageUrl && (
-        <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
-          <img
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+          <Image
             src={post.heroImageUrl}
             alt={post.title ?? ""}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
+            className="object-cover"
           />
         </div>
       )}
@@ -459,46 +466,26 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function EditionsPage() {
-  const [editions, setEditions] = useState<EditionRow[] | null>(null);
-  const [latestEdition, setLatestEdition] = useState<FullEdition | null>(null);
-  const [loadingList, setLoadingList] = useState(true);
-  const [loadingLatest, setLoadingLatest] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   useUser();
 
-  const fetchEditions = useCallback(async () => {
-    setLoadingList(true);
-    setMsg(null);
-    try {
-      const res = await fetch("/api/editions", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: EditionRow[] = await res.json();
-      setEditions(data);
+  // The full archive list — not preloaded from the home feed (unbounded,
+  // per-edition query), but cached here so revisiting /editions is instant.
+  const {
+    data: editions,
+    isLoading: loadingList,
+    mutate: mutateEditions,
+  } = useSWR<EditionRow[]>("/api/editions");
 
-      // Fetch full data for the latest edition so we can render story cards
-      if (data.length > 0) {
-        setLoadingLatest(true);
-        try {
-          const r2 = await fetch(`/api/editions/${data[0].id}`, {
-            cache: "no-store",
-          });
-          if (r2.ok) setLatestEdition(await r2.json());
-        } finally {
-          setLoadingLatest(false);
-        }
-      }
-    } catch {
-      setEditions([]);
-    } finally {
-      setLoadingList(false);
-    }
-  }, []);
+  const latestId = editions?.[0]?.id;
 
-  useEffect(() => {
-    fetchEditions();
-  }, [fetchEditions]);
+  // Same key LatestEditionPreloader seeds from the home feed (it returns
+  // identical data to this endpoint for the latest edition) — if that ran
+  // first, this resolves from cache instantly instead of refetching.
+  const { data: latestEdition, isLoading: loadingLatest } =
+    useSWR<FullEdition>(latestId ? `/api/editions/${latestId}` : null);
 
   const handlePublishLastWeek = async () => {
     setPublishing(true);
@@ -524,7 +511,10 @@ export default function EditionsPage() {
             : "Nothing to publish for last week.",
         );
       }
-      await fetchEditions();
+      // Revalidating the list is enough — if a new edition just got
+      // published, `latestId` changes and useSWR refetches under the new
+      // key automatically.
+      await mutateEditions();
     } catch (e: any) {
       setMsg(e.message || "Publish failed.");
     } finally {
@@ -533,6 +523,8 @@ export default function EditionsPage() {
   };
 
   const archiveEditions = editions?.slice(1) ?? [];
+  const loading = loadingList || loadingLatest;
+  const showSkeleton = useDelayedLoading(loading);
 
   return (
     <>
@@ -541,53 +533,54 @@ export default function EditionsPage() {
       </SignedOut>
 
       <SignedIn>
-        <div className="mx-auto max-w-5xl space-y-12 py-4">
-          {/* Admin controls */}
-          {process.env.NODE_ENV === "development" && (
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={handlePublishLastWeek}
-                disabled={publishing}
-                variant="outline"
-                size="sm"
-              >
-                {publishing ? "Publishing…" : "Manually publish last week"}
-              </Button>
-              {msg && (
-                <span className="text-sm text-muted-foreground">{msg}</span>
-              )}
-            </div>
-          )}
-
-          {/* ── Section 1: Latest Edition ─────────────────────────────── */}
-          <section className="space-y-4">
-            <h2 className="font-serif text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
-              Latest Edition
-            </h2>
-
-            {loadingList || loadingLatest ? (
-              <div className="flex justify-center py-12">
-                <Spinner />
+        {showSkeleton ? (
+          <EditionsListSkeleton />
+        ) : loading ? null : (
+          <div className="mx-auto max-w-5xl space-y-12 py-4">
+            {/* Admin controls */}
+            {(process.env.NODE_ENV === "development" ||
+              process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") && (
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handlePublishLastWeek}
+                  disabled={publishing}
+                  variant="outline"
+                  size="sm"
+                >
+                  {publishing ? "Publishing…" : "Manually publish last week"}
+                </Button>
+                {msg && (
+                  <span className="text-sm text-muted-foreground">{msg}</span>
+                )}
               </div>
-            ) : latestEdition ? (
-              <LatestEditionPreview edition={latestEdition} />
-            ) : (
-              <p className="py-12 text-center text-muted-foreground">
-                No editions published yet.
-              </p>
             )}
-          </section>
 
-          {/* ── Section 2: Past Editions ──────────────────────────────── */}
-          {!loadingList && archiveEditions.length > 0 && (
-            <section className="space-y-4 font-serif">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
-                Past Editions
+            {/* ── Section 1: Latest Edition ─────────────────────────────── */}
+            <section className="space-y-4">
+              <h2 className="font-serif text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
+                Latest Edition
               </h2>
-              <EditionsArchive editions={archiveEditions} />
+
+              {latestEdition ? (
+                <LatestEditionPreview edition={latestEdition} />
+              ) : (
+                <p className="py-12 text-center text-muted-foreground">
+                  No editions published yet.
+                </p>
+              )}
             </section>
-          )}
-        </div>
+
+            {/* ── Section 2: Past Editions ──────────────────────────────── */}
+            {archiveEditions.length > 0 && (
+              <section className="space-y-4 font-serif">
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground border-b pb-2">
+                  Past Editions
+                </h2>
+                <EditionsArchive editions={archiveEditions} />
+              </section>
+            )}
+          </div>
+        )}
       </SignedIn>
     </>
   );

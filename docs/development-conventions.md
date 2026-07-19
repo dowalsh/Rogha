@@ -59,6 +59,10 @@ Every branch auto-deploys a Vercel preview. Keep branches focused enough that th
 
 Preview is fully isolated from production: its own Clerk **dev instance** and its own **separate Prisma Postgres database**, so testing never touches real users or data. Full detail — the authoritative Vercel env-var scoping, the database separation, admin-role promotion, and webhook/lazy-sync behavior — lives in [preview-testing.md](./preview-testing.md). Read it before your first preview test session.
 
+## Debugging: request timing
+
+The auth + data path (`auth()`/`currentUser()`, `getDbUser`, the layout's Clerk upsert, per-page Prisma queries) has dormant timing instrumentation in `src/lib/timing.ts`. Set `TIMING_LOGS=1` in the environment to turn it on — it logs `[timing] rid=<id> <label> <ms>ms ...` lines, correlated per request via an `x-rogha-rid` header middleware attaches. Off by default, zero overhead when unset.
+
 ## Quick reference
 
 ```bash

@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/Spinner";
+import { SettingsSkeleton } from "@/components/settings/SettingsSkeleton";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { Check } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Prefs = {
@@ -28,9 +31,12 @@ const rows: { label: string; email: keyof Prefs; push: keyof Prefs }[] = [
   { label: "Friend requests", email: "emailFriendRequests", push: "pushFriendRequests" },
 ];
 
+type SaveStatus = "idle" | "saving" | "saved";
+
 export default function SettingsPage() {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   useEffect(() => {
     fetch("/api/settings/notifications")
@@ -43,6 +49,7 @@ export default function SettingsPage() {
   async function toggle(field: keyof Prefs, value: boolean) {
     if (!prefs) return;
     setPrefs({ ...prefs, [field]: value });
+    setSaveStatus("saving");
     try {
       const res = await fetch("/api/settings/notifications", {
         method: "PATCH",
@@ -50,21 +57,21 @@ export default function SettingsPage() {
         body: JSON.stringify({ [field]: value }),
       });
       if (!res.ok) throw new Error();
+      setSaveStatus("saved");
     } catch {
       setPrefs({ ...prefs });
+      setSaveStatus("idle");
       toast.error("Failed to save");
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <Spinner />
-      </div>
-    );
+  const showSkeleton = useDelayedLoading(isLoading);
+
+  if (showSkeleton) {
+    return <SettingsSkeleton />;
   }
 
-  if (!prefs) return null;
+  if (isLoading || !prefs) return null;
 
   return (
     <>
@@ -76,8 +83,18 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Notifications</CardTitle>
+          {saveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Spinner className="h-3 w-3" /> Saving…
+            </span>
+          )}
+          {saveStatus === "saved" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="h-3 w-3" /> Saved
+            </span>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {/* Header row */}

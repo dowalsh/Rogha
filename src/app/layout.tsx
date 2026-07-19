@@ -9,10 +9,14 @@ import { Toaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { upsertClerkUser } from "@/actions/user.action";
 import { currentUser } from "@clerk/nextjs/server";
+import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 import DeepLinkInit from "@/components/DeepLinkInit";
+import MePreloader from "@/components/MePreloader";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
 import TermsGate from "@/components/TermsGate";
+import { formatDistanceToNow } from "date-fns";
+import { SWRProvider } from "@/components/providers/SWRProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -28,6 +32,8 @@ const geistMono = localFont({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -43,13 +49,20 @@ export default async function RootLayout({
 }) {
   // // 👇 Only run this lazy sync in development
 
-  const user = await currentUser().catch((err) => {
-    console.error("[layout] currentUser() failed:", err);
-    return null;
-  });
+  const rid = requestIdFromHeaders();
+  const layoutStart = performance.now();
+
+  const user = await time("layout.currentUser", rid, () =>
+    currentUser().catch((err) => {
+      console.error("[layout] currentUser() failed:", err);
+      return null;
+    })
+  );
   if (user) {
-    await upsertClerkUser(user);
+    await time("layout.upsertClerkUser", rid, () => upsertClerkUser(user));
   }
+
+  logTiming("layout.total", rid, performance.now() - layoutStart);
 
   return (
     <ClerkProvider>
@@ -57,6 +70,8 @@ export default async function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
+          <SWRProvider>
+          <MePreloader />
           <TooltipProvider delayDuration={150}>
             <ThemeProvider
               attribute="class"
@@ -66,23 +81,52 @@ export default async function RootLayout({
             >
               <div className="min-h-screen">
                 {process.env.NODE_ENV === "development" && (
-                  <div className="w-full bg-red-600 text-white text-center py-2 text-sm font-bold z-50">
+                  <div
+                    className="w-full bg-red-600 text-white text-center pb-2 text-sm font-bold z-50"
+                    style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
+                  >
                     DEV
                   </div>
                 )}
                 {process.env.VERCEL_ENV === "preview" && (
-                  <div className="w-full bg-green-400 text-black text-center py-2 text-sm font-bold z-50">
+                  <div
+                    className="w-full bg-green-400 text-black text-center pb-2 text-sm font-bold z-50"
+                    style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
+                  >
                     PREVIEW
+                    {process.env.NEXT_PUBLIC_BUILD_TIME && (
+                      <span className="font-normal">
+                        {" "}
+                        · deployed{" "}
+                        {new Date(process.env.NEXT_PUBLIC_BUILD_TIME).toLocaleString(
+                          "en-US",
+                          {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                            timeZone: "UTC",
+                          },
+                        )}{" "}
+                        UTC (
+                        {formatDistanceToNow(
+                          new Date(process.env.NEXT_PUBLIC_BUILD_TIME),
+                          { addSuffix: true },
+                        )}
+                        )
+                      </span>
+                    )}
                   </div>
                 )}
                 {process.env.NEXT_PUBLIC_SHOW_UPDATE_NOTICE === "true" && (
-                  <div className="w-full bg-yellow-400 text-black text-center py-2 text-sm font-medium z-50 px-4">
+                  <div
+                    className="w-full bg-yellow-400 text-black text-center pb-2 text-sm font-medium z-50 px-4"
+                    style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
+                  >
                     Having issues? Open TestFlight → tap Update → delete &amp;
                     reinstall Rogha if sign-in still fails.
                   </div>
                 )}
                 <Navbar />
-                <main className="py-8">
+                <main className="pb-8">
                   <div className="max-w-7xl mx-auto px-4">
                     <TermsGate>{children}</TermsGate>
                   </div>
@@ -101,6 +145,7 @@ export default async function RootLayout({
               document.head.appendChild(s);
             `}</Script>}
           </TooltipProvider>
+          </SWRProvider>
         </body>
       </html>
     </ClerkProvider>

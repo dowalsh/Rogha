@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { Frontpage } from "@/components/Frontpage";
 import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
+import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +35,18 @@ export default async function EditionPage({
 }: {
   params: { id: string };
 }) {
+  const rid = requestIdFromHeaders();
+  const pageStart = performance.now();
+
   const { user, error } = await getDbUser();
   if (error) notFound();
 
-  const edition = await getPublishedEditionById({ id: user.id }, params.id);
+  const edition = await time("editions.getPublishedEditionById", rid, () =>
+    getPublishedEditionById({ id: user.id }, params.id)
+  );
   if (!edition) notFound();
+
+  logTiming("editions.page.total", rid, performance.now() - pageStart, { editionId: params.id });
 
   // ✅ convert Dates -> strings
   const editionData: EditionResponse = {

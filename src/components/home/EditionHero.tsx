@@ -136,9 +136,17 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
   // CAUGHT_UP
   return (
     <section className={cardBase}>
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-        <p className="text-sm">You're all caught up this week.</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <p className="text-sm">You're all caught up this week.</p>
+        </div>
+        <Link
+          href={`/editions/${hero.editionId}`}
+          className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Reread
+        </Link>
       </div>
 
       <ComingSundaySlot comingNext={comingNext} collapsed={false} />

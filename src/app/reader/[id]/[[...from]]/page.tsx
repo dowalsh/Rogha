@@ -21,6 +21,7 @@ import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
 import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { ReaderJumpFab } from "@/components/reader/ReaderJumpFab";
+import { EditionUpNext } from "@/components/reader/EditionUpNext";
 import { useLike } from "@/hooks/useLike";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { AudienceType } from "@/types/index";
@@ -414,6 +415,13 @@ export default function ReadPostPage({
           postAudienceType={post.audienceType}
         />
       </div>
+      {post.editionId && (
+        <EditionUpNext
+          editionId={post.editionId}
+          currentPostId={post.id}
+          backHref={fallbackBackHref}
+        />
+      )}
       <ReaderJumpFab commentsAnchorId="comments" />
     </div>
   );

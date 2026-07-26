@@ -281,9 +281,13 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     user.id,
     visiblePosts.map((p) => p.id),
   );
-  visiblePosts.sort((a, b) => {
-    const aRead = readMap.has(a.id) ? 1 : 0;
-    const bRead = readMap.has(b.id) ? 1 : 0;
+  const postsWithReadState = visiblePosts.map((p) => ({
+    ...p,
+    readByMe: readMap.has(p.id),
+  }));
+  postsWithReadState.sort((a, b) => {
+    const aRead = a.readByMe ? 1 : 0;
+    const bRead = b.readByMe ? 1 : 0;
     return aRead - bRead;
   });
 
@@ -308,11 +312,11 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     "[getPublishedEditionById] edition:",
     edition.id,
     "posts:",
-    visiblePosts.length
+    postsWithReadState.length
   );
   return {
     ...edition,
-    posts: visiblePosts,
+    posts: postsWithReadState,
     hasOpened: Boolean(viewRecord),
     viewerCount,
     viewerNames: viewerPreview.map((v) => v.user.name ?? "Someone"),

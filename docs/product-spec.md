@@ -62,6 +62,7 @@ A single weekly submission, scoped to one audience.
 - Only the comment author can edit or hard-delete it. Admin moderation removal is a separate, soft-delete path (`status: REMOVED`).
 - Likes are unique per (user, post|comment); liking notifies the author (self-likes excluded).
 - The reader surfaces a "since you last read this" freshness signal: a tappable "N new" pill in the post header, counting comments/replies added since the viewer's last `PostRead`. A first-time reader (no prior read) sees no pill — "everything is new" isn't useful signal. Alongside it, a generic floating button lets the reader jump between the post body and the comments regardless of new activity. See [specs/reader-jump-nav.md](./specs/reader-jump-nav.md).
+- After the comments section, the reader shows a "keep reading" block listing the other posts in the same edition (unread first, already-read tucked under a de-emphasized disclosure), or a "you're all caught up this week" state once nothing unread remains — since the edition reveal gate is edition-level, moving article-to-article costs nothing ritually. See [specs/edition-up-next.md](./specs/edition-up-next.md).
 
 ### Notifications
 Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.

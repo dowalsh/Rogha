@@ -5,7 +5,7 @@ export async function markPostRead(userId: string, postId: string): Promise<void
   await prisma.postRead.upsert({
     where: { postId_userId: { postId, userId } },
     create: { postId, userId },
-    update: {},
+    update: { readAt: new Date() },
   });
 }
 

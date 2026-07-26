@@ -6,7 +6,7 @@ import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
@@ -20,6 +20,7 @@ import { LikeButton } from "@/components/LikeButton";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
 import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
+import { ReaderJumpFab } from "@/components/reader/ReaderJumpFab";
 import { useLike } from "@/hooks/useLike";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { AudienceType } from "@/types/index";
@@ -41,6 +42,7 @@ type PostDTO = {
   likedByMe: boolean;
   audienceType: AudienceType;
   edition?: { publishedAt: string | null } | null;
+  newCommentCount?: number | null;
 };
 
 // --- helpers: quick validator & explainer (diagnostics only) ---
@@ -159,6 +161,25 @@ export default function ReadPostPage({
       .then(() => mutate("/api/home"))
       .catch(() => {});
   }, [post?.id]);
+
+  // Snapshot the arrival-time "N new" count once — the read-POST above bumps
+  // readAt, and any later SWR revalidation would otherwise recompute this to
+  // 0 and zero the header badge out from under the reader mid-session.
+  const arrivalNewCount = useRef<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (post && arrivalNewCount.current === undefined) {
+      arrivalNewCount.current = post.newCommentCount ?? null;
+    }
+  }, [post]);
+
+  const scrollToComments = () => {
+    document.getElementById("comments")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
+  };
 
   const loading = isLoading || !editionStatusChecked;
   const showSkeleton = useDelayedLoading(loading);
@@ -356,6 +377,19 @@ export default function ReadPostPage({
               </span>
             </>
           )}
+          {!!arrivalNewCount.current && arrivalNewCount.current > 0 && (
+            <>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={scrollToComments}
+                aria-label={`Jump to ${arrivalNewCount.current} new comments`}
+                className="flex items-center gap-0.5 text-muted-foreground hover:text-foreground"
+              >
+                💬 {arrivalNewCount.current} new <ChevronDown className="h-3 w-3" />
+              </button>
+            </>
+          )}
         </div>
         {isAuthor && isShareable && <ShareLinkControls postId={post.id} />}
       </header>
@@ -372,12 +406,15 @@ export default function ReadPostPage({
         />
       </div>
       <hr className="my-8 border-t border-muted" />
-      <CommentsSection
-        postId={post.id}
-        postAuthorId={post.author?.id ?? ""}
-        postAuthorName={post.author?.name ?? "post author"}
-        postAudienceType={post.audienceType}
-      />
+      <div id="comments" className="scroll-mt-24">
+        <CommentsSection
+          postId={post.id}
+          postAuthorId={post.author?.id ?? ""}
+          postAuthorName={post.author?.name ?? "post author"}
+          postAudienceType={post.audienceType}
+        />
+      </div>
+      <ReaderJumpFab commentsAnchorId="comments" />
     </div>
   );
 }

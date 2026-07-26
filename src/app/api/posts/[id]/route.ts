@@ -49,11 +49,12 @@ export async function GET(
     }
 
     // Base response with counts
-    let baseResponse = {
+    let baseResponse: any = {
       ...post,
       likeCount: post._count.likes,
       likedByMe: false,
       readByMe: false,
+      newCommentCount: null as number | null,
     };
     console.log("[GET] Initial baseResponse:", baseResponse);
 
@@ -72,7 +73,23 @@ export async function GET(
         }),
       ]);
       console.log("[GET] Liked by current user?", !!liked);
-      baseResponse = { ...baseResponse, likedByMe: !!liked, readByMe: !!read };
+
+      // "N new" signal for the reader header — mirrors src/lib/home.ts
+      // getBuzzPosts's unread definition (comments + replies, no baseline =
+      // no signal rather than "everything is new").
+      let newCommentCount: number | null = null;
+      if (read) {
+        newCommentCount = await prisma.comment.count({
+          where: { postId: id, status: "ACTIVE", createdAt: { gt: read.readAt } },
+        });
+      }
+
+      baseResponse = {
+        ...baseResponse,
+        likedByMe: !!liked,
+        readByMe: !!read,
+        newCommentCount,
+      };
     }
 
     console.log("[GET] Final baseResponse:", baseResponse);

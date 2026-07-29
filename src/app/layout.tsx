@@ -134,7 +134,12 @@ export default async function RootLayout({
                   </div>
                 </main>
               </div>
-              <Toaster />
+              <Toaster
+                containerStyle={{
+                  top: "max(env(safe-area-inset-top), 1rem)",
+                  bottom: "max(env(safe-area-inset-bottom), 1rem)",
+                }}
+              />
               <DeepLinkInit />
               <PushNotificationInit />
               <SplashScreenInit />

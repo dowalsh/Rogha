@@ -9,7 +9,6 @@ import {
   NotebookPen,
   Info,
   ShieldCheck,
-  UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +18,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import useSWR from "swr";
 import { SignInButton, useClerk } from "@clerk/nextjs";
@@ -28,6 +28,10 @@ import Link from "next/link";
 import { getAppOrigin } from "@/lib/mobile/appOrigin";
 import type { UserResource } from "@clerk/types";
 import { FriendsNavBadge } from "@/components/FriendsNavBadge";
+
+function initialsFor(username: string | null | undefined) {
+  return (username || "?").slice(0, 2).toUpperCase();
+}
 
 type MobileNavbarProps = {
   isLoaded: boolean;
@@ -40,7 +44,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isNative] = useState(() => Capacitor.isNativePlatform());
   const { signOut } = useClerk();
-  const { data: me } = useSWR<{ username: string }>("/api/me");
+  const { data: me } = useSWR<{ username: string; image: string | null }>("/api/me");
 
   const handleNavClick = () => {
     setShowMobileMenu(false);
@@ -152,7 +156,10 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
                   asChild
                 >
                   <Link href={me?.username ? `/profile/${me.username}` : "/profile"}>
-                    <UserIcon className="w-4 h-4" />
+                    <Avatar className="h-4 w-4">
+                      <AvatarImage src={me?.image ?? undefined} alt="" />
+                      <AvatarFallback className="text-[8px]">{initialsFor(me?.username)}</AvatarFallback>
+                    </Avatar>
                     My Profile
                   </Link>
                 </Button>

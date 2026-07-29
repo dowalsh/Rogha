@@ -138,109 +138,106 @@ function SelfProfile({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 py-6">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <AvatarUploadButton image={profile.user.image} username={profile.user.username} size={96} />
+
+        {editingField === "username" ? (
+          <div className="flex w-full max-w-xs items-center gap-2">
+            <Input
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              className="h-8 min-w-0 flex-1"
+              maxLength={20}
+            />
+            <Button size="sm" className="shrink-0" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="shrink-0"
+              onClick={() => {
+                setValue(username);
+                setEditingField(null);
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <button
+            className="flex items-center gap-1.5 text-lg font-semibold hover:text-muted-foreground transition-colors"
+            onClick={() => setEditingField("username")}
+            disabled={editingField !== null}
+          >
+            {username}
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
+
+        {editingField === "emoji" ? (
+          <div className="flex w-full max-w-xs flex-col items-center gap-2">
+            <div className="flex w-full items-center gap-2">
+              <Input
+                autoFocus
+                value={emojiValue}
+                onChange={(e) => setEmojiValue(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveEmoji()}
+                className="h-8 min-w-0 flex-1 text-center"
+                maxLength={SIGNOFF_EMOJI_MAX_LENGTH}
+                placeholder="🔥"
+              />
+              <Button size="sm" className="shrink-0" onClick={handleSaveEmoji} disabled={savingEmoji}>
+                {savingEmoji ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0"
+                onClick={() => {
+                  setEmojiValue(signoffEmoji);
+                  setEditingField(null);
+                }}
+                disabled={savingEmoji}
+              >
+                Cancel
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This will show up on the notification sent to friends when you submit a post!
+            </p>
+          </div>
+        ) : (
+          <button
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setEditingField("emoji")}
+            disabled={editingField !== null}
+          >
+            {signoffEmoji ? (
+              <>
+                <span className="text-base">{signoffEmoji}</span> Signoff emoji
+              </>
+            ) : (
+              "Add a signoff emoji"
+            )}
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="mx-auto w-full max-w-xs">
-          <TabsTrigger value="posts" className="flex-1">Posts</TabsTrigger>
-          <TabsTrigger value="settings" className="flex-1">Settings</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-center">
+          <TabsList>
+            <TabsTrigger value="posts" className="w-24">Posts</TabsTrigger>
+            <TabsTrigger value="settings" className="w-24">Settings</TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="posts" className="space-y-6">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <AvatarUploadButton image={profile.user.image} username={profile.user.username} size={96} />
-
-            {editingField === "username" ? (
-              <div className="flex w-full max-w-xs items-center gap-2">
-                <Input
-                  autoFocus
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                  className="h-8 min-w-0 flex-1"
-                  maxLength={20}
-                />
-                <Button size="sm" className="shrink-0" onClick={handleSave} disabled={saving}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="shrink-0"
-                  onClick={() => {
-                    setValue(username);
-                    setEditingField(null);
-                  }}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <button
-                className="flex items-center gap-1.5 text-lg font-semibold hover:text-muted-foreground transition-colors"
-                onClick={() => setEditingField("username")}
-                disabled={editingField !== null}
-              >
-                {username}
-                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            )}
-
-            {editingField === "emoji" ? (
-              <div className="flex w-full max-w-xs flex-col items-center gap-2">
-                <div className="flex w-full items-center gap-2">
-                  <Input
-                    autoFocus
-                    value={emojiValue}
-                    onChange={(e) => setEmojiValue(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSaveEmoji()}
-                    className="h-8 min-w-0 flex-1 text-center"
-                    maxLength={SIGNOFF_EMOJI_MAX_LENGTH}
-                    placeholder="🔥"
-                  />
-                  <Button size="sm" className="shrink-0" onClick={handleSaveEmoji} disabled={savingEmoji}>
-                    {savingEmoji ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="shrink-0"
-                    onClick={() => {
-                      setEmojiValue(signoffEmoji);
-                      setEditingField(null);
-                    }}
-                    disabled={savingEmoji}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  This will show up on the notification sent to friends when you submit a post!
-                </p>
-              </div>
-            ) : (
-              <button
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setEditingField("emoji")}
-                disabled={editingField !== null}
-              >
-                {signoffEmoji ? (
-                  <>
-                    <span className="text-base">{signoffEmoji}</span> Signoff emoji
-                  </>
-                ) : (
-                  "Add a signoff emoji"
-                )}
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-              Your posts
-            </h2>
-            <PostList posts={profile.posts} />
-          </div>
+        <TabsContent value="posts">
+          <PostList posts={profile.posts} />
         </TabsContent>
 
         <TabsContent value="settings">

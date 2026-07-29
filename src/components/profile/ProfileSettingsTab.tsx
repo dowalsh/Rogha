@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClerk } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -8,11 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/Spinner";
 import { SettingsSkeleton } from "@/components/settings/SettingsSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
-import { Check, ExternalLink } from "lucide-react";
+import { Check } from "lucide-react";
 import toast from "react-hot-toast";
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
-import { getClerkAccountPortalUrl } from "@/lib/clerkAccountPortal";
 
 type Prefs = {
   emailEnabled: boolean;
@@ -36,20 +34,8 @@ const rows: { label: string; email: keyof Prefs; push: keyof Prefs }[] = [
 
 type SaveStatus = "idle" | "saving" | "saved";
 
-async function openAccountPortal() {
-  const url = getClerkAccountPortalUrl();
-  if (!url) {
-    toast.error("Account management isn't available right now.");
-    return;
-  }
-  if (Capacitor.isNativePlatform()) {
-    await Browser.open({ url, presentationStyle: "popover" });
-  } else {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-}
-
 export function ProfileSettingsTab() {
+  const { openUserProfile } = useClerk();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -168,13 +154,9 @@ export function ProfileSettingsTab() {
           <p className="text-sm text-muted-foreground">
             Change your password, email, or review active sessions.
           </p>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={openAccountPortal}>
-            Manage account
-            <ExternalLink className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" onClick={() => openUserProfile()}>
+            Manage Profile
           </Button>
-          <p className="text-xs text-muted-foreground">
-            Opens in your browser — this is handled by our sign-in provider, separate from the app.
-          </p>
         </CardContent>
       </Card>
     </div>

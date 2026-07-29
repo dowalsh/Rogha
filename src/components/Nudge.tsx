@@ -28,7 +28,7 @@ export default function Nudge({ message, ctaLabel, href, onDismiss }: NudgeProps
           asChild
           className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
         >
-          <Link href={href}>{ctaLabel}</Link>
+          <Link href={href} onClick={onDismiss}>{ctaLabel}</Link>
         </Button>
         {onDismiss && (
           <Button

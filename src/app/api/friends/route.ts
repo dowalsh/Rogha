@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
+import { getMutualFriendCount } from "@/lib/friends";
 
 type Box = "accepted" | "incoming" | "outgoing";
 
@@ -31,12 +32,12 @@ export async function GET(req: NextRequest) {
         status: true, // "PENDING" | "ACCEPTED"
         createdAt: true,
         acceptedAt: true,
-        a: { select: { id: true, name: true, image: true } },
-        b: { select: { id: true, name: true, image: true } },
+        a: { select: { id: true, name: true, image: true, username: true } },
+        b: { select: { id: true, name: true, image: true, username: true } },
       },
     });
 
-    const items = rows
+    const filtered = rows
       .map((r) => {
         const amA = r.aId === user.id;
         const other = amA ? r.b : r.a;
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
             id: other?.id ?? "",
             name: other?.name ?? null,
             image: other?.image ?? null,
+            username: other?.username ?? null,
           },
         };
       })
@@ -63,6 +65,20 @@ export async function GET(req: NextRequest) {
         if (box === "outgoing") return item.state === "PENDING_OUTGOING";
         return item.state === "ACCEPTED";
       });
+
+    // Mutual-friend count only matters for incoming requests (home card /
+    // stranger-relationship context) — skip the extra queries otherwise.
+    const items =
+      box === "incoming"
+        ? await Promise.all(
+            filtered.map(async (item) => ({
+              ...item,
+              mutualCount: item.user.id
+                ? await getMutualFriendCount(user.id, item.user.id)
+                : 0,
+            }))
+          )
+        : filtered;
 
     return NextResponse.json({ items }, { status: 200 });
   } catch (err) {

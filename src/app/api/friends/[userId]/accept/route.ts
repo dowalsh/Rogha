@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { canonicalPair } from "@/lib/friends";
+import { createFriendRequestAcceptedNotification } from "@/actions/notification.action";
 
 export async function POST(
   _req: NextRequest,
@@ -49,6 +50,15 @@ export async function POST(
       where: { aId_bId: { aId, bId } },
       data: { status: "ACCEPTED", acceptedAt: new Date() },
     });
+
+    try {
+      await createFriendRequestAcceptedNotification({
+        accepterId: user.id,
+        requesterId: otherId,
+      });
+    } catch (err) {
+      console.error("[FRIEND_REQUEST_ACCEPTED_NOTIFICATION_ERROR]", err);
+    }
 
     console.log("friends.accept", {
       meId: user.id,

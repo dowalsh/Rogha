@@ -29,6 +29,7 @@ const getNotificationIcon = (type: string) => {
     case "SUBMIT":
       return <Send className="size-4 text-yellow-500" />;
     case "FRIEND_REQUEST":
+    case "FRIEND_REQUEST_ACCEPTED":
       return <UserPlus className="size-4 text-green-500" />;
     default:
       return null;
@@ -122,7 +123,9 @@ function NotificationsPage() {
                               ? "commented"
                               : notification.type === "FRIEND_REQUEST"
                                 ? "sent you a friend request"
-                                : "submitted a new post"}
+                                : notification.type === "FRIEND_REQUEST_ACCEPTED"
+                                  ? "accepted your friend request"
+                                  : "submitted a new post"}
                         </span>
                       </div>
 

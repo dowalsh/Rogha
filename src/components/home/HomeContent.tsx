@@ -4,6 +4,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { EditionHero } from "@/components/home/EditionHero";
+import { PendingRequestsCard } from "@/components/home/PendingRequestsCard";
 import { BuzzList } from "@/components/home/BuzzList";
 import { HomeSkeleton } from "@/components/home/HomeSkeleton";
 import { LatestEditionPreloader } from "@/components/editions/LatestEditionPreloader";
@@ -30,6 +31,7 @@ export function HomeContent() {
 
   return (
     <div className="space-y-6">
+      <PendingRequestsCard />
       <EditionHero hero={data.hero} comingNext={data.comingNext} />
       <BuzzList
         buzz={data.buzz}

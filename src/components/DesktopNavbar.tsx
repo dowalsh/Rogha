@@ -17,6 +17,7 @@ import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { getAppOrigin } from "@/lib/mobile/appOrigin";
+import { FriendsNavBadge } from "@/components/FriendsNavBadge";
 // import { getUnreadCount } from "@/actions/notification.action";
 
 type DesktopNavbarProps = {
@@ -75,6 +76,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user, isAdmin }: DesktopNavbarPro
             <Link href="/circles">
               <Blend className="w-4 h-4" />
               <span className="hidden lg:inline">Circles</span>
+              <FriendsNavBadge />
             </Link>
           </Button>
           <Button variant="ghost" className="flex items-center gap-2" asChild>

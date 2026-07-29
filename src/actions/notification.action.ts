@@ -352,6 +352,39 @@ export async function createFriendRequestNotification({
   return notif;
 }
 
+export async function createFriendRequestAcceptedNotification({
+  accepterId,
+  requesterId,
+}: {
+  accepterId: string;
+  requesterId: string;
+}) {
+  const [notif, accepter] = await Promise.all([
+    prisma.notification.create({
+      data: {
+        userId: requesterId,
+        creatorId: accepterId,
+        type: "FRIEND_REQUEST_ACCEPTED",
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: accepterId },
+      select: { name: true, username: true },
+    }),
+  ]);
+
+  const pushPrefs = await getUserPushPrefs(requesterId);
+  if (pushPrefs.pushEnabled && pushPrefs.pushFriendRequests) {
+    await sendPushToUser(requesterId, {
+      title: "Friend request accepted",
+      body: `${accepter?.name ?? accepter?.username ?? "Someone"} accepted your friend request`,
+      url: accepter?.username ? `/profile/${accepter.username}` : "/circles",
+    });
+  }
+
+  return notif;
+}
+
 export async function createSubmitNotifications({
   userId,
   postId,

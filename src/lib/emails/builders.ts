@@ -34,7 +34,7 @@ export function buildPostSubmittedEmail(
 
 export type ReportEmailInput = {
   reportId: string;
-  contentType: "POST" | "COMMENT";
+  contentType: "POST" | "COMMENT" | "USER";
   contentId: string;
   contentText: string;
   reporterName: string;
@@ -44,7 +44,7 @@ export type ReportEmailInput = {
 
 export function buildReportEmail(input: ReportEmailInput): BuiltEmail {
   const { reportId, contentType, contentId, contentText, reporterName, reporterEmail, timestamp } = input;
-  const label = contentType === "POST" ? "Post" : "Comment";
+  const label = contentType === "POST" ? "Post" : contentType === "COMMENT" ? "Comment" : "User";
   const dateStr = timestamp.toISOString();
 
   return {

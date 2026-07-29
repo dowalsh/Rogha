@@ -84,19 +84,30 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const email = (body?.email ?? "").toString().trim().toLowerCase();
+    const identifier = (body?.identifier ?? body?.email ?? "").toString().trim();
 
-    if (!email) {
+    if (!identifier) {
       return NextResponse.json(
-        { code: "common.INVALID_INPUT", message: "Email is required." },
+        {
+          code: "common.INVALID_INPUT",
+          message: "A username or email is required.",
+        },
         { status: 400 }
       );
     }
 
-    const target = await prisma.user.findUnique({ where: { email } });
+    const target = identifier.includes("@")
+      ? await prisma.user.findUnique({ where: { email: identifier.toLowerCase() } })
+      : await prisma.user.findUnique({
+          where: { usernameLower: identifier.toLowerCase() },
+        });
+
     if (!target) {
       return NextResponse.json(
-        { code: "common.USER_NOT_FOUND", message: "No user with that email." },
+        {
+          code: "common.USER_NOT_FOUND",
+          message: "No user with that username or email.",
+        },
         { status: 404 }
       );
     }
@@ -108,6 +119,25 @@ export async function POST(req: NextRequest) {
           message: "You cannot friend yourself.",
         },
         { status: 409 }
+      );
+    }
+
+    const blocked = await prisma.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: user.id, blockedId: target.id },
+          { blockerId: target.id, blockedId: user.id },
+        ],
+      },
+      select: { blockerId: true },
+    });
+    if (blocked) {
+      return NextResponse.json(
+        {
+          code: "friends.BLOCKED",
+          message: "You can't send a request to this user.",
+        },
+        { status: 403 }
       );
     }
 

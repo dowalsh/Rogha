@@ -13,18 +13,18 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { contentType, contentId } = body as {
-      contentType: "POST" | "COMMENT";
+      contentType: "POST" | "COMMENT" | "USER";
       contentId: string;
     };
 
     if (!contentType || !contentId) {
       return NextResponse.json({ error: "Missing contentType or contentId" }, { status: 400 });
     }
-    if (contentType !== "POST" && contentType !== "COMMENT") {
+    if (contentType !== "POST" && contentType !== "COMMENT" && contentType !== "USER") {
       return NextResponse.json({ error: "Invalid contentType" }, { status: 400 });
     }
 
-    // Verify content exists and reporter is not the author
+    // Verify content exists and reporter is not the author/target
     let contentText = "";
     if (contentType === "POST") {
       const post = await prisma.post.findUnique({
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Cannot report your own content" }, { status: 403 });
       }
       contentText = post.title ?? "(untitled)";
-    } else {
+    } else if (contentType === "COMMENT") {
       const comment = await prisma.comment.findUnique({
         where: { id: contentId },
         select: { authorId: true, content: true },
@@ -46,6 +46,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Cannot report your own content" }, { status: 403 });
       }
       contentText = comment.content.slice(0, 500);
+    } else {
+      const target = await prisma.user.findUnique({
+        where: { id: contentId },
+        select: { id: true, username: true },
+      });
+      if (!target) return NextResponse.json({ error: "Not Found" }, { status: 404 });
+      if (target.id === user.id) {
+        return NextResponse.json({ error: "Cannot report yourself" }, { status: 403 });
+      }
+      contentText = `@${target.username}`;
     }
 
     // Upsert — idempotent, unique constraint prevents duplicates

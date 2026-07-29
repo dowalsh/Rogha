@@ -30,6 +30,7 @@ type FriendItem = {
     id: string;
     name: string | null;
     image: string | null;
+    username: string | null;
   };
 };
 
@@ -41,7 +42,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
 
   // Add-friend UI
   const [showAdd, setShowAdd] = useState(false);
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [adding, setAdding] = useState(false);
 
   // Unfriend dialog state
@@ -93,9 +94,9 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
   }, [loadAll, refreshKey]);
 
   async function handleAddFriend() {
-    const trimmed = email.trim().toLowerCase();
+    const trimmed = identifier.trim();
     if (!trimmed) {
-      toast.error("Enter an email");
+      toast.error("Enter a username or email");
       return;
     }
     setAdding(true);
@@ -104,7 +105,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ identifier: trimmed }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 201 && data?.state === "PENDING_OUTGOING") {
@@ -119,7 +120,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       } else {
         toast("Request sent");
       }
-      setEmail("");
+      setIdentifier("");
       setShowAdd(false);
       await loadAll();
     } catch (e: any) {
@@ -202,7 +203,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       if (!adding) void handleAddFriend();
     } else if (e.key === "Escape") {
       setShowAdd(false);
-      setEmail("");
+      setIdentifier("");
     }
   }
 
@@ -218,10 +219,10 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
           <div className="flex items-center gap-2">
             <Input
               autoFocus
-              type="email"
-              placeholder="Add by email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              placeholder="Username or email"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               onKeyDown={handleKeyDown}
               className="h-8 w-56"
             />
@@ -243,7 +244,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
               variant="ghost"
               onClick={() => {
                 setShowAdd(false);
-                setEmail("");
+                setIdentifier("");
               }}
               title="Cancel"
             >
@@ -277,7 +278,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
               .join("")
               .slice(0, 2)
               .toUpperCase();
-            const href = `/u/${u.id}`;
+            const href = u.username ? `/profile/${u.username}` : "#";
             const isDeleting = deletingId === u.id;
             const isActing = actingId === u.id;
 

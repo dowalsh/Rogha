@@ -107,10 +107,40 @@ export async function getAcceptedFriendIds(userId: string): Promise<string[]> {
   return friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
 }
 
+/**
+ * Count of friends shared between two users. Never returns names — the
+ * spec is explicit that mutual friends are a number only, everywhere.
+ */
+export async function getMutualFriendCount(
+  aId: string,
+  bId: string
+): Promise<number> {
+  const [aFriends, bFriends] = await Promise.all([
+    getAcceptedFriendIds(aId),
+    getAcceptedFriendIds(bId),
+  ]);
+  const bSet = new Set(bFriends);
+  return aFriends.filter((id) => bSet.has(id)).length;
+}
+
 export type FriendshipEntry = {
   friendId: string;
   acceptedAt: Date;
 };
+
+/**
+ * Count of incoming (someone else requested you) pending friend requests —
+ * drives the nav badge.
+ */
+export async function getPendingIncomingCount(userId: string): Promise<number> {
+  return prisma.friendship.count({
+    where: {
+      status: "PENDING",
+      requesterId: { not: userId },
+      OR: [{ aId: userId }, { bId: userId }],
+    },
+  });
+}
 
 /**
  * Return accepted friends with the date the friendship was accepted.

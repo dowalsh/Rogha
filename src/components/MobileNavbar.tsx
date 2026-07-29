@@ -26,6 +26,7 @@ import { Browser } from "@capacitor/browser";
 import Link from "next/link";
 import { getAppOrigin } from "@/lib/mobile/appOrigin";
 import type { UserResource } from "@clerk/types";
+import { FriendsNavBadge } from "@/components/FriendsNavBadge";
 
 type MobileNavbarProps = {
   isLoaded: boolean;
@@ -101,6 +102,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
                   <Link href="/circles">
                     <Blend className="w-4 h-4" />
                     Circles
+                    <FriendsNavBadge />
                   </Link>
                 </Button>
                 <Button

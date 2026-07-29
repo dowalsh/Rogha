@@ -1,317 +1,321 @@
-// "use client";
+"use client";
 
-// import {
-//   getProfileByUsername,
-//   getUserPosts,
-//   updateProfile,
-// } from "@/actions/profile.action";
-// import { toggleFollow } from "@/actions/user.action";
-// import { PostCard } from "@/components/PostCard";
-// import { Avatar, AvatarImage } from "@/components/ui/avatar";
-// import { Button } from "@/components/ui/button";
-// import { Card, CardContent } from "@/components/ui/card";
-// import {
-//   Dialog,
-//   DialogClose,
-//   DialogContent,
-//   DialogHeader,
-//   DialogTitle,
-// } from "@/components/ui/dialog";
-// import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
-// import { Separator } from "@/components/ui/separator";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import { Textarea } from "@/components/ui/textarea";
-// import { SignInButton, useUser } from "@clerk/nextjs";
-// import { format } from "date-fns";
-// import {
-//   CalendarIcon,
-//   EditIcon,
-//   FileTextIcon,
-//   HeartIcon,
-//   LinkIcon,
-//   MapPinIcon,
-// } from "lucide-react";
-// import { useState } from "react";
-// import toast from "react-hot-toast";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSWRConfig } from "swr";
+import { SignInButton, useUser } from "@clerk/nextjs";
+import toast from "react-hot-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { PostCard } from "@/components/PostCard";
+import { AvatarUploadButton } from "@/components/AvatarUploadButton";
+import { ProfileOverflowMenu } from "@/components/ProfileOverflowMenu";
+import { Loader2, Pencil, UserMinus, UserPlus, Check, Clock } from "lucide-react";
+import type { ProfileForViewer } from "@/actions/profile.action";
 
-// type User = Awaited<ReturnType<typeof getProfileByUsername>>;
-// type Posts = Awaited<ReturnType<typeof getUserPosts>>;
+type Props = {
+  profile: Exclude<ProfileForViewer, { kind: "not_found" }>;
+};
 
-// interface ProfilePageClientProps {
-//   user: NonNullable<User>;
-//   posts: Posts;
-//   likedPosts: Posts;
-//   isFollowing: boolean;
-// }
+function initialsFor(name: string | null) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return "?";
+  return trimmed
+    .split(" ")
+    .map((s) => s[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
-// function ProfilePageClient({
-//   isFollowing: initialIsFollowing,
-//   likedPosts,
-//   posts,
-//   user,
-// }: ProfilePageClientProps) {
-//   const { user: currentUser } = useUser();
-//   const [showEditDialog, setShowEditDialog] = useState(false);
-//   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
-//   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
+function PostList({ posts }: { posts: { id: string; title: string | null }[] }) {
+  if (posts.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-muted-foreground">
+        No posts yet
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {posts.map((post) => (
+        <PostCard key={post.id} id={post.id} title={post.title} />
+      ))}
+    </div>
+  );
+}
 
-//   const [editForm, setEditForm] = useState({
-//     name: user.name || "",
-//     bio: user.bio || "",
-//     location: user.location || "",
-//     website: user.website || "",
-//   });
+export default function ProfilePageClient({ profile }: Props) {
+  if (profile.kind === "self") return <SelfProfile profile={profile} />;
+  if (profile.kind === "friend") return <FriendProfile profile={profile} />;
+  return <StrangerProfile profile={profile} />;
+}
 
-//   const handleEditSubmit = async () => {
-//     const formData = new FormData();
-//     Object.entries(editForm).forEach(([key, value]) => {
-//       formData.append(key, value);
-//     });
+function SelfProfile({
+  profile,
+}: {
+  profile: Extract<ProfileForViewer, { kind: "self" }>;
+}) {
+  const { mutate } = useSWRConfig();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(profile.user.username);
+  const [username, setUsername] = useState(profile.user.username);
+  const [saving, setSaving] = useState(false);
 
-//     const result = await updateProfile(formData);
-//     if (result.success) {
-//       setShowEditDialog(false);
-//       toast.success("Profile updated successfully");
-//     }
-//   };
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: value }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || "Failed to save username");
+      setUsername(body.username);
+      setEditing(false);
+      void mutate("/api/me");
+      toast.success("Username updated");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save username");
+    } finally {
+      setSaving(false);
+    }
+  }
 
-//   const handleFollow = async () => {
-//     if (!currentUser) return;
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 py-6">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <AvatarUploadButton image={profile.user.image} name={profile.user.name} size={96} />
 
-//     try {
-//       setIsUpdatingFollow(true);
-//       await toggleFollow(user.id);
-//       setIsFollowing(!isFollowing);
-//     } catch (error) {
-//       toast.error("Failed to update follow status");
-//     } finally {
-//       setIsUpdatingFollow(false);
-//     }
-//   };
+        {editing ? (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">@</span>
+            <Input
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              className="h-8 w-40"
+              maxLength={20}
+            />
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setValue(username);
+                setEditing(false);
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <button
+            className="flex items-center gap-1.5 text-lg font-semibold hover:text-muted-foreground transition-colors"
+            onClick={() => setEditing(true)}
+          >
+            @{username}
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
+      </div>
 
-//   const isOwnProfile =
-//     currentUser?.username === user.username ||
-//     currentUser?.emailAddresses[0].emailAddress.split("@")[0] === user.username;
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+          Your posts
+        </h2>
+        <PostList posts={profile.posts} />
+      </div>
+    </div>
+  );
+}
 
-//   const formattedDate = format(new Date(user.createdAt), "MMMM yyyy");
+function FriendProfile({
+  profile,
+}: {
+  profile: Extract<ProfileForViewer, { kind: "friend" }>;
+}) {
+  const router = useRouter();
+  const [removing, setRemoving] = useState(false);
 
-//   return (
-//     <div className="max-w-3xl mx-auto">
-//       <div className="grid grid-cols-1 gap-6">
-//         <div className="w-full max-w-lg mx-auto">
-//           <Card className="bg-card">
-//             <CardContent className="pt-6">
-//               <div className="flex flex-col items-center text-center">
-//                 <Avatar className="w-24 h-24">
-//                   <AvatarImage src={user.image ?? "/avatar.png"} />
-//                 </Avatar>
-//                 <h1 className="mt-4 text-2xl font-bold">
-//                   {user.name ?? user.username}
-//                 </h1>
-//                 <p className="text-muted-foreground">@{user.username}</p>
-//                 <p className="mt-2 text-sm">{user.bio}</p>
+  async function handleRemove() {
+    setRemoving(true);
+    try {
+      const res = await fetch(`/api/friends/${profile.user.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success("Removed from friends");
+      router.refresh();
+    } catch {
+      toast.error("Failed to remove friend");
+    } finally {
+      setRemoving(false);
+    }
+  }
 
-//                 {/* PROFILE STATS */}
-//                 <div className="w-full mt-6">
-//                   <div className="flex justify-between mb-4">
-//                     <div>
-//                       <div className="font-semibold">
-//                         {user._count.following.toLocaleString()}
-//                       </div>
-//                       <div className="text-sm text-muted-foreground">
-//                         Following
-//                       </div>
-//                     </div>
-//                     <Separator orientation="vertical" />
-//                     <div>
-//                       <div className="font-semibold">
-//                         {user._count.followers.toLocaleString()}
-//                       </div>
-//                       <div className="text-sm text-muted-foreground">
-//                         Followers
-//                       </div>
-//                     </div>
-//                     <Separator orientation="vertical" />
-//                     <div>
-//                       <div className="font-semibold">
-//                         {user._count.posts.toLocaleString()}
-//                       </div>
-//                       <div className="text-sm text-muted-foreground">Posts</div>
-//                     </div>
-//                   </div>
-//                 </div>
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 py-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-24 w-24">
+            <AvatarImage src={profile.user.image ?? undefined} alt={profile.user.name ?? ""} />
+            <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.name)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="text-lg font-semibold">@{profile.user.username}</div>
+            {profile.user.name && (
+              <div className="text-sm text-muted-foreground">{profile.user.name}</div>
+            )}
+          </div>
+        </div>
+        <ProfileOverflowMenu userId={profile.user.id} username={profile.user.username} />
+      </div>
 
-//                 {/* "FOLLOW & EDIT PROFILE" BUTTONS */}
-//                 {!currentUser ? (
-//                   <SignInButton mode="modal">
-//                     <Button className="w-full mt-4">Follow</Button>
-//                   </SignInButton>
-//                 ) : isOwnProfile ? (
-//                   <Button
-//                     className="w-full mt-4"
-//                     onClick={() => setShowEditDialog(true)}
-//                   >
-//                     <EditIcon className="size-4 mr-2" />
-//                     Edit Profile
-//                   </Button>
-//                 ) : (
-//                   <Button
-//                     className="w-full mt-4"
-//                     onClick={handleFollow}
-//                     disabled={isUpdatingFollow}
-//                     variant={isFollowing ? "outline" : "default"}
-//                   >
-//                     {isFollowing ? "Unfollow" : "Follow"}
-//                   </Button>
-//                 )}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1.5" disabled={removing}>
+            {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserMinus className="h-4 w-4" />}
+            Remove friend
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove @{profile.user.username} as a friend?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll stop seeing their posts. Their shared circle memberships
+              are unaffected. You can send a request again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemove} disabled={removing}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-//                 {/* LOCATION & WEBSITE */}
-//                 <div className="w-full mt-6 space-y-2 text-sm">
-//                   {user.location && (
-//                     <div className="flex items-center text-muted-foreground">
-//                       <MapPinIcon className="size-4 mr-2" />
-//                       {user.location}
-//                     </div>
-//                   )}
-//                   {user.website && (
-//                     <div className="flex items-center text-muted-foreground">
-//                       <LinkIcon className="size-4 mr-2" />
-//                       <a
-//                         href={
-//                           user.website.startsWith("http")
-//                             ? user.website
-//                             : `https://${user.website}`
-//                         }
-//                         className="hover:underline"
-//                         target="_blank"
-//                         rel="noopener noreferrer"
-//                       >
-//                         {user.website}
-//                       </a>
-//                     </div>
-//                   )}
-//                   <div className="flex items-center text-muted-foreground">
-//                     <CalendarIcon className="size-4 mr-2" />
-//                     Joined {formattedDate}
-//                   </div>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         </div>
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Posts</h2>
+        <PostList posts={profile.posts} />
+      </div>
+    </div>
+  );
+}
 
-//         <Tabs defaultValue="posts" className="w-full">
-//           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-//             <TabsTrigger
-//               value="posts"
-//               className="flex items-center gap-2 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary
-//                data-[state=active]:bg-transparent px-6 font-semibold"
-//             >
-//               <FileTextIcon className="size-4" />
-//               Posts
-//             </TabsTrigger>
-//             <TabsTrigger
-//               value="likes"
-//               className="flex items-center gap-2 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary
-//                data-[state=active]:bg-transparent px-6 font-semibold"
-//             >
-//               <HeartIcon className="size-4" />
-//               Likes
-//             </TabsTrigger>
-//           </TabsList>
+function StrangerProfile({
+  profile,
+}: {
+  profile: Extract<ProfileForViewer, { kind: "stranger" }>;
+}) {
+  const router = useRouter();
+  const { isSignedIn } = useUser();
+  const [relationship, setRelationship] = useState(profile.relationship);
+  const [acting, setActing] = useState(false);
 
-//           <TabsContent value="posts" className="mt-6">
-//             <div className="space-y-6">
-//               {posts.length > 0 ? (
-//                 posts.map((post) => (
-//                   <PostCard key={post.id} post={post} dbUserId={user.id} />
-//                 ))
-//               ) : (
-//                 <div className="text-center py-8 text-muted-foreground">
-//                   No posts yet
-//                 </div>
-//               )}
-//             </div>
-//           </TabsContent>
+  async function handleAddFriend() {
+    setActing(true);
+    try {
+      const res = await fetch("/api/friends/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: profile.user.username }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 200) {
+        throw new Error(body?.message || body?.error || res.statusText);
+      }
+      setRelationship("PENDING_OUTGOING");
+      toast.success("Friend request sent");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send request");
+    } finally {
+      setActing(false);
+    }
+  }
 
-//           <TabsContent value="likes" className="mt-6">
-//             <div className="space-y-6">
-//               {likedPosts.length > 0 ? (
-//                 likedPosts.map((post) => (
-//                   <PostCard key={post.id} post={post} dbUserId={user.id} />
-//                 ))
-//               ) : (
-//                 <div className="text-center py-8 text-muted-foreground">
-//                   No liked posts to show
-//                 </div>
-//               )}
-//             </div>
-//           </TabsContent>
-//         </Tabs>
+  async function handleAccept() {
+    setActing(true);
+    try {
+      const res = await fetch(`/api/friends/${profile.user.id}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      router.refresh();
+      toast.success("Friend request accepted");
+    } catch {
+      toast.error("Failed to accept");
+    } finally {
+      setActing(false);
+    }
+  }
 
-//         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-//           <DialogContent className="sm:max-w-[500px]">
-//             <DialogHeader>
-//               <DialogTitle>Edit Profile</DialogTitle>
-//             </DialogHeader>
-//             <div className="space-y-4 py-4">
-//               <div className="space-y-2">
-//                 <Label>Name</Label>
-//                 <Input
-//                   name="name"
-//                   value={editForm.name}
-//                   onChange={(e) =>
-//                     setEditForm({ ...editForm, name: e.target.value })
-//                   }
-//                   placeholder="Your name"
-//                 />
-//               </div>
-//               <div className="space-y-2">
-//                 <Label>Bio</Label>
-//                 <Textarea
-//                   name="bio"
-//                   value={editForm.bio}
-//                   onChange={(e) =>
-//                     setEditForm({ ...editForm, bio: e.target.value })
-//                   }
-//                   className="min-h-[100px]"
-//                   placeholder="Tell us about yourself"
-//                 />
-//               </div>
-//               <div className="space-y-2">
-//                 <Label>Location</Label>
-//                 <Input
-//                   name="location"
-//                   value={editForm.location}
-//                   onChange={(e) =>
-//                     setEditForm({ ...editForm, location: e.target.value })
-//                   }
-//                   placeholder="Where are you based?"
-//                 />
-//               </div>
-//               <div className="space-y-2">
-//                 <Label>Website</Label>
-//                 <Input
-//                   name="website"
-//                   value={editForm.website}
-//                   onChange={(e) =>
-//                     setEditForm({ ...editForm, website: e.target.value })
-//                   }
-//                   placeholder="Your personal website"
-//                 />
-//               </div>
-//             </div>
-//             <div className="flex justify-end gap-3">
-//               <DialogClose asChild>
-//                 <Button variant="outline">Cancel</Button>
-//               </DialogClose>
-//               <Button onClick={handleEditSubmit}>Save Changes</Button>
-//             </div>
-//           </DialogContent>
-//         </Dialog>
-//       </div>
-//     </div>
-//   );
-// }
-// export default ProfilePageClient;
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 py-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-24 w-24">
+            <AvatarImage src={profile.user.image ?? undefined} alt={profile.user.name ?? ""} />
+            <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.name)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="text-lg font-semibold">@{profile.user.username}</div>
+            {profile.mutualCount > 0 && (
+              <div className="text-sm text-muted-foreground">
+                {profile.mutualCount} mutual friend{profile.mutualCount === 1 ? "" : "s"}
+              </div>
+            )}
+          </div>
+        </div>
+        {isSignedIn && (
+          <ProfileOverflowMenu userId={profile.user.id} username={profile.user.username} />
+        )}
+      </div>
+
+      {!isSignedIn ? (
+        <SignInButton mode="modal">
+          <Button className="gap-1.5">
+            <UserPlus className="h-4 w-4" />
+            Add friend
+          </Button>
+        </SignInButton>
+      ) : relationship === "NONE" ? (
+        <Button onClick={handleAddFriend} disabled={acting} className="gap-1.5">
+          {acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+          Add friend
+        </Button>
+      ) : relationship === "PENDING_OUTGOING" ? (
+        <Button variant="secondary" disabled className="gap-1.5">
+          <Clock className="h-4 w-4" />
+          Request pending
+        </Button>
+      ) : (
+        <Button onClick={handleAccept} disabled={acting} className="gap-1.5">
+          {acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          Accept request
+        </Button>
+      )}
+    </div>
+  );
+}

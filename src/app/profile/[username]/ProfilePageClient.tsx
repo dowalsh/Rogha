@@ -104,21 +104,22 @@ function SelfProfile({
         <AvatarUploadButton image={profile.user.image} username={profile.user.username} size={96} />
 
         {editing ? (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full max-w-xs items-center gap-2">
             <Input
               autoFocus
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
-              className="h-8 w-40"
+              className="h-8 min-w-0 flex-1"
               maxLength={20}
             />
-            <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Button size="sm" className="shrink-0" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
             </Button>
             <Button
               size="sm"
               variant="ghost"
+              className="shrink-0"
               onClick={() => {
                 setValue(username);
                 setEditing(false);

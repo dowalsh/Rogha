@@ -208,14 +208,14 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
 
   return (
     <div className="rounded-md border p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Users className="h-5 w-5" />
           Friends
         </h2>
 
         {showAdd ? (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <Input
               autoFocus
               type="text"
@@ -223,13 +223,13 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="h-8 w-56"
+              className="h-8 min-w-0 flex-1 sm:w-56 sm:flex-none"
             />
             <Button
               size="sm"
               onClick={handleAddFriend}
               disabled={adding}
-              className="gap-1"
+              className="shrink-0 gap-1"
             >
               {adding ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -246,6 +246,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
                 setIdentifier("");
               }}
               title="Cancel"
+              className="shrink-0"
             >
               <X className="h-4 w-4" />
             </Button>

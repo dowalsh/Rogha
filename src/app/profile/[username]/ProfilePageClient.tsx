@@ -73,12 +73,12 @@ function SelfProfile({
   profile: Extract<ProfileForViewer, { kind: "self" }>;
 }) {
   const { mutate } = useSWRConfig();
-  const [editing, setEditing] = useState(false);
+  const [editingField, setEditingField] = useState<"username" | "emoji" | null>(null);
+
   const [value, setValue] = useState(profile.user.username);
   const [username, setUsername] = useState(profile.user.username);
   const [saving, setSaving] = useState(false);
 
-  const [editingEmoji, setEditingEmoji] = useState(false);
   const [emojiValue, setEmojiValue] = useState(profile.user.signoffEmoji ?? "");
   const [signoffEmoji, setSignoffEmoji] = useState(profile.user.signoffEmoji ?? "");
   const [savingEmoji, setSavingEmoji] = useState(false);
@@ -94,7 +94,7 @@ function SelfProfile({
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error || "Failed to save username");
       setUsername(body.username);
-      setEditing(false);
+      setEditingField(null);
       void mutate("/api/me");
       toast.success("Username updated");
     } catch (e: any) {
@@ -116,7 +116,7 @@ function SelfProfile({
       if (!res.ok) throw new Error(body?.error || "Failed to save signoff emoji");
       setSignoffEmoji(body.signoffEmoji ?? "");
       setEmojiValue(body.signoffEmoji ?? "");
-      setEditingEmoji(false);
+      setEditingField(null);
       void mutate("/api/me");
       toast.success("Signoff emoji updated");
     } catch (e: any) {
@@ -131,7 +131,7 @@ function SelfProfile({
       <div className="flex flex-col items-center gap-3 text-center">
         <AvatarUploadButton image={profile.user.image} username={profile.user.username} size={96} />
 
-        {editing ? (
+        {editingField === "username" ? (
           <div className="flex w-full max-w-xs items-center gap-2">
             <Input
               autoFocus
@@ -150,7 +150,7 @@ function SelfProfile({
               className="shrink-0"
               onClick={() => {
                 setValue(username);
-                setEditing(false);
+                setEditingField(null);
               }}
               disabled={saving}
             >
@@ -160,14 +160,15 @@ function SelfProfile({
         ) : (
           <button
             className="flex items-center gap-1.5 text-lg font-semibold hover:text-muted-foreground transition-colors"
-            onClick={() => setEditing(true)}
+            onClick={() => setEditingField("username")}
+            disabled={editingField !== null}
           >
             {username}
             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         )}
 
-        {editingEmoji ? (
+        {editingField === "emoji" ? (
           <div className="flex w-full max-w-xs flex-col items-center gap-2">
             <div className="flex w-full items-center gap-2">
               <Input
@@ -188,7 +189,7 @@ function SelfProfile({
                 className="shrink-0"
                 onClick={() => {
                   setEmojiValue(signoffEmoji);
-                  setEditingEmoji(false);
+                  setEditingField(null);
                 }}
                 disabled={savingEmoji}
               >
@@ -202,7 +203,8 @@ function SelfProfile({
         ) : (
           <button
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setEditingEmoji(true)}
+            onClick={() => setEditingField("emoji")}
+            disabled={editingField !== null}
           >
             {signoffEmoji ? (
               <>

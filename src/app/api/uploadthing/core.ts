@@ -1,13 +1,19 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
+import { getDbUser } from "@/lib/getDbUser";
+import { prisma } from "@/lib/prisma";
 
 const f = createUploadthing();
 
-const auth = (req: Request) => ({ id: "fakeId" }); // Fake auth function
+async function requireUploader() {
+  const { user, error } = await getDbUser();
+  if (error || !user) throw new UploadThingError("Unauthorized");
+  return user;
+}
 
 // FileRouter for your app, can contain multiple FileRoutes
 export const ourFileRouter = {
-  // Define as many FileRoutes as you like, each with a unique routeSlug
+  // Post hero images.
   imageUploader: f({
     image: {
       /**
@@ -18,24 +24,31 @@ export const ourFileRouter = {
       maxFileCount: 1,
     },
   })
-    // Set permissions and file types for this FileRoute
-    .middleware(async ({ req }) => {
-      // This code runs on your server before upload
-      const user = await auth(req);
-
-      // If you throw, the user will not be able to upload
-      if (!user) throw new UploadThingError("Unauthorized");
-
-      // Whatever is returned here is accessible in onUploadComplete as `metadata`
+    .middleware(async () => {
+      const user = await requireUploader();
       return { userId: user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // This code RUNS ON YOUR SERVER after upload
-      console.log("Upload complete for userId:", metadata.userId);
+      return { uploadedBy: metadata.userId };
+    }),
 
-      console.log("file url", file.ufsUrl);
-
-      // !!! Whatever is returned here is sent to the clientside `onClientUploadComplete` callback
+  // Profile avatars — separate route from post hero images so avatar
+  // uploads are scoped distinctly, and writes straight to User.image.
+  avatarUploader: f({
+    image: {
+      maxFileSize: "4MB",
+      maxFileCount: 1,
+    },
+  })
+    .middleware(async () => {
+      const user = await requireUploader();
+      return { userId: user.id };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      await prisma.user.update({
+        where: { id: metadata.userId },
+        data: { image: file.ufsUrl },
+      });
       return { uploadedBy: metadata.userId };
     }),
 } satisfies FileRouter;

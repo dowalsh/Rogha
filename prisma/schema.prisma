@@ -22,6 +22,7 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   username  String   @unique
+  usernameLower String @unique
   clerkId   String   @unique
   name      String?
   bio       String?
@@ -293,6 +294,7 @@ enum NotificationType {
   COMMENT
   SUBMIT
   FRIEND_REQUEST
+  FRIEND_REQUEST_ACCEPTED
 }
 
 model NotificationPreference {
@@ -336,6 +338,7 @@ model PushDevice {
 enum ContentType {
   POST
   COMMENT
+  USER
 }
 
 enum ReportStatus {

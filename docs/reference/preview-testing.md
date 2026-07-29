@@ -17,15 +17,27 @@
 
 ## Environments at a glance
 
-There are two fully isolated environments. **Preview does not touch production data or the production Clerk user pool.**
+There are actually **three** environments, not two — local dev is its own fully
+isolated database too, separate from both of the Vercel-deployed ones below.
+**Preview does not touch production data or the production Clerk user pool,
+and neither does local.**
 
-| | Production | Preview |
-|---|---|---|
-| Trigger | `main` branch | any non-`main` branch / PR |
-| URL | `rogha.dylanwalsh.ie` | `*-git-<branch>-*.vercel.app` (or a staging domain, if assigned) |
-| Clerk instance | **live** (`pk_live_`/`sk_live_`) | **development** (`pk_test_`/`sk_test_`) |
-| Clerk user pool | real users | separate dev-instance users |
-| Database | production Prisma Postgres | **separate** staging Prisma Postgres |
+| | Local dev | Production | Preview |
+|---|---|---|---|
+| Trigger | `npm run dev` on your machine | `main` branch | any non-`main` branch / PR |
+| URL | `localhost:3000` | `rogha.dylanwalsh.ie` | `*-git-<branch>-*.vercel.app` (or a staging domain, if assigned) |
+| Clerk instance | **development** (`pk_test_`/`sk_test_`) | **live** (`pk_live_`/`sk_live_`) | **development** (`pk_test_`/`sk_test_`) |
+| Clerk user pool | separate dev-instance users | real users | separate dev-instance users |
+| Database | **local** Postgres (`.env` `DATABASE_URL=postgresql://…@localhost:5432/…`) | production Prisma Postgres (Accelerate, `prisma+postgres://accelerate.prisma-data.net/...`) | **separate** staging Prisma Postgres (Accelerate, same host, different `api_key`) |
+
+**Don't confuse local's plain `postgresql://localhost:5432` URL with either
+Accelerate URL** — the two Vercel environments both use the
+`prisma+postgres://accelerate.prisma-data.net/...` format and differ only in
+`api_key`; local dev looks completely different (plain `postgresql://` scheme,
+`localhost` host) and is safe to run `prisma migrate dev` / arbitrary
+destructive SQL against without any risk to prod or staging data. Check the
+`DATABASE_URL` host before running migration commands if you're ever unsure
+which one you're pointed at.
 
 ## Vercel environment variable configuration (authoritative)
 

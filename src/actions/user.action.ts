@@ -8,6 +8,7 @@ import {
 } from "@clerk/nextjs/server";
 import type { UserResource } from "@clerk/types";
 import { revalidatePath } from "next/cache";
+import { sanitizeUsername, dedupeUsername } from "@/lib/username";
 
 /**
  * A normalized, Clerk-like user shape.
@@ -43,28 +44,46 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
 
     // Normalize fields for DB
     const email = user.primaryEmailAddress?.emailAddress || "";
-    const computedUsername =
+    const rawUsername =
       user.username ||
       (email ? email.split("@")[0] : "") ||
       (userId ? `user_${userId.slice(-6)}` : "user");
 
     const first = user.firstName || "";
     const last = user.lastName || "";
-    const name = `${first} ${last}`.trim() || computedUsername || "Unknown";
+    const name = `${first} ${last}`.trim() || rawUsername || "Unknown";
 
     if (!email) throw new Error("Cannot upsert user without an email address");
 
-    return await prisma.user.upsert({
-      where: { email },
-      update: {
+    const existing = await prisma.user.findUnique({ where: { email } });
+
+    if (existing) {
+      return await prisma.user.update({
+        where: { email },
+        data: {
+          clerkId: userId!,
+          name,
+          // Once a user has any image (Clerk-synced or self-uploaded avatar,
+          // see avatar upload flow), stop overwriting it from Clerk on
+          // every sync — only ever set it while still unset.
+          ...(existing.image ? {} : { image: user.imageUrl ?? null }),
+        },
+      });
+    }
+
+    const sanitizedBase = sanitizeUsername(rawUsername) || "user";
+    const usernameLower = await dedupeUsername(sanitizedBase);
+    const username =
+      usernameLower === sanitizedBase.toLowerCase()
+        ? sanitizedBase
+        : usernameLower;
+
+    return await prisma.user.create({
+      data: {
         clerkId: userId!,
         name,
-        image: user.imageUrl ?? null,
-      },
-      create: {
-        clerkId: userId!,
-        name,
-        username: computedUsername,
+        username,
+        usernameLower,
         email,
         image: user.imageUrl ?? null,
       },

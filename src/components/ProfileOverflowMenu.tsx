@@ -56,7 +56,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
           body: JSON.stringify({ blockedId: userId }),
         });
         if (!blockRes.ok) throw new Error(`HTTP ${blockRes.status}`);
-        toast.success(`Reported. @${username} has been blocked.`);
+        toast.success(`Reported. ${username} has been blocked.`);
         router.push("/circles");
       } else {
         setDialog(null);
@@ -78,7 +78,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
         body: JSON.stringify({ blockedId: userId }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      toast.success(`@${username} has been blocked.`);
+      toast.success(`${username} has been blocked.`);
       router.push("/circles");
     } catch {
       toast.error("Failed to block this user. Please try again.");
@@ -112,7 +112,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
               className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
               onClick={() => openDialog("block")}
             >
-              Block @{username}
+              Block {username}
             </button>
           )}
         </PopoverContent>
@@ -121,7 +121,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
       <AlertDialog open={dialog === "report"} onOpenChange={(o) => !o && setDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Report @{username}?</AlertDialogTitle>
+            <AlertDialogTitle>Report {username}?</AlertDialogTitle>
             <AlertDialogDescription>
               We'll review it and take action if it violates our guidelines.
             </AlertDialogDescription>
@@ -132,7 +132,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
               disabled={loading}
               className="w-full"
             >
-              {loading ? "Submitting…" : `Report and block @${username}`}
+              {loading ? "Submitting…" : `Report and block ${username}`}
             </AlertDialogAction>
             <AlertDialogAction
               onClick={() => handleReport(false)}
@@ -151,7 +151,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
       <AlertDialog open={dialog === "block"} onOpenChange={(o) => !o && setDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Block @{username}?</AlertDialogTitle>
+            <AlertDialogTitle>Block {username}?</AlertDialogTitle>
             <AlertDialogDescription>
               They won't be able to see your profile or send you a friend
               request, and you won't see theirs. They won't be notified.

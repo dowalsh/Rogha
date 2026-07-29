@@ -69,7 +69,7 @@ function StatusBadge({ status }: { status: string }) {
 function AuthorCell({ author }: { author: { username: string; email: string } }) {
   return (
     <span className="text-xs">
-      <span className="font-medium">@{author.username}</span>
+      <span className="font-medium">{author.username}</span>
       <span className="text-muted-foreground"> · {author.email}</span>
     </span>
   );
@@ -319,7 +319,7 @@ function ReportsTab() {
                 </td>
                 <td className="py-3 pr-4">
                   {r.contentAuthor ? (
-                    <span className="text-xs font-medium">@{r.contentAuthor.username}</span>
+                    <span className="text-xs font-medium">{r.contentAuthor.username}</span>
                   ) : (
                     <span className="text-xs text-muted-foreground italic">deleted</span>
                   )}

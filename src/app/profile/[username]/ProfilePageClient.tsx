@@ -96,7 +96,6 @@ function SelfProfile({
 
         {editing ? (
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">@</span>
             <Input
               autoFocus
               value={value}
@@ -125,7 +124,7 @@ function SelfProfile({
             className="flex items-center gap-1.5 text-lg font-semibold hover:text-muted-foreground transition-colors"
             onClick={() => setEditing(true)}
           >
-            @{username}
+            {username}
             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         )}
@@ -174,7 +173,7 @@ function FriendProfile({
             <AvatarImage src={profile.user.image ?? undefined} alt={profile.user.username} />
             <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.username)}</AvatarFallback>
           </Avatar>
-          <div className="text-lg font-semibold">@{profile.user.username}</div>
+          <div className="text-lg font-semibold">{profile.user.username}</div>
         </div>
         <ProfileOverflowMenu userId={profile.user.id} username={profile.user.username} />
       </div>
@@ -188,7 +187,7 @@ function FriendProfile({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove @{profile.user.username} as a friend?</AlertDialogTitle>
+            <AlertDialogTitle>Remove {profile.user.username} as a friend?</AlertDialogTitle>
             <AlertDialogDescription>
               You'll stop seeing their posts. Their shared circle memberships
               are unaffected. You can send a request again later.
@@ -268,7 +267,7 @@ function StrangerProfile({
             <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.username)}</AvatarFallback>
           </Avatar>
           <div>
-            <div className="text-lg font-semibold">@{profile.user.username}</div>
+            <div className="text-lg font-semibold">{profile.user.username}</div>
             {profile.mutualCount > 0 && (
               <div className="text-sm text-muted-foreground">
                 {profile.mutualCount} mutual friend{profile.mutualCount === 1 ? "" : "s"}

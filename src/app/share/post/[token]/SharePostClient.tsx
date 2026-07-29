@@ -37,7 +37,7 @@ export default function SharePostClient({ post }: { post: PublicPostData }) {
     }
   }, [post.content]);
 
-  const authorName = post.author?.username ? `@${post.author.username}` : "Unknown author";
+  const authorName = post.author?.username ?? "Unknown author";
   const authorImage = post.author?.image ?? null;
   const initials = (post.author?.username || "?").slice(0, 2).toUpperCase();
   const formattedDate = new Date(post.updatedAt).toLocaleDateString("en-US", {

@@ -100,7 +100,7 @@ export default function AdminPostViewPage() {
             {post.status}
           </span>
           <span className="text-muted-foreground">
-            by <span className="font-medium text-foreground">@{post.author.username}</span>
+            by <span className="font-medium text-foreground">{post.author.username}</span>
             {" "}·{" "}
             <span>{post.author.email}</span>
           </span>
@@ -142,7 +142,7 @@ export default function AdminPostViewPage() {
             >
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">
-                  @{c.author.username}
+                  {c.author.username}
                 </span>
                 {c.parentCommentId && <span>↳ reply</span>}
                 <span>·</span>

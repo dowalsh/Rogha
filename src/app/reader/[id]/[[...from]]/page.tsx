@@ -224,7 +224,7 @@ function ReadPostPageInner({
   const backHref = from === "buzz" ? "/" : fallbackBackHref;
   const backLabel = from === "buzz" ? "Back to Buzz" : "Back to edition";
   const title = post?.title ?? "Untitled Post";
-  const authorName = post?.author?.username ? `@${post.author.username}` : "Unknown author";
+  const authorName = post?.author?.username ?? "Unknown author";
   const rawContent = post?.content;
   const heroImageUrl = post?.heroImageUrl;
 
@@ -427,7 +427,7 @@ function ReadPostPageInner({
         <CommentsSection
           postId={post.id}
           postAuthorId={post.author?.id ?? ""}
-          postAuthorName={post.author?.username ? `@${post.author.username}` : "post author"}
+          postAuthorName={post.author?.username ?? "post author"}
           postAudienceType={post.audienceType}
         />
       </div>

@@ -83,7 +83,7 @@ export function PendingRequestsCard() {
                 </Avatar>
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm font-medium">
-                    @{user.username}
+                    {user.username}
                   </span>
                   {mutualCount > 0 && (
                     <span className="truncate text-xs text-muted-foreground">

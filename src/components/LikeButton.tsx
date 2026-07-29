@@ -101,7 +101,7 @@ export function LikeCount({
                   alt={u.username}
                   className="h-6 w-6 rounded-full border"
                 />
-                <span className="text-sm">@{u.username}</span>
+                <span className="text-sm">{u.username}</span>
               </div>
             ))
           )}

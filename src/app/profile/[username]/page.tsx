@@ -8,7 +8,7 @@ export async function generateMetadata({
 }: {
   params: { username: string };
 }) {
-  return { title: `@${params.username}` };
+  return { title: params.username };
 }
 
 export default async function ProfilePage({

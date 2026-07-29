@@ -184,7 +184,7 @@ function WeekRow({ edition }: { edition: EditionRow }) {
               className="text-xs text-muted-foreground truncate"
             >
               {post.title ?? "Untitled"}
-              {post.author?.username ? ` — @${post.author.username}` : ""}
+              {post.author?.username ? ` — ${post.author.username}` : ""}
             </li>
           ))}
         </ul>
@@ -373,7 +373,7 @@ function StoryLead({ post }: { post: FullEditionPost }) {
         {post.title ?? "Untitled"}
       </h2>
       {post.author?.username && (
-        <p className="mt-2 text-sm text-muted-foreground">@{post.author.username}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{post.author.username}</p>
       )}
     </div>
   );
@@ -397,7 +397,7 @@ function StoryCard({ post }: { post: FullEditionPost }) {
         {post.title ?? "Untitled"}
       </h3>
       {post.author?.username && (
-        <p className="text-xs text-muted-foreground">@{post.author.username}</p>
+        <p className="text-xs text-muted-foreground">{post.author.username}</p>
       )}
     </div>
   );

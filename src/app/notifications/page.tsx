@@ -114,7 +114,7 @@ function NotificationsPage() {
                         {getNotificationIcon(notification.type)}
                         <span>
                           <span className="font-medium">
-                            @{notification.creator.username}
+                            {notification.creator.username}
                           </span>{" "}
                           {notification.type === "LIKE"
                             ? "liked"

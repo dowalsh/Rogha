@@ -145,7 +145,7 @@ export function CircleDialog({
                                 {friend.username?.[0]?.toUpperCase() ?? "?"}
                               </AvatarFallback>
                             </Avatar>
-                            <span>@{friend.username}</span>
+                            <span>{friend.username}</span>
                           </div>
                           {isAdding && <Check className="w-4 h-4 ml-auto" />}
                         </CommandItem>
@@ -168,7 +168,7 @@ export function CircleDialog({
                       <AvatarImage src={m.user.image} />
                       <AvatarFallback>{m.user.username?.[0]?.toUpperCase() ?? "?"}</AvatarFallback>
                     </Avatar>
-                    <span>@{m.user.username}</span>
+                    <span>{m.user.username}</span>
                   </div>
                   <Button
                     variant="ghost"

@@ -64,7 +64,7 @@ export function EditionUpNext({
               variant="new"
               postId={p.id}
               title={p.title ?? "Untitled"}
-              authorName={p.author?.username ? `@${p.author.username}` : "Unknown author"}
+              authorName={p.author?.username ?? "Unknown author"}
               metaText={`${formatDistanceToNow(new Date(p.updatedAt))} ago`}
               thumbUrl={p.heroThumbUrl}
               href={`/reader/${p.id}/edition`}
@@ -85,7 +85,7 @@ export function EditionUpNext({
                 variant="earlier"
                 postId={p.id}
                 title={p.title ?? "Untitled"}
-                authorName={p.author?.username ? `@${p.author.username}` : "Unknown author"}
+                authorName={p.author?.username ?? "Unknown author"}
                 metaText={`${formatDistanceToNow(new Date(p.updatedAt))} ago`}
                 thumbUrl={p.heroThumbUrl}
                 href={`/reader/${p.id}/edition`}

@@ -270,7 +270,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
         <div className="flex flex-col gap-2">
           {items.map((item) => {
             const u = item.user;
-            const name = u.username ? `@${u.username}` : "Unknown";
+            const name = u.username ?? "Unknown";
             const initials = (u.username || "?").slice(0, 2).toUpperCase();
             const href = u.username ? `/profile/${u.username}` : "#";
             const isDeleting = deletingId === u.id;

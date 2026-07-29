@@ -45,7 +45,7 @@ export async function triggerPostSubmittedEmails(
   if (!recipients.length) return { sent: 0 };
 
   const email = buildPostSubmittedEmail(
-    `@${post.author.username}`,
+    post.author.username,
     post.title ?? "",
     appUrl
   );

@@ -12,7 +12,7 @@ export async function generateMetadata({
   if (!post) return {};
 
   const title = post.title ?? "Rogha Post";
-  const authorName = post.author?.username ? `@${post.author.username}` : null;
+  const authorName = post.author?.username ?? null;
   const description = authorName ? `By ${authorName}` : undefined;
 
   return {

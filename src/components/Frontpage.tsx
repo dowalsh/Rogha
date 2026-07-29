@@ -53,7 +53,7 @@ function getAudienceLabel(post: Post): string {
 }
 
 function getAuthorName(post: Post): string {
-  return post.author?.username ? `@${post.author.username}` : "Unknown";
+  return post.author?.username ?? "Unknown";
 }
 
 function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {

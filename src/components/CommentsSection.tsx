@@ -173,7 +173,7 @@ function ReplyItem({
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium truncate min-w-0">
-              @{reply.author.username}
+              {reply.author.username}
             </span>
             {reply.deliveryStatus === "sending" ? (
               <SendingIndicator />
@@ -344,7 +344,7 @@ function CommentItem({
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium truncate min-w-0">
-              @{comment.author.username}
+              {comment.author.username}
             </span>
             {comment.deliveryStatus === "sending" ? (
               <SendingIndicator />
@@ -429,7 +429,7 @@ function CommentItem({
               onClick={() =>
                 onReplyClick(
                   comment.id,
-                  `@${comment.author.username}`,
+                  comment.author.username,
                   comment.id,
                 )
               }

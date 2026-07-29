@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       if (target.id === user.id) {
         return NextResponse.json({ error: "Cannot report yourself" }, { status: 403 });
       }
-      contentText = `@${target.username}`;
+      contentText = target.username;
     }
 
     // Upsert — idempotent, unique constraint prevents duplicates

@@ -89,7 +89,23 @@ function validateDocJSON(raw: unknown): Validation {
   return { ok: true };
 }
 
+// Next's App Router reuses this component instance across client-side
+// navigations between posts that match the same route pattern (e.g. the
+// "Keep reading" links in EditionUpNext) — it doesn't remount just because
+// `params.id` changed. That left per-post refs below (readFiredRef,
+// arrivalNewCount) stuck on whatever post first mounted them: the
+// mark-read POST never re-fired for the new post, and the "N new" badge
+// froze on the previous post's count. Keying the inner component by
+// `params.id` forces a clean remount per post, resetting that state.
 export default function ReadPostPage({
+  params,
+}: {
+  params: { id: string; from?: string[] };
+}) {
+  return <ReadPostPageInner key={params.id} params={params} />;
+}
+
+function ReadPostPageInner({
   params,
 }: {
   params: { id: string; from?: string[] };

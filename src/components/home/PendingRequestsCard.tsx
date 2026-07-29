@@ -30,11 +30,13 @@ export function PendingRequestsCard() {
   const { data, mutate, isLoading } = useSWR<{ items: PendingItem[] }>(
     "/api/friends?box=incoming"
   );
-  const [actingId, setActingId] = useState<string | null>(null);
+  const [acting, setActing] = useState<{ userId: string; action: "accept" | "decline" } | null>(
+    null
+  );
 
   const respond = useCallback(
     async (userId: string, action: "accept" | "decline") => {
-      setActingId(userId);
+      setActing({ userId, action });
       try {
         const res = await fetch(`/api/friends/${userId}/${action}`, {
           method: "POST",
@@ -48,7 +50,7 @@ export function PendingRequestsCard() {
       } catch (e: any) {
         toast.error(e?.message || `Failed to ${action}`);
       } finally {
-        setActingId(null);
+        setActing(null);
       }
     },
     [mutate]
@@ -68,7 +70,7 @@ export function PendingRequestsCard() {
 
       <div className="flex flex-col gap-2">
         {items.map(({ user, mutualCount }) => {
-          const isActing = actingId === user.id;
+          const isActing = acting?.userId === user.id;
           const profileHref = user.username ? `/profile/${user.username}` : "#";
 
           return (
@@ -94,25 +96,31 @@ export function PendingRequestsCard() {
               </Link>
 
               <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  size="sm"
-                  className="h-8 px-3"
-                  onClick={() => respond(user.id, "accept")}
-                  disabled={isActing}
-                >
-                  {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  Accept
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-3"
-                  onClick={() => respond(user.id, "decline")}
-                  disabled={isActing}
-                >
-                  {isActing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                  Decline
-                </Button>
+                {isActing ? (
+                  <div className="flex h-8 items-center justify-center px-3">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      className="h-8 px-3"
+                      onClick={() => respond(user.id, "accept")}
+                    >
+                      <Check className="h-4 w-4" />
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-3"
+                      onClick={() => respond(user.id, "decline")}
+                    >
+                      <X className="h-4 w-4" />
+                      Decline
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           );

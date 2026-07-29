@@ -34,7 +34,11 @@ function initialsFor(username: string | null) {
   return (username || "?").slice(0, 2).toUpperCase();
 }
 
-function PostList({ posts }: { posts: { id: string; title: string | null }[] }) {
+function PostList({
+  posts,
+}: {
+  posts: { id: string; title: string | null; heroThumbUrl?: string | null }[];
+}) {
   if (posts.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-muted-foreground">
@@ -45,7 +49,12 @@ function PostList({ posts }: { posts: { id: string; title: string | null }[] }) 
   return (
     <div className="space-y-3">
       {posts.map((post) => (
-        <PostCard key={post.id} id={post.id} title={post.title} />
+        <PostCard
+          key={post.id}
+          id={post.id}
+          title={post.title}
+          thumbUrl={post.heroThumbUrl}
+        />
       ))}
     </div>
   );

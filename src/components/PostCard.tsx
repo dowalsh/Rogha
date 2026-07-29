@@ -9,6 +9,7 @@ type PostCardProps = {
   id: string;
   title?: string | null;
   authorName?: string | null;
+  thumbUrl?: string | null;
   href?: string; // optional, defaults to /editor/:id
   className?: string;
 };
@@ -17,6 +18,7 @@ export function PostCard({
   id,
   title,
   authorName,
+  thumbUrl,
   href = `/reader/${id}`,
   className,
 }: PostCardProps) {
@@ -25,7 +27,14 @@ export function PostCard({
       <Link href={href}>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            {/* <UserButton /> */}
+            {thumbUrl ? (
+              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
+              </div>
+            ) : (
+              <div className="h-12 w-12 shrink-0 rounded-md bg-muted" />
+            )}
 
             <div className="min-w-0">
               <div className="truncate font-medium">

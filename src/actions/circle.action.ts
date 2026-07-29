@@ -35,7 +35,7 @@ export async function createCircle({ name, description }: CreateCircleInput) {
       },
       include: {
         members: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: { user: { select: { id: true, username: true, email: true } } },
         },
       },
     });
@@ -63,7 +63,6 @@ export async function getCirclesForUser() {
                 user: {
                   select: {
                     id: true,
-                    name: true,
                     username: true,
                     email: true,
                   },
@@ -200,14 +199,14 @@ export async function getCircleById(circleId: string) {
         members: {
           include: {
             user: {
-              select: { id: true, name: true, username: true, email: true },
+              select: { id: true, username: true, email: true },
             },
           },
         },
         posts: {
           include: {
             author: {
-              select: { id: true, name: true, username: true },
+              select: { id: true, username: true },
             },
           },
         },

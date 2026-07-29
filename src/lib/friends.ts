@@ -57,7 +57,7 @@ export function getOtherUserId(
 export type FriendRecipient = {
   userId: string;
   email: string;
-  name: string | null;
+  username: string;
 };
 
 /**
@@ -74,16 +74,16 @@ export async function getAcceptedFriendRecipients(
     select: {
       aId: true,
       bId: true,
-      a: { select: { id: true, email: true, name: true } },
-      b: { select: { id: true, email: true, name: true } },
+      a: { select: { id: true, email: true, username: true } },
+      b: { select: { id: true, email: true, username: true } },
     },
   });
 
   return friendships
     .map((f) =>
       f.aId === userId
-        ? { userId: f.b.id, email: f.b.email, name: f.b.name }
-        : { userId: f.a.id, email: f.a.email, name: f.a.name }
+        ? { userId: f.b.id, email: f.b.email, username: f.b.username }
+        : { userId: f.a.id, email: f.a.email, username: f.a.username }
     )
     .filter(
       (r): r is FriendRecipient =>

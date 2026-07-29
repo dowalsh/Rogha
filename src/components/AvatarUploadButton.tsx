@@ -10,26 +10,19 @@ import toast from "react-hot-toast";
 
 type Props = {
   image: string | null;
-  name: string | null;
+  username: string | null;
   size?: number; // px, defaults to 96
 };
 
-function initialsFor(name: string | null) {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return "?";
-  return trimmed
-    .split(" ")
-    .map((s) => s[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+function initialsFor(username: string | null) {
+  return (username || "?").slice(0, 2).toUpperCase();
 }
 
 // Own-profile-only control: click the avatar to replace it. Writes straight
 // to User.image server-side (see avatarUploader in
 // src/app/api/uploadthing/core.ts); refreshes the shared "/api/me" cache so
 // every consumer (nav, nudge, etc.) picks up the new image immediately.
-export function AvatarUploadButton({ image, name, size = 96 }: Props) {
+export function AvatarUploadButton({ image, username, size = 96 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
@@ -76,9 +69,9 @@ export function AvatarUploadButton({ image, name, size = 96 }: Props) {
         title="Change avatar"
       >
         <Avatar style={{ width: size, height: size }}>
-          <AvatarImage src={displayImage ?? undefined} alt={name ?? "Avatar"} />
+          <AvatarImage src={displayImage ?? undefined} alt={username ?? "Avatar"} />
           <AvatarFallback style={{ fontSize: size / 2.5 }}>
-            {initialsFor(name)}
+            {initialsFor(username)}
           </AvatarFallback>
         </Avatar>
         <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 group-hover:bg-black/40 transition-colors">

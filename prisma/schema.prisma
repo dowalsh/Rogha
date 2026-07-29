@@ -24,7 +24,6 @@ model User {
   username  String   @unique
   usernameLower String @unique
   clerkId   String   @unique
-  name      String?
   bio       String?
   image     String?
   location  String?

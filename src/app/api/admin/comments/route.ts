@@ -15,7 +15,7 @@ export async function GET() {
       content: true,
       status: true,
       createdAt: true,
-      author: { select: { id: true, username: true, name: true, email: true } },
+      author: { select: { id: true, username: true, email: true } },
       post: { select: { id: true, title: true } },
     },
   });

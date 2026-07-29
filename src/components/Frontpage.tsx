@@ -11,7 +11,7 @@ import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
 type Post = {
   id: string;
   title?: string | null;
-  author?: { id: string; name?: string | null; image?: string | null } | null;
+  author?: { id: string; username?: string | null; image?: string | null } | null;
   audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
   circleId?: string | null;
   circle?: { id: string; name: string } | null;
@@ -53,7 +53,7 @@ function getAudienceLabel(post: Post): string {
 }
 
 function getAuthorName(post: Post): string {
-  return post.author?.name ?? "Unknown";
+  return post.author?.username ? `@${post.author.username}` : "Unknown";
 }
 
 function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {

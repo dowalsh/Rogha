@@ -33,8 +33,8 @@ export async function GET(req: NextRequest) {
         status: true, // "PENDING" | "ACCEPTED"
         createdAt: true,
         acceptedAt: true,
-        a: { select: { id: true, name: true, image: true } },
-        b: { select: { id: true, name: true, image: true } },
+        a: { select: { id: true, image: true } },
+        b: { select: { id: true, image: true } },
       },
     });
 
@@ -55,7 +55,6 @@ export async function GET(req: NextRequest) {
           acceptedAt: r.acceptedAt,
           user: {
             id: other?.id ?? "",
-            name: other?.name ?? null,
             image: other?.image ?? null,
           },
         };

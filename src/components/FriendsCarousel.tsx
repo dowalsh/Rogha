@@ -28,7 +28,6 @@ type FriendItem = {
   acceptedAt: string | null;
   user: {
     id: string;
-    name: string | null;
     image: string | null;
     username: string | null;
   };
@@ -271,13 +270,8 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
         <div className="flex flex-col gap-2">
           {items.map((item) => {
             const u = item.user;
-            const name = u.name || "Unknown";
-            const initials = (name || "U")
-              .split(" ")
-              .map((s) => s[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase();
+            const name = u.username ? `@${u.username}` : "Unknown";
+            const initials = (u.username || "?").slice(0, 2).toUpperCase();
             const href = u.username ? `/profile/${u.username}` : "#";
             const isDeleting = deletingId === u.id;
             const isActing = actingId === u.id;

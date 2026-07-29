@@ -58,7 +58,7 @@ export async function GET(
         ...excludeFilter(),
       },
       include: {
-        author: { select: { id: true, name: true, image: true } },
+        author: { select: { id: true, username: true, image: true } },
         _count: { select: { likes: true } },
         likes: { where: { userId: user.id }, select: { id: true } },
         replies: {
@@ -68,7 +68,7 @@ export async function GET(
             ...excludeFilter(),
           },
           include: {
-            author: { select: { id: true, name: true, image: true } },
+            author: { select: { id: true, username: true, image: true } },
             _count: { select: { likes: true } },
             likes: { where: { userId: user.id }, select: { id: true } },
           },
@@ -185,7 +185,7 @@ export async function POST(
         ...(parentId ? { parentCommentId: parentId } : {}), // ✅ use FK directly
       },
       include: {
-        author: { select: { id: true, name: true, image: true } },
+        author: { select: { id: true, username: true, image: true } },
       },
     });
 

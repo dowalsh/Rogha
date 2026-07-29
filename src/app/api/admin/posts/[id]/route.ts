@@ -23,7 +23,7 @@ export async function GET(
       heroImageUrl: true,
       createdAt: true,
       audienceType: true,
-      author: { select: { id: true, username: true, name: true, image: true, email: true } },
+      author: { select: { id: true, username: true, image: true, email: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -32,7 +32,7 @@ export async function GET(
           status: true,
           createdAt: true,
           parentCommentId: true,
-          author: { select: { username: true, name: true } },
+          author: { select: { username: true } },
         },
       },
     },

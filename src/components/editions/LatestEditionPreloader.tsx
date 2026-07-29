@@ -16,7 +16,7 @@ type PreloadPost = {
   author?: {
     id: string;
     clerkId?: string | null;
-    name?: string | null;
+    username?: string | null;
     image?: string | null;
   } | null;
   likeCount?: number;
@@ -45,7 +45,7 @@ function buildPostDTO(post: PreloadPost, edition: PreloadEdition) {
       ? {
           id: post.author.id,
           clerkId: post.author.clerkId ?? null,
-          name: post.author.name ?? null,
+          username: post.author.username ?? null,
           image: post.author.image ?? null,
         }
       : null,

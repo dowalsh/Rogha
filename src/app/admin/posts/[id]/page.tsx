@@ -13,7 +13,7 @@ type AdminComment = {
   status: string;
   createdAt: string;
   parentCommentId: string | null;
-  author: { username: string; name: string | null };
+  author: { username: string };
 };
 
 type AdminPostDetail = {
@@ -24,7 +24,7 @@ type AdminPostDetail = {
   heroImageUrl: string | null;
   createdAt: string;
   audienceType: string;
-  author: { id: string; username: string; name: string | null; image: string | null; email: string };
+  author: { id: string; username: string; image: string | null; email: string };
   comments: AdminComment[];
 };
 
@@ -100,7 +100,7 @@ export default function AdminPostViewPage() {
             {post.status}
           </span>
           <span className="text-muted-foreground">
-            by <span className="font-medium text-foreground">{post.author.name ?? post.author.username}</span>
+            by <span className="font-medium text-foreground">@{post.author.username}</span>
             {" "}·{" "}
             <span>{post.author.email}</span>
           </span>
@@ -142,7 +142,7 @@ export default function AdminPostViewPage() {
             >
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">
-                  {c.author.name ?? c.author.username}
+                  @{c.author.username}
                 </span>
                 {c.parentCommentId && <span>↳ reply</span>}
                 <span>·</span>

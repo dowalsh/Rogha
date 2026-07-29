@@ -11,7 +11,7 @@ export type PublicPostData = {
   heroImageUrl: string | null;
   updatedAt: Date;
   author: {
-    name: string | null;
+    username: string;
     image: string | null;
   } | null;
 };
@@ -31,7 +31,7 @@ export async function getPostByShareToken(
       content: true,
       heroImageUrl: true,
       updatedAt: true,
-      author: { select: { name: true, image: true } },
+      author: { select: { username: true, image: true } },
     },
   });
 

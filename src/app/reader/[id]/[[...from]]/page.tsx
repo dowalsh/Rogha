@@ -36,7 +36,7 @@ type PostDTO = {
   author?: {
     id: string;
     clerkId?: string | null;
-    name?: string | null;
+    username?: string | null;
     image?: string | null;
   } | null;
   likeCount: number;
@@ -208,7 +208,7 @@ export default function ReadPostPage({
   const backHref = from === "buzz" ? "/" : fallbackBackHref;
   const backLabel = from === "buzz" ? "Back to Buzz" : "Back to edition";
   const title = post?.title ?? "Untitled Post";
-  const authorName = post?.author?.name ?? "Unknown author";
+  const authorName = post?.author?.username ? `@${post.author.username}` : "Unknown author";
   const rawContent = post?.content;
   const heroImageUrl = post?.heroImageUrl;
 
@@ -411,7 +411,7 @@ export default function ReadPostPage({
         <CommentsSection
           postId={post.id}
           postAuthorId={post.author?.id ?? ""}
-          postAuthorName={post.author?.name ?? "post author"}
+          postAuthorName={post.author?.username ? `@${post.author.username}` : "post author"}
           postAudienceType={post.audienceType}
         />
       </div>

@@ -123,7 +123,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       authorId: true,
       createdAt: true,
       heroThumbBlurUrl: true,
-      author: { select: { id: true, name: true } },
+      author: { select: { id: true, username: true } },
     },
   });
 
@@ -138,7 +138,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     posts: ordered.map((p) => ({
       id: p.id,
       title: p.title ?? "Untitled post",
-      authorName: p.author.name ?? "Someone",
+      authorName: p.author.username,
       heroThumbBlurUrl: p.heroThumbBlurUrl,
       submittedAt: p.createdAt.toISOString(),
       isOwn: p.authorId === userId,
@@ -218,7 +218,7 @@ export async function getBuzzPosts(
           circleId: true,
           createdAt: true,
           heroThumbUrl: true,
-          author: { select: { id: true, name: true, username: true } },
+          author: { select: { id: true, username: true } },
         },
       },
     },
@@ -274,7 +274,7 @@ export async function getBuzzPosts(
       grouped.set(p.id, {
         postId: p.id,
         title: p.title ?? "Untitled post",
-        authorName: p.author.name ?? p.author.username ?? "Someone",
+        authorName: p.author.username,
         heroThumbUrl: p.heroThumbUrl,
         latestActivityAt: e.createdAt,
         activityTimes: [e.createdAt],

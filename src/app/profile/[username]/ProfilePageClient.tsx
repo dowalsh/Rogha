@@ -30,15 +30,8 @@ type Props = {
   profile: Exclude<ProfileForViewer, { kind: "not_found" }>;
 };
 
-function initialsFor(name: string | null) {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return "?";
-  return trimmed
-    .split(" ")
-    .map((s) => s[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+function initialsFor(username: string | null) {
+  return (username || "?").slice(0, 2).toUpperCase();
 }
 
 function PostList({ posts }: { posts: { id: string; title: string | null }[] }) {
@@ -99,7 +92,7 @@ function SelfProfile({
   return (
     <div className="max-w-2xl mx-auto space-y-6 py-6">
       <div className="flex flex-col items-center gap-3 text-center">
-        <AvatarUploadButton image={profile.user.image} name={profile.user.name} size={96} />
+        <AvatarUploadButton image={profile.user.image} username={profile.user.username} size={96} />
 
         {editing ? (
           <div className="flex items-center gap-2">
@@ -178,15 +171,10 @@ function FriendProfile({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar className="h-24 w-24">
-            <AvatarImage src={profile.user.image ?? undefined} alt={profile.user.name ?? ""} />
-            <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.name)}</AvatarFallback>
+            <AvatarImage src={profile.user.image ?? undefined} alt={profile.user.username} />
+            <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.username)}</AvatarFallback>
           </Avatar>
-          <div>
-            <div className="text-lg font-semibold">@{profile.user.username}</div>
-            {profile.user.name && (
-              <div className="text-sm text-muted-foreground">{profile.user.name}</div>
-            )}
-          </div>
+          <div className="text-lg font-semibold">@{profile.user.username}</div>
         </div>
         <ProfileOverflowMenu userId={profile.user.id} username={profile.user.username} />
       </div>
@@ -276,8 +264,8 @@ function StrangerProfile({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar className="h-24 w-24">
-            <AvatarImage src={profile.user.image ?? undefined} alt={profile.user.name ?? ""} />
-            <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.name)}</AvatarFallback>
+            <AvatarImage src={profile.user.image ?? undefined} alt={profile.user.username} />
+            <AvatarFallback style={{ fontSize: 36 }}>{initialsFor(profile.user.username)}</AvatarFallback>
           </Avatar>
           <div>
             <div className="text-lg font-semibold">@{profile.user.username}</div>

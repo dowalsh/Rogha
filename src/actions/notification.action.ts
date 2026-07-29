@@ -49,7 +49,6 @@ export async function getNotifications() {
         creator: {
           select: {
             id: true,
-            name: true,
             username: true,
             image: true,
           },
@@ -169,7 +168,7 @@ export async function createCommentNotification({
   // get commenter info
   const commenter = await prisma.user.findUnique({
     where: { id: commenterId },
-    select: { name: true, username: true },
+    select: { username: true },
   });
 
   // get comment info
@@ -203,7 +202,7 @@ export async function createCommentNotification({
       if (emailPrefs.emailEnabled && emailPrefs.emailComments) {
         await triggerCommentNotificationEmail({
           to: post.author.email,
-          actorName: commenter.name ?? commenter.username,
+          actorName: commenter.username,
           commentText: newComment.content,
           url: `${process.env.APP_URL}/open/reader/${post.id}#comment-${newComment.id}`,
           postTitle: post.title,
@@ -218,7 +217,7 @@ export async function createCommentNotification({
     if (pushPrefs.pushEnabled && pushPrefs.pushComments) {
       await sendPushToUser(post.authorId, {
         title: "New comment",
-        body: `${commenter.name ?? commenter.username} commented on "${post.title ?? "your post"}"`,
+        body: `${commenter.username} commented on "${post.title ?? "your post"}"`,
         url: `/reader/${postId}#comment-${newCommentId}`,
       });
     }
@@ -300,7 +299,7 @@ export async function createCommentNotification({
 
         await triggerCommentNotificationEmail({
           to: participant.email,
-          actorName: commenter.name ?? commenter.username,
+          actorName: commenter.username,
           commentText: newComment.content,
           url: `${process.env.APP_URL}/open/reader/${newComment.postId}#comment-${newComment.id}`,
           isReply: true,
@@ -313,7 +312,7 @@ export async function createCommentNotification({
       if (!pp || (pp.pushEnabled && pp.pushReplies)) {
         await sendPushToUser(uid, {
           title: "New reply",
-          body: `${commenter.name ?? commenter.username} replied in a thread`,
+          body: `${commenter.username} replied in a thread`,
           url: `/reader/${newComment.postId}#comment-${newCommentId}`,
         });
       }
@@ -336,7 +335,7 @@ export async function createFriendRequestNotification({
     }),
     prisma.user.findUnique({
       where: { id: requesterId },
-      select: { name: true, username: true },
+      select: { username: true },
     }),
   ]);
 
@@ -344,7 +343,7 @@ export async function createFriendRequestNotification({
   if (pushPrefs.pushEnabled && pushPrefs.pushFriendRequests) {
     await sendPushToUser(targetId, {
       title: "Friend request",
-      body: `${requester?.name ?? requester?.username ?? "Someone"} sent you a friend request`,
+      body: `${requester?.username ?? "Someone"} sent you a friend request`,
       url: `/circles`,
     });
   }
@@ -369,7 +368,7 @@ export async function createFriendRequestAcceptedNotification({
     }),
     prisma.user.findUnique({
       where: { id: accepterId },
-      select: { name: true, username: true },
+      select: { username: true },
     }),
   ]);
 
@@ -377,7 +376,7 @@ export async function createFriendRequestAcceptedNotification({
   if (pushPrefs.pushEnabled && pushPrefs.pushFriendRequests) {
     await sendPushToUser(requesterId, {
       title: "Friend request accepted",
-      body: `${accepter?.name ?? accepter?.username ?? "Someone"} accepted your friend request`,
+      body: `${accepter?.username ?? "Someone"} accepted your friend request`,
       url: accepter?.username ? `/profile/${accepter.username}` : "/circles",
     });
   }
@@ -505,9 +504,9 @@ export async function createSubmitNotifications({
   // Look up author name for push message
   const author = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, username: true },
+    select: { username: true },
   });
-  const authorName = author?.name ?? author?.username ?? "Someone";
+  const authorName = author?.username ?? "Someone";
 
   try {
     await triggerPostSubmittedEmails(postId, emailRecipientIds);

@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 interface Author {
   id: string;
-  name: string | null;
+  username: string;
   image: string | null;
 }
 
@@ -57,7 +57,7 @@ function CommentActions({
         contentType="COMMENT"
         contentId={comment.id}
         authorId={comment.author.id}
-        authorName={comment.author.name ?? comment.author.id}
+        authorName={comment.author.username}
         onReported={onReported}
         onBlocked={() => onBlocked(comment.author.id)}
         onDelete={isOwn ? onDelete : undefined}
@@ -168,12 +168,12 @@ function ReplyItem({
       <div className="flex items-start gap-2">
         <Avatar className="h-6 w-6 border shrink-0">
           <AvatarImage src={reply.author.image ?? "/avatar.png"} />
-          <AvatarFallback>{reply.author.name?.[0] ?? "?"}</AvatarFallback>
+          <AvatarFallback>{reply.author.username?.[0]?.toUpperCase() ?? "?"}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium truncate min-w-0">
-              {reply.author.name ?? "Unknown"}
+              @{reply.author.username}
             </span>
             {reply.deliveryStatus === "sending" ? (
               <SendingIndicator />
@@ -339,12 +339,12 @@ function CommentItem({
       <div className="flex items-start gap-2">
         <Avatar className="h-9 w-9 border shrink-0">
           <AvatarImage src={comment.author.image ?? "/avatar.png"} />
-          <AvatarFallback>{comment.author.name?.[0] ?? "?"}</AvatarFallback>
+          <AvatarFallback>{comment.author.username?.[0]?.toUpperCase() ?? "?"}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium truncate min-w-0">
-              {comment.author.name ?? "Unknown"}
+              @{comment.author.username}
             </span>
             {comment.deliveryStatus === "sending" ? (
               <SendingIndicator />
@@ -429,7 +429,7 @@ function CommentItem({
               onClick={() =>
                 onReplyClick(
                   comment.id,
-                  comment.author.name ?? "Unknown",
+                  `@${comment.author.username}`,
                   comment.id,
                 )
               }
@@ -621,7 +621,7 @@ export default function CommentsSection({
       id: tempId,
       content,
       createdAt: new Date().toISOString(),
-      author: { id: "me", name: "You", image: "/avatar.png" },
+      author: { id: "me", username: "you", image: "/avatar.png" },
       replies: [],
       likeCount: 0,
       likedByMe: false,

@@ -19,7 +19,7 @@ type AdminPost = {
   title: string | null;
   status: PostStatus;
   createdAt: string;
-  author: { id: string; username: string; name: string | null; email: string };
+  author: { id: string; username: string; email: string };
 };
 
 type AdminComment = {
@@ -27,7 +27,7 @@ type AdminComment = {
   content: string;
   status: CommentStatus;
   createdAt: string;
-  author: { id: string; username: string; name: string | null; email: string };
+  author: { id: string; username: string; email: string };
   post: { id: string; title: string | null };
 };
 
@@ -37,10 +37,10 @@ type AdminReport = {
   contentId: string;
   status: ReportStatus;
   createdAt: string;
-  reporter: { id: string; username: string; name: string | null; email: string };
+  reporter: { id: string; username: string; email: string };
   preview: string;
   contentStatus: PostStatus | CommentStatus | null;
-  contentAuthor: { username: string; name: string | null } | null;
+  contentAuthor: { username: string } | null;
   postId: string | null; // populated for COMMENT reports
 };
 
@@ -66,10 +66,10 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function AuthorCell({ author }: { author: { username: string; name: string | null; email: string } }) {
+function AuthorCell({ author }: { author: { username: string; email: string } }) {
   return (
     <span className="text-xs">
-      <span className="font-medium">{author.name ?? author.username}</span>
+      <span className="font-medium">@{author.username}</span>
       <span className="text-muted-foreground"> · {author.email}</span>
     </span>
   );
@@ -319,7 +319,7 @@ function ReportsTab() {
                 </td>
                 <td className="py-3 pr-4">
                   {r.contentAuthor ? (
-                    <span className="text-xs font-medium">{r.contentAuthor.name ?? r.contentAuthor.username}</span>
+                    <span className="text-xs font-medium">@{r.contentAuthor.username}</span>
                   ) : (
                     <span className="text-xs text-muted-foreground italic">deleted</span>
                   )}

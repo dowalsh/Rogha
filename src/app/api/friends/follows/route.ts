@@ -43,7 +43,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       select: {
         following: {
-          select: { id: true, name: true, username: true, image: true },
+          select: { id: true, username: true, image: true },
         },
       },
     });

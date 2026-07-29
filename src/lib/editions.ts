@@ -157,7 +157,7 @@ export async function getPublishedEditions(user: DbUser) {
           createdAt: true,
           authorId: true,
           author: {
-            select: { id: true, name: true, image: true },
+            select: { id: true, image: true },
           },
         },
       });
@@ -236,7 +236,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       audienceType: true,
       circleId: true,
       circle: { select: { id: true, name: true } },
-      author: { select: { id: true, clerkId: true, name: true, image: true } },
+      author: { select: { id: true, clerkId: true, image: true } },
       heroImageUrl: true,
       heroThumbUrl: true,
       heroThumbBlurUrl: true,
@@ -301,7 +301,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       where: { editionId: id, userId: { in: validFriendIds } },
       orderBy: { openedAt: "asc" },
       take: 2,
-      select: { user: { select: { name: true } } },
+      select: { user: { select: { username: true } } },
     }),
     prisma.editionView.count({
       where: { editionId: id, userId: { in: validFriendIds } },
@@ -319,7 +319,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     posts: postsWithReadState,
     hasOpened: Boolean(viewRecord),
     viewerCount,
-    viewerNames: viewerPreview.map((v) => v.user.name ?? "Someone"),
+    viewerNames: viewerPreview.map((v) => v.user.username),
   };
 }
 

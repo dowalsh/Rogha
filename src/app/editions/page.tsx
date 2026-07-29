@@ -22,7 +22,7 @@ type EditionRow = {
   posts: {
     id: string;
     title?: string | null;
-    author?: { id: string; name?: string | null } | null;
+    author?: { id: string; username?: string | null } | null;
   }[];
 };
 
@@ -40,7 +40,7 @@ type FullEdition = {
     audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
     circleId?: string | null;
     circle?: { id: string; name: string } | null;
-    author?: { id: string; name?: string | null; image?: string | null } | null;
+    author?: { id: string; username?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;
   }>;
 };
@@ -184,7 +184,7 @@ function WeekRow({ edition }: { edition: EditionRow }) {
               className="text-xs text-muted-foreground truncate"
             >
               {post.title ?? "Untitled"}
-              {post.author?.name ? ` — ${post.author.name}` : ""}
+              {post.author?.username ? ` — @${post.author.username}` : ""}
             </li>
           ))}
         </ul>
@@ -372,8 +372,8 @@ function StoryLead({ post }: { post: FullEditionPost }) {
       <h2 className="text-4xl font-black leading-tight">
         {post.title ?? "Untitled"}
       </h2>
-      {post.author?.name && (
-        <p className="mt-2 text-sm text-muted-foreground">{post.author.name}</p>
+      {post.author?.username && (
+        <p className="mt-2 text-sm text-muted-foreground">@{post.author.username}</p>
       )}
     </div>
   );
@@ -396,8 +396,8 @@ function StoryCard({ post }: { post: FullEditionPost }) {
       <h3 className="text-base font-semibold leading-snug">
         {post.title ?? "Untitled"}
       </h3>
-      {post.author?.name && (
-        <p className="text-xs text-muted-foreground">{post.author.name}</p>
+      {post.author?.username && (
+        <p className="text-xs text-muted-foreground">@{post.author.username}</p>
       )}
     </div>
   );

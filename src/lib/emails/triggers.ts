@@ -24,7 +24,7 @@ export async function triggerPostSubmittedEmails(
     select: {
       id: true,
       title: true,
-      author: { select: { id: true, name: true } },
+      author: { select: { id: true, username: true } },
     },
   });
 
@@ -45,7 +45,7 @@ export async function triggerPostSubmittedEmails(
   if (!recipients.length) return { sent: 0 };
 
   const email = buildPostSubmittedEmail(
-    post.author.name ?? "",
+    `@${post.author.username}`,
     post.title ?? "",
     appUrl
   );

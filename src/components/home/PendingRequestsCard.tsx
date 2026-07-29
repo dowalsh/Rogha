@@ -13,22 +13,14 @@ type PendingItem = {
   createdAt: string;
   user: {
     id: string;
-    name: string | null;
     image: string | null;
     username: string | null;
   };
   mutualCount: number;
 };
 
-function initialsFor(name: string | null) {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return "?";
-  return trimmed
-    .split(" ")
-    .map((s) => s[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+function initialsFor(username: string | null) {
+  return (username || "?").slice(0, 2).toUpperCase();
 }
 
 // Pinned to the top of the home page (above the edition hero) whenever
@@ -77,7 +69,6 @@ export function PendingRequestsCard() {
       <div className="flex flex-col gap-2">
         {items.map(({ user, mutualCount }) => {
           const isActing = actingId === user.id;
-          const name = user.name || user.username || "Unknown";
           const profileHref = user.username ? `/profile/${user.username}` : "#";
 
           return (
@@ -87,12 +78,12 @@ export function PendingRequestsCard() {
             >
               <Link href={profileHref} className="flex min-w-0 flex-1 items-center gap-3">
                 <Avatar className="h-10 w-10 shrink-0">
-                  <AvatarImage src={user.image ?? undefined} alt={name} />
-                  <AvatarFallback>{initialsFor(name)}</AvatarFallback>
+                  <AvatarImage src={user.image ?? undefined} alt={user.username ?? ""} />
+                  <AvatarFallback>{initialsFor(user.username)}</AvatarFallback>
                 </Avatar>
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm font-medium">
-                    {user.username ? `@${user.username}` : name}
+                    @{user.username}
                   </span>
                   {mutualCount > 0 && (
                     <span className="truncate text-xs text-muted-foreground">

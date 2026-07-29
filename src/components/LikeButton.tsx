@@ -61,7 +61,7 @@ export function LikeCount({
     data: likers = [],
     isLoading: loadingLikers,
     mutate: refetchLikers,
-  } = useSWR<{ id: string; name: string | null; image: string | null }[]>(
+  } = useSWR<{ id: string; username: string; image: string | null }[]>(
     primed || open ? fetchLikersUrl : null,
   );
 
@@ -98,10 +98,10 @@ export function LikeCount({
               <div key={u.id} className="flex items-center gap-2">
                 <img
                   src={u.image ?? "/avatar.png"}
-                  alt={u.name ?? "?"}
+                  alt={u.username}
                   className="h-6 w-6 rounded-full border"
                 />
-                <span className="text-sm">{u.name ?? "Unknown"}</span>
+                <span className="text-sm">@{u.username}</span>
               </div>
             ))
           )}

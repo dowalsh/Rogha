@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       contentType,
       contentId,
       contentText,
-      reporterName: user.name ?? user.username,
+      reporterName: user.username,
       reporterEmail: user.email,
       timestamp: report.createdAt,
     });

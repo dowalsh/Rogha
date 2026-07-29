@@ -31,11 +31,11 @@ export async function GET(
       prisma.comment.findFirst({
         where: { id: params.id, authorId: { in: allowedIds } },
         include: {
-          author: { select: { id: true, name: true, image: true } },
+          author: { select: { id: true, username: true, image: true } },
           replies: {
             where: { authorId: { in: allowedIds } },
             include: {
-              author: { select: { id: true, name: true, image: true } },
+              author: { select: { id: true, username: true, image: true } },
             },
             orderBy: { createdAt: "asc" },
           },
@@ -86,7 +86,7 @@ export async function PUT(
     const updated = await prisma.comment.update({
       where: { id: params.id },
       data: { content },
-      include: { author: { select: { id: true, name: true, image: true } } },
+      include: { author: { select: { id: true, username: true, image: true } } },
     });
 
     return NextResponse.json(updated);

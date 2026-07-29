@@ -16,8 +16,6 @@ import { sanitizeUsername, dedupeUsername } from "@/lib/username";
  */
 type ClerkLike = {
   id: string;
-  firstName?: string | null;
-  lastName?: string | null;
   username?: string | null;
   imageUrl?: string | null;
   primaryEmailAddress?: { emailAddress: string | null } | null;
@@ -42,16 +40,13 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
       if (!user) return null;
     }
 
-    // Normalize fields for DB
+    // Normalize fields for DB — username is the only display identity;
+    // Clerk's firstName/lastName are never read or stored.
     const email = user.primaryEmailAddress?.emailAddress || "";
     const rawUsername =
       user.username ||
       (email ? email.split("@")[0] : "") ||
       (userId ? `user_${userId.slice(-6)}` : "user");
-
-    const first = user.firstName || "";
-    const last = user.lastName || "";
-    const name = `${first} ${last}`.trim() || rawUsername || "Unknown";
 
     if (!email) throw new Error("Cannot upsert user without an email address");
 
@@ -62,7 +57,6 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
         where: { email },
         data: {
           clerkId: userId!,
-          name,
           // Once a user has any image (Clerk-synced or self-uploaded avatar,
           // see avatar upload flow), stop overwriting it from Clerk on
           // every sync — only ever set it while still unset.
@@ -81,7 +75,6 @@ export async function upsertClerkUser(clerkUser?: ClerkLike | null) {
     return await prisma.user.create({
       data: {
         clerkId: userId!,
-        name,
         username,
         usernameLower,
         email,
@@ -149,7 +142,6 @@ export async function getRandomUsers() {
       },
       select: {
         id: true,
-        name: true,
         username: true,
         image: true,
         _count: {

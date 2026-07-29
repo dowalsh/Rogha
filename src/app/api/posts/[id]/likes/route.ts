@@ -11,7 +11,7 @@ export async function GET(
   const likes = await prisma.postLike.findMany({
     where: { postId: id },
     include: {
-      user: { select: { id: true, name: true, image: true } },
+      user: { select: { id: true, username: true, image: true } },
     },
   });
 

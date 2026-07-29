@@ -142,10 +142,10 @@ export function CircleDialog({
                             <Avatar className="w-6 h-6">
                               <AvatarImage src={friend.image} />
                               <AvatarFallback>
-                                {friend.name?.[0] ?? "?"}
+                                {friend.username?.[0]?.toUpperCase() ?? "?"}
                               </AvatarFallback>
                             </Avatar>
-                            <span>{friend.name || friend.username}</span>
+                            <span>@{friend.username}</span>
                           </div>
                           {isAdding && <Check className="w-4 h-4 ml-auto" />}
                         </CommandItem>
@@ -166,9 +166,9 @@ export function CircleDialog({
                   <div className="flex items-center gap-2">
                     <Avatar className="w-6 h-6">
                       <AvatarImage src={m.user.image} />
-                      <AvatarFallback>{m.user.name?.[0] ?? "?"}</AvatarFallback>
+                      <AvatarFallback>{m.user.username?.[0]?.toUpperCase() ?? "?"}</AvatarFallback>
                     </Avatar>
-                    <span>{m.user.name || "Unknown"}</span>
+                    <span>@{m.user.username}</span>
                   </div>
                   <Button
                     variant="ghost"

@@ -25,7 +25,7 @@ export async function GET(
       where: { editionId: params.id, userId: { in: friendIds } },
       orderBy: { openedAt: "asc" },
       take: 2,
-      select: { user: { select: { name: true } } },
+      select: { user: { select: { username: true } } },
     }),
     prisma.editionView.count({
       where: { editionId: params.id, userId: { in: friendIds } },
@@ -35,6 +35,6 @@ export async function GET(
   return NextResponse.json({
     hasOpened: Boolean(viewRecord),
     viewerCount,
-    viewerNames: viewerPreview.map((v) => v.user.name ?? "Someone"),
+    viewerNames: viewerPreview.map((v) => v.user.username),
   });
 }

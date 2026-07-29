@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
 import toast from "react-hot-toast";
@@ -52,7 +52,7 @@ export function AvatarUploadButton({ image, username, size = 96 }: Props) {
   const displayImage = previewUrl ?? image;
 
   return (
-    <>
+    <div className="relative inline-block" style={{ width: size, height: size }}>
       <input
         ref={inputRef}
         type="file"
@@ -75,13 +75,18 @@ export function AvatarUploadButton({ image, username, size = 96 }: Props) {
           </AvatarFallback>
         </Avatar>
         <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 group-hover:bg-black/40 transition-colors">
-          {isUploading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-white" />
-          ) : (
-            <Camera className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-          )}
+          {isUploading && <Loader2 className="h-5 w-5 animate-spin text-white" />}
         </div>
       </button>
-    </>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={isUploading}
+        className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground disabled:opacity-70"
+        title="Change avatar"
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }

@@ -6,18 +6,18 @@ import {
   NotebookPen,
   Blend,
   Info,
-  Settings,
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { SignInButton, UserButton } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 import type { UserResource } from "@clerk/types";
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { getAppOrigin } from "@/lib/mobile/appOrigin";
 import { FriendsNavBadge } from "@/components/FriendsNavBadge";
+import { NavUserMenu } from "@/components/NavUserMenu";
 // import { getUnreadCount } from "@/actions/notification.action";
 
 type DesktopNavbarProps = {
@@ -102,12 +102,6 @@ function DesktopNavbar({ isLoaded, isSignedIn, user, isAdmin }: DesktopNavbarPro
               <span className="hidden lg:inline">About</span>
             </Link>
           </Button>
-          <Button variant="ghost" className="flex items-center gap-2" asChild>
-            <Link href="/settings">
-              <Settings className="w-4 h-4" />
-              <span className="hidden lg:inline">Settings</span>
-            </Link>
-          </Button>
           {isAdmin && (
             <Button variant="ghost" className="flex items-center gap-2" asChild>
               <Link href="/admin">
@@ -116,7 +110,7 @@ function DesktopNavbar({ isLoaded, isSignedIn, user, isAdmin }: DesktopNavbarPro
               </Link>
             </Button>
           )}
-          <UserButton />
+          <NavUserMenu />
         </>
       ) : isNative ? (
         <Button

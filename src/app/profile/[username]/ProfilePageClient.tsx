@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,7 @@ import {
 import { PostCard } from "@/components/PostCard";
 import { AvatarUploadButton } from "@/components/AvatarUploadButton";
 import { ProfileOverflowMenu } from "@/components/ProfileOverflowMenu";
+import { ProfileSettingsTab } from "@/components/profile/ProfileSettingsTab";
 import { Loader2, Pencil, UserMinus, UserPlus, Check, Clock } from "lucide-react";
 import type { ProfileForViewer } from "@/actions/profile.action";
 import { SIGNOFF_EMOJI_MAX_LENGTH } from "@/lib/emoji";
@@ -73,6 +75,14 @@ function SelfProfile({
   profile: Extract<ProfileForViewer, { kind: "self" }>;
 }) {
   const { mutate } = useSWRConfig();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") === "settings" ? "settings" : "posts";
+
+  function handleTabChange(value: string) {
+    router.replace(`/profile/${profile.user.username}?tab=${value}`, { scroll: false });
+  }
+
   const [editingField, setEditingField] = useState<"username" | "emoji" | null>(null);
 
   const [value, setValue] = useState(profile.user.username);
@@ -128,102 +138,115 @@ function SelfProfile({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 py-6">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <AvatarUploadButton image={profile.user.image} username={profile.user.username} size={96} />
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+        <TabsList className="mx-auto w-full max-w-xs">
+          <TabsTrigger value="posts" className="flex-1">Posts</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-1">Settings</TabsTrigger>
+        </TabsList>
 
-        {editingField === "username" ? (
-          <div className="flex w-full max-w-xs items-center gap-2">
-            <Input
-              autoFocus
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
-              className="h-8 min-w-0 flex-1"
-              maxLength={20}
-            />
-            <Button size="sm" className="shrink-0" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="shrink-0"
-              onClick={() => {
-                setValue(username);
-                setEditingField(null);
-              }}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          <button
-            className="flex items-center gap-1.5 text-lg font-semibold hover:text-muted-foreground transition-colors"
-            onClick={() => setEditingField("username")}
-            disabled={editingField !== null}
-          >
-            {username}
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        )}
+        <TabsContent value="posts" className="space-y-6">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <AvatarUploadButton image={profile.user.image} username={profile.user.username} size={96} />
 
-        {editingField === "emoji" ? (
-          <div className="flex w-full max-w-xs flex-col items-center gap-2">
-            <div className="flex w-full items-center gap-2">
-              <Input
-                autoFocus
-                value={emojiValue}
-                onChange={(e) => setEmojiValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveEmoji()}
-                className="h-8 min-w-0 flex-1 text-center"
-                maxLength={SIGNOFF_EMOJI_MAX_LENGTH}
-                placeholder="🔥"
-              />
-              <Button size="sm" className="shrink-0" onClick={handleSaveEmoji} disabled={savingEmoji}>
-                {savingEmoji ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="shrink-0"
-                onClick={() => {
-                  setEmojiValue(signoffEmoji);
-                  setEditingField(null);
-                }}
-                disabled={savingEmoji}
-              >
-                Cancel
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              This will show up on the notification sent to friends when you submit a post!
-            </p>
-          </div>
-        ) : (
-          <button
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setEditingField("emoji")}
-            disabled={editingField !== null}
-          >
-            {signoffEmoji ? (
-              <>
-                <span className="text-base">{signoffEmoji}</span> Signoff emoji
-              </>
+            {editingField === "username" ? (
+              <div className="flex w-full max-w-xs items-center gap-2">
+                <Input
+                  autoFocus
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSave()}
+                  className="h-8 min-w-0 flex-1"
+                  maxLength={20}
+                />
+                <Button size="sm" className="shrink-0" onClick={handleSave} disabled={saving}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0"
+                  onClick={() => {
+                    setValue(username);
+                    setEditingField(null);
+                  }}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+              </div>
             ) : (
-              "Add a signoff emoji"
+              <button
+                className="flex items-center gap-1.5 text-lg font-semibold hover:text-muted-foreground transition-colors"
+                onClick={() => setEditingField("username")}
+                disabled={editingField !== null}
+              >
+                {username}
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
             )}
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </div>
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-          Your posts
-        </h2>
-        <PostList posts={profile.posts} />
-      </div>
+            {editingField === "emoji" ? (
+              <div className="flex w-full max-w-xs flex-col items-center gap-2">
+                <div className="flex w-full items-center gap-2">
+                  <Input
+                    autoFocus
+                    value={emojiValue}
+                    onChange={(e) => setEmojiValue(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSaveEmoji()}
+                    className="h-8 min-w-0 flex-1 text-center"
+                    maxLength={SIGNOFF_EMOJI_MAX_LENGTH}
+                    placeholder="🔥"
+                  />
+                  <Button size="sm" className="shrink-0" onClick={handleSaveEmoji} disabled={savingEmoji}>
+                    {savingEmoji ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0"
+                    onClick={() => {
+                      setEmojiValue(signoffEmoji);
+                      setEditingField(null);
+                    }}
+                    disabled={savingEmoji}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This will show up on the notification sent to friends when you submit a post!
+                </p>
+              </div>
+            ) : (
+              <button
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setEditingField("emoji")}
+                disabled={editingField !== null}
+              >
+                {signoffEmoji ? (
+                  <>
+                    <span className="text-base">{signoffEmoji}</span> Signoff emoji
+                  </>
+                ) : (
+                  "Add a signoff emoji"
+                )}
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+              Your posts
+            </h2>
+            <PostList posts={profile.posts} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <ProfileSettingsTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

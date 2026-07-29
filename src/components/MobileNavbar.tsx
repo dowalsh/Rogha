@@ -8,8 +8,8 @@ import {
   Newspaper,
   NotebookPen,
   Info,
-  Settings,
   ShieldCheck,
+  UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useState } from "react";
+import useSWR from "swr";
 import { SignInButton, useClerk } from "@clerk/nextjs";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
@@ -39,6 +40,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isNative] = useState(() => Capacitor.isNativePlatform());
   const { signOut } = useClerk();
+  const { data: me } = useSWR<{ username: string }>("/api/me");
 
   const handleNavClick = () => {
     setShowMobileMenu(false);
@@ -149,9 +151,9 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
                   onClick={handleNavClick}
                   asChild
                 >
-                  <Link href="/settings">
-                    <Settings className="w-4 h-4" />
-                    Settings
+                  <Link href={me?.username ? `/profile/${me.username}` : "/profile"}>
+                    <UserIcon className="w-4 h-4" />
+                    My Profile
                   </Link>
                 </Button>
                 {isAdmin && (
@@ -167,16 +169,6 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
                     </Link>
                   </Button>
                 )}
-                {/* <Button
-                  variant="ghost"
-                  className="flex items-center gap-3 justify-start"
-                  asChild
-                >
-                  <Link href="/profile">
-                    <UserIcon className="w-4 h-4" />
-                    Profile
-                  </Link>
-                </Button> */}
                 <Button
                   variant="ghost"
                   className="flex items-center gap-3 justify-start w-full"

@@ -25,6 +25,7 @@ import { AvatarUploadButton } from "@/components/AvatarUploadButton";
 import { ProfileOverflowMenu } from "@/components/ProfileOverflowMenu";
 import { Loader2, Pencil, UserMinus, UserPlus, Check, Clock } from "lucide-react";
 import type { ProfileForViewer } from "@/actions/profile.action";
+import { SIGNOFF_EMOJI_MAX_LENGTH } from "@/lib/emoji";
 
 type Props = {
   profile: Exclude<ProfileForViewer, { kind: "not_found" }>;
@@ -77,6 +78,11 @@ function SelfProfile({
   const [username, setUsername] = useState(profile.user.username);
   const [saving, setSaving] = useState(false);
 
+  const [editingEmoji, setEditingEmoji] = useState(false);
+  const [emojiValue, setEmojiValue] = useState(profile.user.signoffEmoji ?? "");
+  const [signoffEmoji, setSignoffEmoji] = useState(profile.user.signoffEmoji ?? "");
+  const [savingEmoji, setSavingEmoji] = useState(false);
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -95,6 +101,28 @@ function SelfProfile({
       toast.error(e?.message || "Failed to save username");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveEmoji() {
+    setSavingEmoji(true);
+    try {
+      const res = await fetch("/api/signoff-emoji", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji: emojiValue }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || "Failed to save signoff emoji");
+      setSignoffEmoji(body.signoffEmoji ?? "");
+      setEmojiValue(body.signoffEmoji ?? "");
+      setEditingEmoji(false);
+      void mutate("/api/me");
+      toast.success("Signoff emoji updated");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save signoff emoji");
+    } finally {
+      setSavingEmoji(false);
     }
   }
 
@@ -136,6 +164,54 @@ function SelfProfile({
           >
             {username}
             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
+
+        {editingEmoji ? (
+          <div className="flex w-full max-w-xs flex-col items-center gap-2">
+            <div className="flex w-full items-center gap-2">
+              <Input
+                autoFocus
+                value={emojiValue}
+                onChange={(e) => setEmojiValue(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveEmoji()}
+                className="h-8 min-w-0 flex-1 text-center"
+                maxLength={SIGNOFF_EMOJI_MAX_LENGTH}
+                placeholder="🔥"
+              />
+              <Button size="sm" className="shrink-0" onClick={handleSaveEmoji} disabled={savingEmoji}>
+                {savingEmoji ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0"
+                onClick={() => {
+                  setEmojiValue(signoffEmoji);
+                  setEditingEmoji(false);
+                }}
+                disabled={savingEmoji}
+              >
+                Cancel
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This will show up on the notification sent to friends when you submit a post!
+            </p>
+          </div>
+        ) : (
+          <button
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setEditingEmoji(true)}
+          >
+            {signoffEmoji ? (
+              <>
+                <span className="text-base">{signoffEmoji}</span> Signoff emoji
+              </>
+            ) : (
+              "Add a signoff emoji"
+            )}
+            <Pencil className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

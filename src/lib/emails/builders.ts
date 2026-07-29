@@ -7,16 +7,18 @@ export type BuiltEmail = {
 export function buildPostSubmittedEmail(
   authorName: string,
   postTitle: string,
-  appUrl: string
+  appUrl: string,
+  signoffEmoji?: string | null
 ): BuiltEmail {
   const safeAuthor = authorName?.trim() || "A writer you follow";
   const safeTitle = postTitle?.trim() || "a new post";
   const safeUrl = appUrl?.replace(/\/$/, "") || "";
+  const emojiPrefix = signoffEmoji?.trim() ? `${signoffEmoji.trim()} ` : "";
 
   return {
-    subject: `${safeAuthor} just submitted a new post!`,
+    subject: `${emojiPrefix}${safeAuthor} just submitted a new post!`,
     html: `
-      <h1>${safeAuthor} has cooked ✍️🔥</h1>
+      <h1>${emojiPrefix}${safeAuthor} has cooked ✍️🔥</h1>
       <p>They just submitted: <strong>${safeTitle}</strong></p>
       <p>All posts will be published together this Sunday. Hope you’ve got one in the works too!</p>
       <p>

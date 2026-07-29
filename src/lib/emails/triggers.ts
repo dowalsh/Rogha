@@ -24,7 +24,7 @@ export async function triggerPostSubmittedEmails(
     select: {
       id: true,
       title: true,
-      author: { select: { id: true, username: true } },
+      author: { select: { id: true, username: true, signoffEmoji: true } },
     },
   });
 
@@ -47,7 +47,8 @@ export async function triggerPostSubmittedEmails(
   const email = buildPostSubmittedEmail(
     post.author.username,
     post.title ?? "",
-    appUrl
+    appUrl,
+    post.author.signoffEmoji
   );
 
   const batchSize = 25;

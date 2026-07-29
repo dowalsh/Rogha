@@ -28,6 +28,7 @@ model User {
   image     String?
   location  String?
   website   String?
+  signoffEmoji String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

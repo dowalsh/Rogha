@@ -140,6 +140,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     "/api/circles",
   );
 
+  const { data: me } = useSWR<{ signoffEmoji?: string | null }>("/api/me");
+
   const isShareable = status === "PUBLISHED";
 
   // Change handlers
@@ -226,6 +228,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       }
       setStatus(next);
       setSaved(true);
+      if (next === "SUBMITTED") {
+        const emoji = me?.signoffEmoji;
+        toast.success(emoji ? `Submitted ${emoji}` : "Submitted");
+      }
     } catch (err) {
       console.error("Failed to toggle submit:", err);
       toast.error("Failed to submit. Please try again.");

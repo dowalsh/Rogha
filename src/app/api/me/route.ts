@@ -8,5 +8,6 @@ export async function GET() {
     id: user.id,
     username: user.username,
     image: user.image,
+    signoffEmoji: user.signoffEmoji,
   });
 }

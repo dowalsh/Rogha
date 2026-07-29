@@ -64,7 +64,12 @@ export type ProfileForViewer =
   | { kind: "not_found" }
   | {
       kind: "self";
-      user: { id: string; username: string; image: string | null };
+      user: {
+        id: string;
+        username: string;
+        image: string | null;
+        signoffEmoji: string | null;
+      };
       posts: Awaited<ReturnType<typeof getUserPosts>>;
     }
   | {
@@ -92,7 +97,7 @@ export async function getProfileForViewer(
 ): Promise<ProfileForViewer> {
   const profileUser = await prisma.user.findUnique({
     where: { usernameLower: username.toLowerCase() },
-    select: { id: true, username: true, image: true },
+    select: { id: true, username: true, image: true, signoffEmoji: true },
   });
   if (!profileUser) return { kind: "not_found" };
 

@@ -504,9 +504,10 @@ export async function createSubmitNotifications({
   // Look up author name for push message
   const author = await prisma.user.findUnique({
     where: { id: userId },
-    select: { username: true },
+    select: { username: true, signoffEmoji: true },
   });
   const authorName = author?.username ?? "Someone";
+  const authorSignoff = author?.signoffEmoji ?? "";
 
   try {
     await triggerPostSubmittedEmails(postId, emailRecipientIds);
@@ -523,7 +524,7 @@ export async function createSubmitNotifications({
   for (const uid of pushRecipientIds) {
     await sendPushToUser(uid, {
       title: "New post",
-      body: `${authorName} submitted a new post`,
+      body: `${authorName} submitted a new post${authorSignoff ? ` ${authorSignoff}` : ""}`,
       url: `/reader/${postId}`,
     });
   }

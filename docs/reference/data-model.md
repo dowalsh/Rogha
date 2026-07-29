@@ -1,6 +1,6 @@
 # Data Model — Rogha
 
-Entity/relationship reference. Source of truth is always [`prisma/schema.prisma`](../prisma/schema.prisma) — this doc explains what the fields mean, not a copy of the schema. For the behavior these entities drive, see [product-spec.md](./product-spec.md).
+Entity/relationship reference. Source of truth is always [`prisma/schema.prisma`](../../prisma/schema.prisma) — this doc explains what the fields mean, not a copy of the schema. For the behavior these entities drive, see [product-spec.md](./product-spec.md).
 
 ## Core entities
 
@@ -16,7 +16,7 @@ Entity/relationship reference. Source of truth is always [`prisma/schema.prisma`
 
 **EditionView** — composite PK `(editionId, userId)`, `openedAt`. Records that a user clicked through the reveal overlay for that edition; also powers the "N others already opened this week" social-proof text.
 
-**PostRead** — composite PK `(postId, userId)`, `readAt`. Per-post read tracking, stamped when a user opens a post's reader (mirrors `EditionView`'s pattern one level down). Absence of a row means unread — no backfill was done when this was introduced, so pre-existing posts simply start unread under the new system. Powers the home page's per-edition read progress and the New buzz / Earlier split — see [specs/home-page-redesign.md](./specs/home-page-redesign.md) — as well as the reader's own "N new" header signal, derived (not persisted) from `readAt` per request — see [specs/reader-jump-nav.md](./specs/reader-jump-nav.md).
+**PostRead** — composite PK `(postId, userId)`, `readAt`. Per-post read tracking, stamped when a user opens a post's reader (mirrors `EditionView`'s pattern one level down). Absence of a row means unread — no backfill was done when this was introduced, so pre-existing posts simply start unread under the new system. Powers the home page's per-edition read progress and the New buzz / Earlier split (see [product-spec.md](./product-spec.md#home-page-buzz)) — as well as the reader's own "N new" header signal, derived (not persisted) from `readAt` per request.
 
 **Post** — `status: DRAFT | SUBMITTED | PUBLISHED | ARCHIVED | REMOVED`. `version` (int) for optimistic-concurrency on autosave. `audienceType: CIRCLE | FRIENDS | ALL_USERS` (default `FRIENDS`; `ALL_USERS` is admin-only by convention, not DB enforcement), with `circleId` set when `CIRCLE`. Hero image fields (`heroImageUrl`, `heroThumbUrl`, `heroThumbBlurUrl`); the legacy `image` field is deprecated — do not use. Public share fields (`publicShareToken`, `publicShareEnabled`, `publicShareCreatedAt`) back unauthenticated share links.
 
@@ -36,7 +36,7 @@ Entity/relationship reference. Source of truth is always [`prisma/schema.prisma`
 
 **Block** — composite PK `(blockerId, blockedId)`. One-directional.
 
-**ActivityEvent** — `eventType: POST_LIKED | COMMENT_LIKED | POST_COMMENTED | COMMENT_REPLIED | POST_SUBMITTED | POST_PUBLISHED`. An audit/activity log tied to actor + post (+ comment where relevant). Backs the home page's Buzz list (`src/lib/home.ts`), which aggregates `POST_COMMENTED`/`COMMENT_REPLIED` events per post into a de-duplicated, per-post feed — see [specs/home-page-redesign.md](./specs/home-page-redesign.md).
+**ActivityEvent** — `eventType: POST_LIKED | COMMENT_LIKED | POST_COMMENTED | COMMENT_REPLIED | POST_SUBMITTED | POST_PUBLISHED`. An audit/activity log tied to actor + post (+ comment where relevant). Backs the home page's Buzz list (`src/lib/home.ts`), which aggregates `POST_COMMENTED`/`COMMENT_REPLIED` events per post into a de-duplicated, per-post feed (see [product-spec.md](./product-spec.md#home-page-buzz)).
 
 ## Notable modeling decisions worth knowing before changing them
 

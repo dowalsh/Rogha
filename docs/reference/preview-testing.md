@@ -44,7 +44,7 @@ These are the two things that make preview safe and functional. They are intenti
 | `DATABASE_URL` | prod Prisma Postgres Accelerate URL — `prisma+postgres://accelerate.prisma-data.net/?api_key=<PROD_KEY>` | **separate** staging Prisma Postgres Accelerate URL — `prisma+postgres://accelerate.prisma-data.net/?api_key=<STAGING_KEY>` |
 | `NEXT_PUBLIC_APP_SCHEME` | unset → defaults to `rogha` | `roghapreview` |
 
-`NEXT_PUBLIC_APP_SCHEME` drives the native auth deep-link scheme (`<scheme>://auth`) emitted/parsed by the web app (`src/lib/mobile/appScheme.ts`). It must match the URL scheme the paired iOS build registers (`CUSTOM_URL_SCHEME` build setting: `rogha` for prod, `roghapreview` for the preview build). Default `rogha` makes it a no-op for production. See [specs/ios-preview-app.md](./specs/ios-preview-app.md).
+`NEXT_PUBLIC_APP_SCHEME` drives the native auth deep-link scheme (`<scheme>://auth`) emitted/parsed by the web app (`src/lib/mobile/appScheme.ts`). It must match the URL scheme the paired iOS build registers (`CUSTOM_URL_SCHEME` build setting: `rogha` for prod, `roghapreview` for the preview build). Default `rogha` makes it a no-op for production. See [specs/ios-preview-app.md](../specs/ios-preview-app.md).
 
 Notes:
 - **Clerk:** live instances are bound to the custom domain (`clerk.rogha.dylanwalsh.ie` / `accounts.rogha.dylanwalsh.ie`) and will *not* authenticate from a `*.vercel.app` host. Dev-instance keys aren't domain-locked, which is the only reason sign-in works on preview at all.

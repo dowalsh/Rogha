@@ -77,11 +77,11 @@ don't fire on the preview app, so they stay hardcoded to prod.
 1. Set `NEXT_PUBLIC_APP_SCHEME=roghapreview` on the staging / Preview Vercel environment; redeploy staging.
 2. Archive the **App Preview** scheme → upload to App Store Connect under `ie.dylanwalsh.rogha.preview`.
 3. Add admins to **TestFlight Internal Testing** (invite-only by Apple ID = the admin-only gate).
-4. On first sign-in, promote your staging user to `ADMIN` (see [../preview-testing.md](../preview-testing.md#becoming-admin-on-preview)).
+4. On first sign-in, promote your staging user to `ADMIN` (see [../reference/preview-testing.md](../reference/preview-testing.md#becoming-admin-on-preview)).
 
 After that, the preview app auto-tracks staging content on every push; only re-archive for native changes.
 
 ## Known limitations
 
 - **Push notifications don't work on the preview app** — TestFlight forces production APNs tokens, but
-  staging sends via the sandbox host. Expected; see the push note in [../preview-testing.md](../preview-testing.md). Prod push is fine.
+  staging sends via the sandbox host. Expected; see the push note in [../reference/preview-testing.md](../reference/preview-testing.md). Prod push is fine.

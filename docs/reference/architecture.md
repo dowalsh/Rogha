@@ -7,7 +7,7 @@ A map of how the codebase is put together. For *what the app does*, see [product
 - **Next.js (App Router, TypeScript)** — web app, deployed on Vercel.
 - **Prisma ORM + PostgreSQL** — data layer (`@prisma/adapter-pg`, Prisma Accelerate extension for connection pooling/caching).
 - **Clerk** — auth (web sign-in, Clerk webhooks for user sync).
-- **Capacitor (iOS)** — the native app is a Capacitor shell loading the web app from a remote `server.url`; see [specs/origin-aware-signin.md](./specs/origin-aware-signin.md) for how native sign-in hands off to a web browser and back via deep link.
+- **Capacitor (iOS)** — the native app is a Capacitor shell loading the web app from a remote `server.url`; see [specs/origin-aware-signin.md](../specs/origin-aware-signin.md) for how native sign-in hands off to a web browser and back via deep link.
 - **Lexical** — rich text editor (post composition), plus Excalidraw for embedded drawing.
 - **Tailwind CSS + Radix UI** — styling/components.
 - **UploadThing** — image/file uploads (hero images).
@@ -47,7 +47,7 @@ Centralizes visibility rules (`postAccess.ts` — `canViewPostPolicy`) so that p
 `src/actions/notification.action.ts` is the single place notification events are created and fanned out to in-app rows, email (`src/lib/emails/`), and push (`src/lib/push/`), gated per-user by `NotificationPreference`.
 
 ### Client-side data fetching & caching
-Client components fetch through **SWR**, wired up app-wide via `SWRProvider` (`src/components/providers/SWRProvider.tsx`, mounted in `src/app/layout.tsx`) so the cache persists across client-side navigation — not every page has been migrated yet. Includes a cache-seeding technique for the editions preloader and route-prefetch/TTL tuning (`next.config.mjs`'s `experimental.staleTimes`). See [specs/data-fetching-caching.md](./specs/data-fetching-caching.md) for the full rationale and what's still on the old fetch pattern.
+Client components fetch through **SWR**, wired up app-wide via `SWRProvider` (`src/components/providers/SWRProvider.tsx`, mounted in `src/app/layout.tsx`) so the cache persists across client-side navigation — not every page has been migrated yet. Includes a cache-seeding technique for the editions preloader and route-prefetch/TTL tuning (`next.config.mjs`'s `experimental.staleTimes`). See [specs/data-fetching-caching.md](../specs/data-fetching-caching.md) for the full rationale and what's still on the old fetch pattern.
 
 ### Loading UI
 Every route that fetches its own data (editions list, reader, editor, posts, settings, notifications, admin) owns a skeleton component mirroring its loaded layout, shown via `useDelayedLoading` (`src/hooks/useDelayedLoading.ts`) rather than a raw `isLoading` check — that hook holds the skeleton back for a short grace window (so fast/prefetched loads never flash a placeholder) and then, once shown, keeps it up for a minimum duration (so it can't flicker). The root `src/app/loading.tsx` is a neutral, layout-stable fallback only — no route should rely on it as real loading UI. `editions/[id]` is the one route with a genuine server-render delay (force-dynamic Prisma query) and uses a route-level `loading.tsx` skeleton instead of the hook.

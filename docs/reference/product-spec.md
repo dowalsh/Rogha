@@ -1,6 +1,6 @@
 # Product Spec — Rogha
 
-A reference for what Rogha does and how it's supposed to behave, independent of implementation. Read this before making a behavior-affecting change, and update it when behavior changes (see "When a feature is being finalized" in [CLAUDE.md](../CLAUDE.md)).
+A reference for what Rogha does and how it's supposed to behave, independent of implementation. Read this before making a behavior-affecting change, and update it when behavior changes (see "When a feature is being finalized" in [CLAUDE.md](../../CLAUDE.md)).
 
 For *how* the code is organized, see [architecture.md](./architecture.md). For the entity/relationship detail behind these concepts, see [data-model.md](./data-model.md).
 
@@ -61,8 +61,8 @@ A single weekly submission, scoped to one audience.
 - Comments run the same content filter as posts, on creation.
 - Only the comment author can edit or hard-delete it. Admin moderation removal is a separate, soft-delete path (`status: REMOVED`).
 - Likes are unique per (user, post|comment); liking notifies the author (self-likes excluded).
-- The reader surfaces a "since you last read this" freshness signal: a tappable "N new" pill in the post header, counting comments/replies added since the viewer's last `PostRead`. A first-time reader (no prior read) sees no pill — "everything is new" isn't useful signal. Alongside it, a generic floating button lets the reader jump between the post body and the comments regardless of new activity. See [specs/reader-jump-nav.md](./specs/reader-jump-nav.md).
-- After the comments section, the reader shows a "keep reading" block listing the other posts in the same edition (unread first, already-read tucked under a de-emphasized disclosure), or a "you're all caught up this week" state once nothing unread remains — since the edition reveal gate is edition-level, moving article-to-article costs nothing ritually. See [specs/edition-up-next.md](./specs/edition-up-next.md).
+- The reader surfaces a "since you last read this" freshness signal: a tappable "N new" pill in the post header, counting comments/replies added since the viewer's last `PostRead`. A first-time reader (no prior read) sees no pill — "everything is new" isn't useful signal. Alongside it, a generic floating button lets the reader jump between the post body and the comments regardless of new activity.
+- After the comments section, the reader shows a "keep reading" block listing the other posts in the same edition (unread first, already-read tucked under a de-emphasized disclosure), or a "you're all caught up this week" state once nothing unread remains — since the edition reveal gate is edition-level, moving article-to-article costs nothing ritually.
 
 ### Notifications
 Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
@@ -81,8 +81,12 @@ Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
 - Circles have no internal roles — membership is binary (joined or not).
 
 ### Home page (Buzz)
-The signed-in home page orients a returning user in priority order: is there new stuff to read (edition hero), what did I miss (per-post Buzz list), what's coming (Coming Sunday). It replaced an earlier flat, reverse-chronological feed of individual `ActivityEvent`s. Full behavior — hero states, read tracking, the New buzz / Earlier split — is in [specs/home-page-redesign.md](./specs/home-page-redesign.md).
+The signed-in home page orients a returning user in priority order and routes them to what they came back for. It replaced an earlier flat, reverse-chronological feed of individual `ActivityEvent`s. Top to bottom: **edition hero → Coming Sunday (nested in the hero) → New buzz → Earlier**.
+
+- **Edition hero** — a single, always-present card for the latest published edition. Its state follows how much of that edition the viewer has read: *not opened* (reveal-moment card, day-dependent copy), *partially read* ("keep reading" with an N-of-M progress indicator, linking to the edition front page rather than a specific post), or *caught up* (quiet card, no CTA). Before any edition exists, it's a first-run invite instead.
+- **Coming Sunday** — nested inside the hero, shown only when at least one post (including the viewer's own) has been submitted for the next edition. It lists those posts with titles visible but hero thumbnails blurred and a lock icon, and nudges the viewer to add their own before the reveal. Hidden entirely when nothing is queued.
+- **Buzz** — everything below the hero, one row per post (never per event), ordered by most recent activity. **New buzz** is posts with unread activity; **Earlier** is the rest (capped, with "show more"). A post counts as unread when its latest *comment or reply* is newer than the last time the viewer opened it. Likes never count as activity, and newly submitted or published posts don't appear in Buzz at all — the hero owns new content, Buzz owns new conversation. Rows carry no actor names and no comment text; their only job is "is this worth opening?"
 
 ## Auth (summary)
 
-Sign-in is Clerk-based. Web sign-in is standard Clerk. The native (iOS/Capacitor) app can't authenticate inline in its WebView, so it hands off to an in-app Safari browser at the app's own current origin, completes Clerk auth there, and deep-links back with a short-lived ticket that's exchanged for a session in the native WebView. Full detail, including why the flow is "origin-aware" (so a future staging build of the app can authenticate against staging instead of always bouncing to prod), is in [specs/origin-aware-signin.md](./specs/origin-aware-signin.md).
+Sign-in is Clerk-based. Web sign-in is standard Clerk. The native (iOS/Capacitor) app can't authenticate inline in its WebView, so it hands off to an in-app Safari browser at the app's own current origin, completes Clerk auth there, and deep-links back with a short-lived ticket that's exchanged for a session in the native WebView. Full detail, including why the flow is "origin-aware" (so a future staging build of the app can authenticate against staging instead of always bouncing to prod), is in [specs/origin-aware-signin.md](../specs/origin-aware-signin.md).

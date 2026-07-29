@@ -157,7 +157,7 @@ export async function getPublishedEditions(user: DbUser) {
           createdAt: true,
           authorId: true,
           author: {
-            select: { id: true, image: true },
+            select: { id: true, username: true, image: true },
           },
         },
       });
@@ -236,7 +236,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       audienceType: true,
       circleId: true,
       circle: { select: { id: true, name: true } },
-      author: { select: { id: true, clerkId: true, image: true } },
+      author: { select: { id: true, clerkId: true, username: true, image: true } },
       heroImageUrl: true,
       heroThumbUrl: true,
       heroThumbBlurUrl: true,

@@ -34,7 +34,7 @@ export async function GET(
         createdAt: true,
         updatedAt: true,
 
-        author: { select: { id: true, clerkId: true, image: true } },
+        author: { select: { id: true, clerkId: true, username: true, image: true } },
         edition: { select: { publishedAt: true } },
         _count: { select: { likes: true } },
         likes: { select: { id: true, userId: true } },

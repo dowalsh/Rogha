@@ -5,7 +5,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { FeedPostRow } from "@/components/home/FeedPostRow";
+import { PostPreviewRow } from "@/components/PostPreviewRow";
 
 type EditionPost = {
   id: string;
@@ -59,7 +59,7 @@ export function EditionUpNext({
         <h2 className="text-lg font-semibold">Keep reading</h2>
         <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
           {unread.map((p) => (
-            <FeedPostRow
+            <PostPreviewRow
               key={p.id}
               variant="new"
               postId={p.id}
@@ -80,7 +80,7 @@ export function EditionUpNext({
           </summary>
           <div className="mt-2 rounded-xl border bg-background/40 p-3 sm:p-4 divide-y opacity-70">
             {read.map((p) => (
-              <FeedPostRow
+              <PostPreviewRow
                 key={p.id}
                 variant="earlier"
                 postId={p.id}

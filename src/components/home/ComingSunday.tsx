@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FeedPostRow } from "@/components/home/FeedPostRow";
+import { PostPreviewRow } from "@/components/PostPreviewRow";
 import type { ComingNextData } from "@/lib/home";
 
 type ComingSundayProps = {
@@ -65,7 +65,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
 
       <div className="divide-y">
         {data.posts.map((p) => (
-          <FeedPostRow
+          <PostPreviewRow
             key={p.id}
             variant="coming"
             postId={p.id}

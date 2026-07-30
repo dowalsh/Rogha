@@ -3,7 +3,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { FeedPostRow } from "@/components/home/FeedPostRow";
+import { PostPreviewRow } from "@/components/PostPreviewRow";
 import type { BuzzPostsData } from "@/lib/home";
 
 type BuzzListProps = {
@@ -33,7 +33,7 @@ export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
           <h2 className="text-lg font-semibold">New buzz</h2>
           <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
             {newBuzz.map((row) => (
-              <FeedPostRow
+              <PostPreviewRow
                 key={row.postId}
                 variant="new"
                 postId={row.postId}
@@ -54,7 +54,7 @@ export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
           <h2 className="text-lg font-semibold">Earlier</h2>
           <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
             {earlier.map((row) => (
-              <FeedPostRow
+              <PostPreviewRow
                 key={row.postId}
                 variant="earlier"
                 postId={row.postId}

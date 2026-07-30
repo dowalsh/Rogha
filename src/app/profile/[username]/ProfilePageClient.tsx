@@ -21,7 +21,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { PostCard } from "@/components/PostCard";
+import { formatDistanceToNow } from "date-fns";
+import { PostPreviewRow } from "@/components/PostPreviewRow";
 import { AvatarUploadButton } from "@/components/AvatarUploadButton";
 import { ProfileOverflowMenu } from "@/components/ProfileOverflowMenu";
 import { ProfileSettingsTab } from "@/components/profile/ProfileSettingsTab";
@@ -40,7 +41,7 @@ function initialsFor(username: string | null) {
 function PostList({
   posts,
 }: {
-  posts: { id: string; title: string | null; heroThumbUrl?: string | null }[];
+  posts: { id: string; title: string | null; heroThumbUrl?: string | null; createdAt: string | Date }[];
 }) {
   if (posts.length === 0) {
     return (
@@ -50,13 +51,16 @@ function PostList({
     );
   }
   return (
-    <div className="space-y-3">
+    <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
       {posts.map((post) => (
-        <PostCard
+        <PostPreviewRow
           key={post.id}
-          id={post.id}
-          title={post.title}
+          variant="plain"
+          postId={post.id}
+          title={post.title ?? "Untitled Post"}
+          metaText={`${formatDistanceToNow(new Date(post.createdAt))} ago`}
           thumbUrl={post.heroThumbUrl}
+          href={`/reader/${post.id}`}
         />
       ))}
     </div>

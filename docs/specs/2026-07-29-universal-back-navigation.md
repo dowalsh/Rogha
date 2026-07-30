@@ -42,6 +42,7 @@ The smallest change. Add one component that renders a consistent chevron + optio
 - **Pros:** Minimal surface area — one component, adopted page by page. No global state, no history tracking of our own. Matches native web/browser back semantics exactly, so it composes correctly with the actual browser/WebView history stack (including hardware/gesture back, which already manipulates the same stack).
 - **Cons:** Doesn't solve the "return to a known parent" need (item 2 above) — pages that want that (like `reader`) still need their own `from`-param logic on top. Detecting "is there history to go back to" from `router.back()` isn't directly exposed by Next's router; needs a small heuristic (e.g. track a session flag on first render, or check `window.history.length`/`document.referrer`).
 - **Native/iOS:** Doesn't touch the Capacitor `backButton`/gesture handling — the gap where hardware back doesn't know about open modals remains unless paired with Option D.
+- **Performance:** Negligible. One small client component, no global state, no extra renders elsewhere. The only runtime cost is the "is there history to go back to" heuristic (`window.history.length`/`document.referrer` check), which is a cheap synchronous read on mount. No effect on page load or Time-to-Interactive (TTI).
 - **Effort:** small —1 component + adoption across pages that want it.
 
 ## Option B — App-wide navigation-origin tracking (a lightweight nav stack)
@@ -51,6 +52,7 @@ Add a small client-side provider that records the app's own in-memory history st
 - **Pros:** Solves both needs from "What back needs to mean" — can reconstruct a real "previous screen in this session" even across non-linear entry (deep link, notification, shared link) because it's app-controlled, not browser-controlled. Single source of truth other features (e.g. breadcrumbs, "recently viewed") could reuse later.
 - **Cons:** Meaningfully more machinery — a provider, a stack data structure, edge cases around back-forward-back sequences, page reloads (in-memory stack resets on refresh unless persisted to `sessionStorage`), and keeping it in sync with actual browser history so the two don't disagree (e.g. user uses browser/gesture back — does our stack pop too?). Higher risk of subtle bugs (stale entries, stack drift) than Option A.
 - **Native/iOS:** Still needs pairing with Option D to intercept hardware back/gesture and consult the same stack; otherwise the app-tracked stack and the WebView's real history can disagree.
+- **Performance:** The heaviest option of the three page-level strategies. A context provider wrapping the app means every navigation triggers a state update and a re-render of every subscribed consumer (mitigate with a narrow selector API, not raw context value, or this fans out badly on deep component trees). Persisting to `sessionStorage` on every navigation adds a synchronous write to the main thread per route change — small individually, but it's on the critical path of every navigation, not a one-time cost. Rehydrating the stack from `sessionStorage` on cold start adds a blocking read before first paint if done eagerly. Of all options, this is the one most likely to show up in navigation-timing regressions if not implemented carefully.
 - **Effort:** medium-large.
 
 ## Option C — Explicit `from`/`returnTo` param convention, generalized
@@ -60,6 +62,7 @@ Take the pattern already used in `reader/[id]/[[...from]]` and formalize it as t
 - **Pros:** Deterministic and explicit — "back" always goes to a meaningful parent, never a broken/blank state, regardless of how the user actually arrived (deep link, notification, share link all work identically). No dependency on browser history at all, so it's robust to reloads and to native gesture-back being unreliable.
 - **Cons:** Requires every internal `<Link>`/`router.push` call site to be updated to pass the right `from`, which is a lot of call sites to audit and easy to miss one (silently falls back to default, not a hard error, so regressions are quiet). URLs get a bit noisier. Doesn't help with truly generic "go back one step" cases where there's no small fixed set of known origins.
 - **Native/iOS:** Same gap as A — still needs Option D for hardware back to close modals/consult this mapping.
+- **Performance:** Effectively free at runtime — it's just an extra query param/path segment on links that already exist, and `getBackHref` is a pure synchronous lookup with no I/O. Slightly larger URLs (negligible transfer cost) and no additional client-side state, renders, or storage reads. Best performance profile of the three page-level strategies, since it pushes the cost to build-time/dev-time (auditing call sites) rather than runtime.
 - **Effort:** medium, and back-loaded (adoption work is spread across many call sites over time rather than concentrated).
 
 ## Option D — Native hardware/gesture back + modal-aware dismissal layer
@@ -68,6 +71,7 @@ Orthogonal to A/B/C (pairs with any of them): listen to Capacitor's `App.addList
 
 - **Pros:** Closes the concrete, currently-broken case (hardware back falling through open modals) regardless of which page-level strategy wins. Relatively contained: one root-level listener + a tiny registry that open modals push themselves onto (or reuse Radix's existing focus/portal stack if it exposes ordering).
 - **Cons:** Needs a way to know what's "topmost" open — if modals don't already register themselves anywhere centrally, this requires touching every modal usage to opt in (or wrapping the shared `Dialog`/`Sheet` primitives so it's automatic, which is cleaner but touches `src/components/ui/dialog.tsx` / `sheet.tsx`, shared low-level UI). Android has native hardware back; iOS does not expose an equivalent OS-level back button event the same way — worth confirming what `@capacitor/app`'s `backButton` event actually fires on iOS (it may be Android-only), in which case this option is really about the **edge-swipe gesture** and/or a persistent in-app back affordance rather than a hardware key.
+- **Performance:** Negligible on its own — a single root-level event listener registered once at app start, no per-navigation cost. The only consideration is the modal registry: if implemented as a push/pop stack on open/close, that's O(1) per modal open/close, not per navigation, so it doesn't compound with route changes. Wrapping the shared `Dialog`/`Sheet` primitives (the cleaner implementation) doesn't add render overhead beyond what those primitives already do.
 - **Effort:** small-medium, but has a research spike first (confirm what back signal iOS actually gives us via Capacitor before committing to an implementation).
 
 ## Option E — Persistent in-shell back affordance (nav-bar level, not per-page)
@@ -76,19 +80,20 @@ Instead of (or in addition to) per-page back buttons, add a single conditional b
 
 - **Pros:** One visual location to design and maintain instead of scattering back buttons across every page's own header; guarantees consistency for free once it's right. Natural fit with the existing sticky top `Navbar`.
 - **Cons:** Needs a route classification (which routes count as "top-level" vs "sub-page") that has to be kept up to date as routes are added; some pages may want a custom label/behavior next to a generic chevron (e.g. "back to @username's profile" vs bare "back"), which pushes back toward needing per-page config anyway. Less flexible than a per-page component if individual pages have very different back semantics.
+- **Performance:** Small but real cost, since the classification check (current route → show/hide chevron) runs on the persistent shell that's mounted on every single page — any inefficiency here is paid on every navigation, unlike a per-page component that only costs something on the pages that use it. Keep the classification a cheap static lookup (e.g. a `Set`/prefix match on the pathname), not a computed or fetched value, to avoid adding latency to the shell's render on the critical navigation path.
 - **Effort:** medium — touches the shared shell plus a route classification list.
 
 ---
 
 ## Comparison at a glance
 
-| Option | Solves "return to known parent" | Handles native hardware/gesture + modals | Relative effort | Main risk |
-|---|---|---|---|---|
-| A. Shared `<BackButton>` + `router.back()` | No | No (pair with D) | Small | History-empty edge case (deep links) |
-| B. App-wide nav stack | Yes | No (pair with D) | Large | Stack/browser-history drift, reload resets |
-| C. Generalized `from` param | Yes | No (pair with D) | Medium, spread out | Silent fallback if a call site misses `from` |
-| D. Native back + modal dismissal | N/A (orthogonal) | Yes (its whole point) | Small–medium + spike | Unclear what iOS actually fires via Capacitor |
-| E. Shell-level back affordance | Depends on underlying choice | N/A | Medium | Route classification upkeep |
+| Option | Solves "return to known parent" | Handles native hardware/gesture + modals | Relative effort | Performance impact | Main risk |
+|---|---|---|---|---|---|
+| A. Shared `<BackButton>` + `router.back()` | No | No (pair with D) | Small | Negligible | History-empty edge case (deep links) |
+| B. App-wide nav stack | Yes | No (pair with D) | Large | Highest — per-navigation state update, storage write, possible cold-start rehydration read | Stack/browser-history drift, reload resets |
+| C. Generalized `from` param | Yes | No (pair with D) | Medium, spread out | Lowest — pure synchronous lookup, no extra state/storage | Silent fallback if a call site misses `from` |
+| D. Native back + modal dismissal | N/A (orthogonal) | Yes (its whole point) | Small–medium + spike | Negligible — one-time listener, O(1) modal registry ops | Unclear what iOS actually fires via Capacitor |
+| E. Shell-level back affordance | Depends on underlying choice | N/A | Medium | Small but paid on every page (runs in the persistent shell) | Route classification upkeep |
 
 ## A note on combining options
 

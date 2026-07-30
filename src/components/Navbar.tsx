@@ -5,11 +5,29 @@ import MobileNavbar from "./MobileNavbar";
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { checkIsAdmin } from "@/actions/user.action";
+import { Button } from "@/components/ui/button";
+import { useCanGoBack } from "@/hooks/useCanGoBack";
+
+const TOP_LEVEL_ROUTES = new Set([
+  "/",
+  "/editions",
+  "/circles",
+  "/posts",
+  "/about",
+  "/profile",
+  "/settings",
+]);
 
 function Navbar() {
   const { isSignedIn, user, isLoaded } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
+  const showBackButton = canGoBack && !TOP_LEVEL_ROUTES.has(pathname);
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
@@ -50,6 +68,14 @@ function Navbar() {
             isAdmin={isAdmin}
           />
         </div>
+
+        {showBackButton && (
+          <div className="flex md:hidden items-center h-10 -mt-1">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
       </div>
     </nav>
   );

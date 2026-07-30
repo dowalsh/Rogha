@@ -69,7 +69,7 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
             <MenuIcon className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-[300px] pt-safe-6 pb-safe-6">
+        <SheetContent side="right" className="w-fit min-w-[220px] max-w-[80vw] pt-safe-6 pb-safe-6">
           <SheetHeader>
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>

@@ -22,20 +22,13 @@ export function getWeekStartUTC(d = new Date()): Date {
   return la; // JS Date is UTC internally
 }
 
-// Short relative time, e.g. "5 min ago", "6 hrs ago", "3 d ago".
+// Short relative time, Twitter/X style: "5m ago", "6h ago", "3d ago".
 export function shortTimeAgo(date: Date): string {
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
   if (diff < 60) return "just now";
-  if (diff < 3600) {
-    const mins = Math.floor(diff / 60);
-    return `${mins} min ago`;
-  }
-  if (diff < 86400) {
-    const hrs = Math.floor(diff / 3600);
-    return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
-  }
-  const days = Math.floor(diff / 86400);
-  return `${days} d ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 export function formatWeekLabel(date: Date): string {

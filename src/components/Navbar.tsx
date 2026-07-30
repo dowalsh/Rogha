@@ -21,12 +21,11 @@ const TOP_LEVEL_ROUTES = new Set([
   "/settings",
 ]);
 
-// Routes that already render their own dedicated back affordance (e.g. the
-// reader page's `from`-param "return to known parent" button, or admin
-// post detail's "Back to admin" link) — the generic chevron would be
-// redundant, or in the reader's case, visually collide with its own sticky
-// back row.
-const ROUTES_WITH_OWN_BACK_UI = ["/reader", "/admin/posts", "/terms", "/privacy"];
+// TermsGate renders its own "← Back" link as part of a required
+// accept/decline flow (paired with "Agree & Continue"), not generic back
+// chrome — left alone to avoid disturbing that flow. See
+// src/components/TermsGate.tsx.
+const ROUTES_WITH_OWN_BACK_UI = ["/terms", "/privacy"];
 
 function Navbar() {
   const { isSignedIn, user, isLoaded } = useUser();
@@ -34,12 +33,17 @@ function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const canGoBack = useCanGoBack();
-  const hasOwnBackUi = ROUTES_WITH_OWN_BACK_UI.some((p) => pathname.startsWith(p));
-  const showBackButton = canGoBack && !TOP_LEVEL_ROUTES.has(pathname) && !hasOwnBackUi;
+  const hasOwnBackUi = ROUTES_WITH_OWN_BACK_UI.some((p) =>
+    pathname.startsWith(p),
+  );
+  const showBackButton =
+    canGoBack && !TOP_LEVEL_ROUTES.has(pathname) && !hasOwnBackUi;
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      checkIsAdmin().then(setIsAdmin).catch(() => setIsAdmin(false));
+      checkIsAdmin()
+        .then(setIsAdmin)
+        .catch(() => setIsAdmin(false));
     } else {
       setIsAdmin(false);
     }
@@ -48,28 +52,20 @@ function Navbar() {
   return (
     <nav className="sticky top-0 w-full border-b bg-background z-50 pt-safe">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/logo.png"
-                alt="Rogha Logo"
-                width={120}
-                height={60}
-                className="object-contain"
-                priority
-              />
-            </Link>
-          </div>
+        {/* Desktop row: logo left, nav right */}
+        <div className="hidden md:flex items-center justify-between h-16">
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/logo.png"
+              alt="Rogha Logo"
+              width={120}
+              height={60}
+              className="object-contain"
+              priority
+            />
+          </Link>
 
-          {/* Pass down user state only */}
           <DesktopNavbar
-            isLoaded={isLoaded}
-            isSignedIn={!!isSignedIn}
-            user={user}
-            isAdmin={isAdmin}
-          />
-          <MobileNavbar
             isLoaded={isLoaded}
             isSignedIn={!!isSignedIn}
             user={user}
@@ -77,13 +73,41 @@ function Navbar() {
           />
         </div>
 
-        {showBackButton && (
-          <div className="flex md:hidden items-center h-10 -mt-1">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
+        {/* Mobile row: back button (left), logo (centered), hamburger (right) */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center h-16 md:hidden">
+          <div className="flex justify-start">
+            {showBackButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.back()}
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
           </div>
-        )}
+
+          <Link href="/" className="flex items-center justify-self-center">
+            <Image
+              src="/logo.png"
+              alt="Rogha Logo"
+              width={120}
+              height={60}
+              className="h-10 w-28 object-cover"
+              priority
+            />
+          </Link>
+
+          <div className="flex justify-end">
+            <MobileNavbar
+              isLoaded={isLoaded}
+              isSignedIn={!!isSignedIn}
+              user={user}
+              isAdmin={isAdmin}
+            />
+          </div>
+        </div>
       </div>
     </nav>
   );

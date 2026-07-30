@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { Newspaper } from "lucide-react";
 import { Frontpage } from "@/components/Frontpage";
 import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
@@ -72,7 +72,7 @@ export default async function EditionPage({
           className="text-muted-foreground"
           title="Back to editions"
         >
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <Newspaper className="h-4 w-4 mr-2" />
           all editions
         </Button>
       </Link>

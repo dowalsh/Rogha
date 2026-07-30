@@ -6,7 +6,7 @@ import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
@@ -111,13 +111,6 @@ function ReadPostPageInner({
   params: { id: string; from?: string[] };
 }) {
   const router = useRouter();
-  // `from` rides the path (/reader/[id]/edition, /reader/[id]/buzz) rather
-  // than a query param — Next's client router cache strips search params
-  // when keying prefetched page segments, so a query-string version of this
-  // signal can silently serve a stale value across different entry points
-  // to the same post within the staleTimes.dynamic window (see
-  // docs/specs/data-fetching-caching.md).
-  const from = params.from?.[0] ?? null;
 
   const [editionStatus, setEditionStatus] = useState<{
     hasOpened: boolean;
@@ -221,8 +214,6 @@ function ReadPostPageInner({
   const fallbackBackHref = post?.editionId
     ? `/editions/${post.editionId}`
     : "/editions";
-  const backHref = from === "buzz" ? "/" : fallbackBackHref;
-  const backLabel = from === "buzz" ? "Back to Buzz" : "Back to edition";
   const title = post?.title ?? "Untitled Post";
   const authorName = post?.author?.username ?? "Unknown author";
   const rawContent = post?.content;
@@ -311,10 +302,6 @@ function ReadPostPageInner({
         <p className="text-muted-foreground">
           Thanks — we've received your report and will review this post.
         </p>
-        <Button variant="ghost" size="sm" onClick={() => router.push(backHref)}>
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          {backLabel}
-        </Button>
       </div>
     );
   }
@@ -323,20 +310,6 @@ function ReadPostPageInner({
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
-      {/* Back — sticky, always accessible */}
-      <div className="sticky top-[calc(env(safe-area-inset-top)+4rem)] z-40 -mx-6 -mt-6 border-b bg-background px-6 py-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(backHref)}
-          className="flex items-center gap-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          {backLabel}
-        </Button>
-      </div>
-
       {/* Edition reveal overlay — covers post content until opened */}
       {!editionRevealed && editionStatus && post?.editionId && (
         <EditionRevealOverlay

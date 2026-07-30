@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Spinner } from "@/components/Spinner";
-import { ChevronLeft } from "lucide-react";
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 
@@ -30,7 +29,6 @@ type AdminPostDetail = {
 
 export default function AdminPostViewPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [post, setPost] = useState<AdminPostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,15 +82,6 @@ export default function AdminPostViewPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 space-y-6">
-      {/* Back link */}
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back to admin
-      </button>
-
       {/* Admin meta bar */}
       <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-xs space-y-1">
         <div className="flex items-center gap-3 flex-wrap">

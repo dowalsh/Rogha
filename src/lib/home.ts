@@ -86,6 +86,7 @@ export type ComingNextPost = {
   id: string;
   title: string;
   authorName: string;
+  heroThumbUrl: string | null;
   heroThumbBlurUrl: string | null;
   submittedAt: string;
   isOwn: boolean;
@@ -122,6 +123,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       title: true,
       authorId: true,
       createdAt: true,
+      heroThumbUrl: true,
       heroThumbBlurUrl: true,
       author: { select: { id: true, username: true } },
     },
@@ -139,6 +141,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       id: p.id,
       title: p.title ?? "Untitled post",
       authorName: p.author.username,
+      heroThumbUrl: p.heroThumbUrl,
       heroThumbBlurUrl: p.heroThumbBlurUrl,
       submittedAt: p.createdAt.toISOString(),
       isOwn: p.authorId === userId,

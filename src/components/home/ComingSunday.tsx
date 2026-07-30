@@ -67,12 +67,13 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         {data.posts.map((p) => (
           <PostPreviewRow
             key={p.id}
-            variant="coming"
+            variant={p.isOwn ? "plain" : "coming"}
             postId={p.id}
             title={p.title}
             authorName={p.isOwn ? "You" : p.authorName}
             metaText={`submitted ${formatDistanceToNow(new Date(p.submittedAt))} ago`}
-            thumbUrl={p.heroThumbBlurUrl}
+            thumbUrl={p.isOwn ? p.heroThumbUrl : p.heroThumbBlurUrl}
+            href={p.isOwn ? `/editor/${p.id}` : undefined}
           />
         ))}
       </div>

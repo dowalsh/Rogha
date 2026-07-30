@@ -3,10 +3,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
+import { shortTimeAgo } from "@/lib/utils";
 import type { ComingNextData } from "@/lib/home";
 
 type ComingSundayProps = {
@@ -71,7 +71,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
             postId={p.id}
             title={p.title}
             authorName={p.isOwn ? "You" : p.authorName}
-            metaText={`submitted ${formatDistanceToNow(new Date(p.submittedAt))} ago`}
+            metaText={`submitted ${shortTimeAgo(new Date(p.submittedAt))}`}
             thumbUrl={p.isOwn ? p.heroThumbUrl : p.heroThumbBlurUrl}
             href={p.isOwn ? `/editor/${p.id}` : undefined}
           />

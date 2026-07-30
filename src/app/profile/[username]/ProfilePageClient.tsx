@@ -25,9 +25,9 @@ import { PostCard } from "@/components/PostCard";
 import { AvatarUploadButton } from "@/components/AvatarUploadButton";
 import { ProfileOverflowMenu } from "@/components/ProfileOverflowMenu";
 import { ProfileSettingsTab } from "@/components/profile/ProfileSettingsTab";
+import { SignoffEmojiPicker } from "@/components/profile/SignoffEmojiPicker";
 import { Loader2, Pencil, UserMinus, UserPlus, Check, Clock } from "lucide-react";
 import type { ProfileForViewer } from "@/actions/profile.action";
-import { SIGNOFF_EMOJI_MAX_LENGTH } from "@/lib/emoji";
 
 type Props = {
   profile: Exclude<ProfileForViewer, { kind: "not_found" }>;
@@ -83,13 +83,12 @@ function SelfProfile({
     router.replace(`/profile/${profile.user.username}?tab=${value}`, { scroll: false });
   }
 
-  const [editingField, setEditingField] = useState<"username" | "emoji" | null>(null);
+  const [editingField, setEditingField] = useState<"username" | null>(null);
 
   const [value, setValue] = useState(profile.user.username);
   const [username, setUsername] = useState(profile.user.username);
   const [saving, setSaving] = useState(false);
 
-  const [emojiValue, setEmojiValue] = useState(profile.user.signoffEmoji ?? "");
   const [signoffEmoji, setSignoffEmoji] = useState(profile.user.signoffEmoji ?? "");
   const [savingEmoji, setSavingEmoji] = useState(false);
 
@@ -114,19 +113,17 @@ function SelfProfile({
     }
   }
 
-  async function handleSaveEmoji() {
+  async function handleSaveEmoji(emoji: string | null) {
     setSavingEmoji(true);
     try {
       const res = await fetch("/api/signoff-emoji", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emoji: emojiValue }),
+        body: JSON.stringify({ emoji: emoji ?? "" }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error || "Failed to save signoff emoji");
       setSignoffEmoji(body.signoffEmoji ?? "");
-      setEmojiValue(body.signoffEmoji ?? "");
-      setEditingField(null);
       void mutate("/api/me");
       toast.success("Signoff emoji updated");
     } catch (e: any) {
@@ -178,54 +175,11 @@ function SelfProfile({
           </button>
         )}
 
-        {editingField === "emoji" ? (
-          <div className="flex w-full max-w-xs flex-col items-center gap-2">
-            <div className="flex w-full items-center gap-2">
-              <Input
-                autoFocus
-                value={emojiValue}
-                onChange={(e) => setEmojiValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveEmoji()}
-                className="h-8 min-w-0 flex-1 text-center"
-                maxLength={SIGNOFF_EMOJI_MAX_LENGTH}
-                placeholder="🔥"
-              />
-              <Button size="sm" className="shrink-0" onClick={handleSaveEmoji} disabled={savingEmoji}>
-                {savingEmoji ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="shrink-0"
-                onClick={() => {
-                  setEmojiValue(signoffEmoji);
-                  setEditingField(null);
-                }}
-                disabled={savingEmoji}
-              >
-                Cancel
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              This will show up on the notification sent to friends when you submit a post!
-            </p>
-          </div>
-        ) : (
-          <button
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setEditingField("emoji")}
-            disabled={editingField !== null}
-          >
-            {signoffEmoji ? (
-              <>
-                <span className="text-base">{signoffEmoji}</span> Signoff emoji
-              </>
-            ) : (
-              "Add a signoff emoji"
-            )}
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-        )}
+        <SignoffEmojiPicker
+          value={signoffEmoji}
+          onSelect={handleSaveEmoji}
+          disabled={editingField !== null || savingEmoji}
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">

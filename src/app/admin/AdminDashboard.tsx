@@ -120,46 +120,82 @@ function PostsTab() {
   if (showSkeleton) return <AdminTableSkeleton columns={5} />;
   if (loading) return null;
 
+  if (posts.length === 0) {
+    return <p className="py-12 text-center text-muted-foreground">No posts.</p>;
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-xs text-muted-foreground">
-            <th className="pb-2 pr-4 font-medium">Title</th>
-            <th className="pb-2 pr-4 font-medium">Author</th>
-            <th className="pb-2 pr-4 font-medium">Status</th>
-            <th className="pb-2 pr-4 font-medium">Created</th>
-            <th className="pb-2 font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {posts.map((post) => (
-            <tr key={post.id} className={post.status === "REMOVED" ? "opacity-50" : ""}>
-              <td className="py-3 pr-4 font-medium max-w-[280px] truncate">
+    <>
+      {/* Mobile: stacked cards */}
+      <div className="space-y-3 sm:hidden">
+        {posts.map((post) => (
+          <div
+            key={post.id}
+            className={`rounded-lg border p-3 space-y-2 ${post.status === "REMOVED" ? "opacity-50" : ""}`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-medium text-sm break-words">
                 {post.title ?? <span className="text-muted-foreground italic">Untitled</span>}
-              </td>
-              <td className="py-3 pr-4"><AuthorCell author={post.author} /></td>
-              <td className="py-3 pr-4"><StatusBadge status={post.status} /></td>
-              <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{fmt(post.createdAt)}</td>
-              <td className="py-3">
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/admin/posts/${post.id}`}
-                    className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
-                  >
-                    View
-                  </Link>
-                  {post.status !== "REMOVED" && (
-                    <RemoveButton onClick={() => removePost(post.id)} disabled={removing.has(post.id)} />
-                  )}
-                </div>
-              </td>
+              </span>
+              <StatusBadge status={post.status} />
+            </div>
+            <AuthorCell author={post.author} />
+            <div className="text-xs text-muted-foreground">{fmt(post.createdAt)}</div>
+            <div className="flex items-center gap-2 pt-1">
+              <Link
+                href={`/admin/posts/${post.id}`}
+                className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+              >
+                View
+              </Link>
+              {post.status !== "REMOVED" && (
+                <RemoveButton onClick={() => removePost(post.id)} disabled={removing.has(post.id)} />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="pb-2 pr-4 font-medium">Title</th>
+              <th className="pb-2 pr-4 font-medium">Author</th>
+              <th className="pb-2 pr-4 font-medium">Status</th>
+              <th className="pb-2 pr-4 font-medium">Created</th>
+              <th className="pb-2 font-medium">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {posts.length === 0 && <p className="py-12 text-center text-muted-foreground">No posts.</p>}
-    </div>
+          </thead>
+          <tbody className="divide-y">
+            {posts.map((post) => (
+              <tr key={post.id} className={post.status === "REMOVED" ? "opacity-50" : ""}>
+                <td className="py-3 pr-4 font-medium max-w-[280px] truncate">
+                  {post.title ?? <span className="text-muted-foreground italic">Untitled</span>}
+                </td>
+                <td className="py-3 pr-4"><AuthorCell author={post.author} /></td>
+                <td className="py-3 pr-4"><StatusBadge status={post.status} /></td>
+                <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{fmt(post.createdAt)}</td>
+                <td className="py-3">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/posts/${post.id}`}
+                      className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                    >
+                      View
+                    </Link>
+                    {post.status !== "REMOVED" && (
+                      <RemoveButton onClick={() => removePost(post.id)} disabled={removing.has(post.id)} />
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -196,42 +232,73 @@ function CommentsTab() {
   if (showSkeleton) return <AdminTableSkeleton columns={6} />;
   if (loading) return null;
 
+  if (comments.length === 0) {
+    return <p className="py-12 text-center text-muted-foreground">No comments.</p>;
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-xs text-muted-foreground">
-            <th className="pb-2 pr-4 font-medium">Comment</th>
-            <th className="pb-2 pr-4 font-medium">Author</th>
-            <th className="pb-2 pr-4 font-medium">Post</th>
-            <th className="pb-2 pr-4 font-medium">Status</th>
-            <th className="pb-2 pr-4 font-medium">Created</th>
-            <th className="pb-2 font-medium">Action</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {comments.map((c) => (
-            <tr key={c.id} className={c.status === "REMOVED" ? "opacity-50" : ""}>
-              <td className="py-3 pr-4 max-w-[260px]">
-                <span className="line-clamp-2">{c.content}</span>
-              </td>
-              <td className="py-3 pr-4"><AuthorCell author={c.author} /></td>
-              <td className="py-3 pr-4 text-xs text-muted-foreground max-w-[160px] truncate">
-                {c.post.title ?? <span className="italic">Untitled post</span>}
-              </td>
-              <td className="py-3 pr-4"><StatusBadge status={c.status} /></td>
-              <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{fmt(c.createdAt)}</td>
-              <td className="py-3">
-                {c.status !== "REMOVED" && (
-                  <RemoveButton onClick={() => removeComment(c.id)} disabled={removing.has(c.id)} />
-                )}
-              </td>
+    <>
+      {/* Mobile: stacked cards */}
+      <div className="space-y-3 sm:hidden">
+        {comments.map((c) => (
+          <div
+            key={c.id}
+            className={`rounded-lg border p-3 space-y-2 ${c.status === "REMOVED" ? "opacity-50" : ""}`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-sm line-clamp-3">{c.content}</span>
+              <StatusBadge status={c.status} />
+            </div>
+            <AuthorCell author={c.author} />
+            <div className="text-xs text-muted-foreground truncate">
+              on {c.post.title ?? <span className="italic">Untitled post</span>}
+            </div>
+            <div className="text-xs text-muted-foreground">{fmt(c.createdAt)}</div>
+            {c.status !== "REMOVED" && (
+              <div className="pt-1">
+                <RemoveButton onClick={() => removeComment(c.id)} disabled={removing.has(c.id)} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="pb-2 pr-4 font-medium">Comment</th>
+              <th className="pb-2 pr-4 font-medium">Author</th>
+              <th className="pb-2 pr-4 font-medium">Post</th>
+              <th className="pb-2 pr-4 font-medium">Status</th>
+              <th className="pb-2 pr-4 font-medium">Created</th>
+              <th className="pb-2 font-medium">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {comments.length === 0 && <p className="py-12 text-center text-muted-foreground">No comments.</p>}
-    </div>
+          </thead>
+          <tbody className="divide-y">
+            {comments.map((c) => (
+              <tr key={c.id} className={c.status === "REMOVED" ? "opacity-50" : ""}>
+                <td className="py-3 pr-4 max-w-[260px]">
+                  <span className="line-clamp-2">{c.content}</span>
+                </td>
+                <td className="py-3 pr-4"><AuthorCell author={c.author} /></td>
+                <td className="py-3 pr-4 text-xs text-muted-foreground max-w-[160px] truncate">
+                  {c.post.title ?? <span className="italic">Untitled post</span>}
+                </td>
+                <td className="py-3 pr-4"><StatusBadge status={c.status} /></td>
+                <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{fmt(c.createdAt)}</td>
+                <td className="py-3">
+                  {c.status !== "REMOVED" && (
+                    <RemoveButton onClick={() => removeComment(c.id)} disabled={removing.has(c.id)} />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -289,93 +356,170 @@ function ReportsTab() {
   if (showSkeleton) return <AdminTableSkeleton columns={9} />;
   if (loading) return null;
 
+  if (reports.length === 0) {
+    return <p className="py-12 text-center text-muted-foreground">No reports.</p>;
+  }
+
+  const viewPostHref = (r: AdminReport) =>
+    r.contentType === "POST"
+      ? `/admin/posts/${r.contentId}`
+      : r.postId
+        ? `/admin/posts/${r.postId}#comment-${r.contentId}`
+        : null;
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-xs text-muted-foreground">
-            <th className="pb-2 pr-4 font-medium">Type</th>
-            <th className="pb-2 pr-4 font-medium">Preview</th>
-            <th className="pb-2 pr-4 font-medium">Content author</th>
-            <th className="pb-2 pr-4 font-medium">Reporter</th>
-            <th className="pb-2 pr-4 font-medium">Report status</th>
-            <th className="pb-2 pr-4 font-medium">Content status</th>
-            <th className="pb-2 pr-4 font-medium">Reported at</th>
-            <th className="pb-2 pr-4 font-medium">View</th>
-            <th className="pb-2 font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {reports.map((r) => {
-            const isPending = r.status === "PENDING";
-            const isActing = acting.has(r.id);
-            return (
-              <tr key={r.id} className={!isPending ? "opacity-60" : ""}>
-                <td className="py-3 pr-4">
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{r.contentType}</span>
-                </td>
-                <td className="py-3 pr-4 max-w-[220px]">
-                  <span className="line-clamp-2 text-xs">{r.preview || <span className="italic text-muted-foreground">No preview</span>}</span>
-                </td>
-                <td className="py-3 pr-4">
+    <>
+      {/* Mobile: stacked cards */}
+      <div className="space-y-3 sm:hidden">
+        {reports.map((r) => {
+          const isPending = r.status === "PENDING";
+          const isActing = acting.has(r.id);
+          const href = viewPostHref(r);
+          return (
+            <div key={r.id} className={`rounded-lg border p-3 space-y-2 ${!isPending ? "opacity-60" : ""}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{r.contentType}</span>
+                <StatusBadge status={r.status} />
+              </div>
+              <p className="text-xs line-clamp-3">
+                {r.preview || <span className="italic text-muted-foreground">No preview</span>}
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Content author: </span>
                   {r.contentAuthor ? (
-                    <span className="text-xs font-medium">{r.contentAuthor.username}</span>
+                    <span className="font-medium">{r.contentAuthor.username}</span>
                   ) : (
-                    <span className="text-xs text-muted-foreground italic">deleted</span>
+                    <span className="text-muted-foreground italic">deleted</span>
                   )}
-                </td>
-                <td className="py-3 pr-4"><AuthorCell author={r.reporter} /></td>
-                <td className="py-3 pr-4"><StatusBadge status={r.status} /></td>
-                <td className="py-3 pr-4">
-                  {r.contentStatus ? <StatusBadge status={r.contentStatus} /> : <span className="text-xs text-muted-foreground">—</span>}
-                </td>
-                <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.createdAt)}</td>
-                <td className="py-3 pr-4">
-                  {r.contentType === "POST" ? (
-                    <Link
-                      href={`/admin/posts/${r.contentId}`}
-                      className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors whitespace-nowrap"
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Content status: </span>
+                  {r.contentStatus ? <StatusBadge status={r.contentStatus} /> : <span className="text-muted-foreground">—</span>}
+                </div>
+              </div>
+              <AuthorCell author={r.reporter} />
+              <div className="text-xs text-muted-foreground">{fmt(r.createdAt)}</div>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {href && (
+                  <Link
+                    href={href}
+                    className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors whitespace-nowrap"
+                  >
+                    View post
+                  </Link>
+                )}
+                {isPending && (
+                  <>
+                    <button
+                      onClick={() => act(r.id, "remove_content")}
+                      disabled={isActing}
+                      className="rounded px-2 py-1 text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40 transition-colors whitespace-nowrap"
                     >
-                      View post
-                    </Link>
-                  ) : r.postId ? (
-                    <Link
-                      href={`/admin/posts/${r.postId}#comment-${r.contentId}`}
-                      className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors whitespace-nowrap"
+                      Remove content
+                    </button>
+                    <button
+                      onClick={() => act(r.id, "dismiss")}
+                      disabled={isActing}
+                      className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors"
                     >
-                      View post
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </td>
-                <td className="py-3">
-                  {isPending && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => act(r.id, "remove_content")}
-                        disabled={isActing}
-                        className="rounded px-2 py-1 text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40 transition-colors whitespace-nowrap"
+                      Dismiss
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="pb-2 pr-4 font-medium">Type</th>
+              <th className="pb-2 pr-4 font-medium">Preview</th>
+              <th className="pb-2 pr-4 font-medium">Content author</th>
+              <th className="pb-2 pr-4 font-medium">Reporter</th>
+              <th className="pb-2 pr-4 font-medium">Report status</th>
+              <th className="pb-2 pr-4 font-medium">Content status</th>
+              <th className="pb-2 pr-4 font-medium">Reported at</th>
+              <th className="pb-2 pr-4 font-medium">View</th>
+              <th className="pb-2 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {reports.map((r) => {
+              const isPending = r.status === "PENDING";
+              const isActing = acting.has(r.id);
+              return (
+                <tr key={r.id} className={!isPending ? "opacity-60" : ""}>
+                  <td className="py-3 pr-4">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{r.contentType}</span>
+                  </td>
+                  <td className="py-3 pr-4 max-w-[220px]">
+                    <span className="line-clamp-2 text-xs">{r.preview || <span className="italic text-muted-foreground">No preview</span>}</span>
+                  </td>
+                  <td className="py-3 pr-4">
+                    {r.contentAuthor ? (
+                      <span className="text-xs font-medium">{r.contentAuthor.username}</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">deleted</span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4"><AuthorCell author={r.reporter} /></td>
+                  <td className="py-3 pr-4"><StatusBadge status={r.status} /></td>
+                  <td className="py-3 pr-4">
+                    {r.contentStatus ? <StatusBadge status={r.contentStatus} /> : <span className="text-xs text-muted-foreground">—</span>}
+                  </td>
+                  <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.createdAt)}</td>
+                  <td className="py-3 pr-4">
+                    {r.contentType === "POST" ? (
+                      <Link
+                        href={`/admin/posts/${r.contentId}`}
+                        className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors whitespace-nowrap"
                       >
-                        Remove content
-                      </button>
-                      <button
-                        onClick={() => act(r.id, "dismiss")}
-                        disabled={isActing}
-                        className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors"
+                        View post
+                      </Link>
+                    ) : r.postId ? (
+                      <Link
+                        href={`/admin/posts/${r.postId}#comment-${r.contentId}`}
+                        className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors whitespace-nowrap"
                       >
-                        Dismiss
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {reports.length === 0 && <p className="py-12 text-center text-muted-foreground">No reports.</p>}
-    </div>
+                        View post
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="py-3">
+                    {isPending && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => act(r.id, "remove_content")}
+                          disabled={isActing}
+                          className="rounded px-2 py-1 text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-40 transition-colors whitespace-nowrap"
+                        >
+                          Remove content
+                        </button>
+                        <button
+                          onClick={() => act(r.id, "dismiss")}
+                          disabled={isActing}
+                          className="rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-40 transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

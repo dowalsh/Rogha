@@ -190,11 +190,11 @@ function SelfProfile({
           </TabsList>
         </div>
 
-        <TabsContent value="posts">
+        <TabsContent value="posts" forceMount>
           <PostList posts={profile.posts} />
         </TabsContent>
 
-        <TabsContent value="settings">
+        <TabsContent value="settings" forceMount>
           <ProfileSettingsTab />
         </TabsContent>
       </Tabs>

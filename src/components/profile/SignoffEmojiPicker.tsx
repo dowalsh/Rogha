@@ -7,9 +7,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 export const STARTER_SIGNOFF_EMOJI = [
-  "📝", "✍️", "📖", "📚", "📓", "📔", "🖋️", "🖊️", "🖌️", "📰",
-  "🗞️", "💭", "💡", "🎭", "🧠", "✨", "🔥", "🎉", "👏", "🙌",
-  "❤️", "😂", "🤔", "👀", "🚀", "⭐️", "😎", "🥳", "📣", "💯",
+  "📝", "✍️", "🖋️", "📓", "📔", "📕", "📗", "📘", "📙", "📖",
+  "📚", "📰", "🗞️", "🪶", "📜",
+  "💭", "💡", "🧠", "🤔", "🧐", "💬", "🗯️", "👁️", "🔍", "🧩", "🪞",
+  "🎭", "🎨", "🎬", "🎼", "🖼️", "🪄",
+  "✨", "🔥", "🎉", "👏", "🙌", "💯", "🚀", "🌟", "😎", "🥳",
+  "😄", "🤩", "🥹", "🙏", "👍", "💪", "🫡",
+  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💗",
+  "💖", "🥰", "😍", "🫶", "🤗",
+  "🤣", "😏", "🙃", "😜", "🫠", "💀", "🤪",
+  "👀", "🌙", "🕯️", "☕️", "🍂", "🌧️", "🌊", "🍃", "🌿", "🌸",
+  "🌻", "🍁",
+  "📣", "🔔", "⚡️", "💥", "🎯", "🏆", "🥇", "🔓", "🎁",
+  "🐶", "🐱", "🦊", "🐻", "🐼", "🐨", "🦁", "🐯", "🐸", "🐙",
+  "🦉", "🐝", "🦋", "🐢", "🦄",
 ];
 
 type Props = {
@@ -71,7 +82,7 @@ export function SignoffEmojiPicker({ value, onSelect, disabled }: Props) {
             </Button>
           )}
         </div>
-        <div className="grid grid-cols-6 gap-1">
+        <div className="grid max-h-64 grid-cols-6 gap-1 overflow-y-auto">
           {STARTER_SIGNOFF_EMOJI.map((emoji) => (
             <button
               key={emoji}

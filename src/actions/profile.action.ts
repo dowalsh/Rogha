@@ -13,6 +13,7 @@ export async function getUserPosts(userId: string) {
     const posts = await prisma.post.findMany({
       where: {
         authorId: userId,
+        status: "PUBLISHED",
       },
       include: {
         author: {

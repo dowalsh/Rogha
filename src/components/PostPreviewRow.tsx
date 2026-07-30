@@ -2,10 +2,13 @@
 "use client";
 
 import Link from "next/link";
-import { Lock, ChevronRight } from "lucide-react";
+import { Lock, ChevronRight, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type PostPreviewRowVariant = "coming" | "new" | "earlier" | "plain";
+// "own" is for a not-yet-published post the viewer authored (e.g. their own
+// entry in the "coming Sunday" list) — same row shape as "coming" so it stays
+// aligned with sibling rows, but unlocked and tappable into the editor.
+export type PostPreviewRowVariant = "coming" | "new" | "earlier" | "own" | "plain";
 
 export type PostPreviewRowProps = {
   variant: PostPreviewRowVariant;
@@ -88,6 +91,9 @@ export function PostPreviewRow({
           )}
           {variant === "earlier" && (
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+          {variant === "own" && (
+            <Pencil className="h-4 w-4 text-muted-foreground" aria-label="Edit your post" />
           )}
         </div>
       )}

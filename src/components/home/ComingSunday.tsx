@@ -67,7 +67,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         {data.posts.map((p) => (
           <PostPreviewRow
             key={p.id}
-            variant={p.isOwn ? "plain" : "coming"}
+            variant={p.isOwn ? "own" : "coming"}
             postId={p.id}
             title={p.title}
             authorName={p.isOwn ? "You" : p.authorName}

@@ -21,13 +21,21 @@ const TOP_LEVEL_ROUTES = new Set([
   "/settings",
 ]);
 
+// Routes that already render their own dedicated back affordance (e.g. the
+// reader page's `from`-param "return to known parent" button, or admin
+// post detail's "Back to admin" link) — the generic chevron would be
+// redundant, or in the reader's case, visually collide with its own sticky
+// back row.
+const ROUTES_WITH_OWN_BACK_UI = ["/reader", "/admin/posts", "/terms", "/privacy"];
+
 function Navbar() {
   const { isSignedIn, user, isLoaded } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const canGoBack = useCanGoBack();
-  const showBackButton = canGoBack && !TOP_LEVEL_ROUTES.has(pathname);
+  const hasOwnBackUi = ROUTES_WITH_OWN_BACK_UI.some((p) => pathname.startsWith(p));
+  const showBackButton = canGoBack && !TOP_LEVEL_ROUTES.has(pathname) && !hasOwnBackUi;
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {

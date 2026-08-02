@@ -48,6 +48,11 @@ export async function getUserPosts(userId: string) {
             comments: true,
           },
         },
+        edition: {
+          select: {
+            publishedAt: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -139,7 +144,13 @@ export async function getProfileForViewer(
 
   if (relationship === "ACCEPTED") {
     const rawPosts = await getUserPosts(profileUser.id);
-    const visible = await resolveVisiblePosts({ viewerId, posts: rawPosts });
+    const visible = await resolveVisiblePosts({
+      viewerId,
+      posts: rawPosts.map((p) => ({
+        ...p,
+        publishedAt: p.edition?.publishedAt ?? null,
+      })),
+    });
     const visibleIds = new Set(visible.map((p) => p.id));
     return {
       kind: "friend",

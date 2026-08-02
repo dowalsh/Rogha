@@ -12,6 +12,7 @@ export type MinimalPost = {
   audienceType: AudienceType;
   circleId: string | null;
   createdAt: Date;
+  publishedAt: Date | null; // the post's edition.publishedAt, not post.createdAt
 };
 
 //
@@ -44,11 +45,14 @@ function canViewPostPolicy(args: {
       return true;
 
     case "FRIENDS":
-      // Must be a friend AND friendship must predate the post
+      // Must be a friend AND friendship must predate the post going live.
+      // Gated on the post's publish date (edition.publishedAt), not the
+      // draft's createdAt — a post drafted before the friendship began but
+      // published after should still be visible.
       return (
         !!viewerId &&
         friendshipAcceptedAt !== null &&
-        friendshipAcceptedAt <= post.createdAt
+        friendshipAcceptedAt <= (post.publishedAt ?? post.createdAt)
       );
 
     case "CIRCLE":
@@ -149,6 +153,7 @@ export async function requirePostAccess(
       audienceType: true,
       circleId: true,
       createdAt: true,
+      edition: { select: { publishedAt: true } },
     },
   });
 
@@ -156,7 +161,11 @@ export async function requirePostAccess(
     return null;
   }
 
-  const allowed = await canViewPost(viewerId, post);
+  const { edition, ...postFields } = post;
+  const allowed = await canViewPost(viewerId, {
+    ...postFields,
+    publishedAt: edition?.publishedAt ?? null,
+  });
 
   if (!allowed) {
     return null;

@@ -101,6 +101,7 @@ export async function GET(
       audienceType: post.audienceType,
       circleId: post.circleId,
       createdAt: post.createdAt,
+      publishedAt: post.edition?.publishedAt ?? null,
     });
 
     if (!allowed) {

@@ -523,6 +523,88 @@ function ReportsTab() {
   );
 }
 
+// ─── Music tab ────────────────────────────────────────────────────────────────
+
+type LastfmTrack = {
+  name: string;
+  artist: string;
+  playCount: number;
+  imageUrl: string | null;
+  lastfmUrl: string;
+  spotifySearchUrl: string;
+};
+
+function MusicTab() {
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+  const [track, setTrack] = useState<LastfmTrack | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchTopTrack() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/lastfm-top-track");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(
+          data?.error === "NOT_CONFIGURED"
+            ? "Last.fm isn't configured (missing LASTFM_API_KEY / LASTFM_TEST_USERNAME)."
+            : "Failed to fetch from Last.fm. Check the API key, or that the profile isn't private.",
+        );
+      }
+      setTrack(data.track);
+      setFetched(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch top track");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={fetchTopTrack}
+        disabled={loading}
+        className="rounded px-3 py-2 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 transition-opacity"
+      >
+        {loading ? "Fetching…" : "Fetch my top track (last 7 days)"}
+      </button>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {fetched && !error && !track && (
+        <p className="text-sm text-muted-foreground">No listening data in the last 7 days.</p>
+      )}
+
+      {track && (
+        <div className="flex items-start gap-4 rounded-lg border p-4 max-w-md">
+          {track.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={track.imageUrl} alt={`${track.name} album art`} className="h-20 w-20 rounded object-cover" />
+          ) : (
+            <div className="h-20 w-20 rounded bg-muted" />
+          )}
+          <div className="space-y-1">
+            <p className="font-medium">{track.name}</p>
+            <p className="text-sm text-muted-foreground">{track.artist}</p>
+            <p className="text-xs text-muted-foreground">{track.playCount} plays this week</p>
+            <div className="flex gap-3 pt-1 text-xs">
+              <a href={track.lastfmUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                Last.fm
+              </a>
+              <a href={track.spotifySearchUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                Open in Spotify
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Dashboard shell ──────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -534,6 +616,7 @@ export default function AdminDashboard() {
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsTrigger value="music">Music</TabsTrigger>
         </TabsList>
         <TabsContent value="posts" className="mt-6">
           <PostsTab />
@@ -543,6 +626,9 @@ export default function AdminDashboard() {
         </TabsContent>
         <TabsContent value="reports" className="mt-6">
           <ReportsTab />
+        </TabsContent>
+        <TabsContent value="music" className="mt-6">
+          <MusicTab />
         </TabsContent>
       </Tabs>
     </div>

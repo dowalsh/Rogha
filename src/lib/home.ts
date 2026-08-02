@@ -222,6 +222,7 @@ export async function getBuzzPosts(
           createdAt: true,
           heroThumbUrl: true,
           author: { select: { id: true, username: true } },
+          edition: { select: { publishedAt: true } },
         },
       },
     },
@@ -249,6 +250,7 @@ export async function getBuzzPosts(
       audienceType: e.post!.audienceType,
       circleId: e.post!.circleId,
       createdAt: e.post!.createdAt,
+      publishedAt: e.post!.edition?.publishedAt ?? null,
     }));
 
   const visiblePosts = await resolveVisiblePosts({

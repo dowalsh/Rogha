@@ -162,11 +162,11 @@ export async function getPublishedEditions(user: DbUser) {
         },
       });
 
-      // Temporal gate: only include friend posts created after the friendship started
+      // Temporal gate: only include friend posts published after the friendship started
       const visiblePosts = posts.filter((p) => {
         if (p.authorId === user.id) return true;
         const friendshipDate = friendMap.get(p.authorId);
-        return friendshipDate !== undefined && friendshipDate <= p.createdAt;
+        return friendshipDate !== undefined && friendshipDate <= (ed.publishedAt ?? p.createdAt);
       });
 
       console.debug(
@@ -264,9 +264,13 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       if (p.authorId === user.id) return true;
       if (p.audienceType === "ALL_USERS") return true;
       if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query
-      // FRIENDS: check friendship date
+      // FRIENDS: check friendship date against when the edition was published,
+      // not when the post was drafted
       const friendshipDate = friendMap.get(p.authorId);
-      return friendshipDate !== undefined && friendshipDate <= p.createdAt;
+      return (
+        friendshipDate !== undefined &&
+        friendshipDate <= (edition.publishedAt ?? p.createdAt)
+      );
     })
     .map(({ _count, likes, ...p }) => ({
       ...p,

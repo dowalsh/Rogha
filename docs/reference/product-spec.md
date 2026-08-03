@@ -50,7 +50,7 @@ The weekly publishing cycle — the core rhythm of the product.
 A single weekly submission, scoped to one audience.
 
 - Lifecycle: `DRAFT → SUBMITTED → PUBLISHED`, or `ARCHIVED` / `REMOVED` (moderation).
-- Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` (admin-only in practice).
+- Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` — enforced admin-only server-side (`PUT /api/posts/[id]` rejects a non-admin setting `ALL_USERS`) and hidden from the audience picker for non-admins in the editor.
 - **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. The same rule applies to `CIRCLE`-audience posts against circle-membership `joinedAt`. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
 - A `SUBMITTED` (not-yet-published) post shows a title/thumbnail-only preview to its eligible audience immediately (no temporal gate — see the spec above), but full content stays author-only until it publishes.
 - A content filter runs once, at the moment a post is submitted (`DRAFT → SUBMITTED`) — not on every autosave keystroke.

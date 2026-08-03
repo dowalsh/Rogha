@@ -146,6 +146,12 @@ export async function PUT(
         { status: 400 },
       );
     }
+    if (incomingAudience === "ALL_USERS" && user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only admins can post to All Rogha Users" },
+        { status: 403 },
+      );
+    }
     if (incomingAudience === "CIRCLE" && !incomingCircleId) {
       return NextResponse.json(
         { error: "circleId required for CIRCLE" },

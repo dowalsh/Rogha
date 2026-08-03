@@ -51,10 +51,11 @@ A single weekly submission, scoped to one audience.
 
 - Lifecycle: `DRAFT → SUBMITTED → PUBLISHED`, or `ARCHIVED` / `REMOVED` (moderation).
 - Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` (admin-only in practice).
-- **Temporal friend gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post's creation. Adding a new friend does not retroactively expose your back-catalog to them.
+- **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. The same rule applies to `CIRCLE`-audience posts against circle-membership `joinedAt`. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
+- A `SUBMITTED` (not-yet-published) post shows a title/thumbnail-only preview to its eligible audience immediately (no temporal gate — see the spec above), but full content stays author-only until it publishes.
 - A content filter runs once, at the moment a post is submitted (`DRAFT → SUBMITTED`) — not on every autosave keystroke.
 - Only the author can edit or delete their own post, at any status (there's no guard today preventing deletion of an already-published post).
-- Comments/likes/reports on a post you've blocked-or-been-blocked-by, or reported, are filtered out of your own view.
+- Comments/likes on a post you've blocked, or reported, are filtered out of your own view (comments/likes inherit their parent post's visibility rules).
 
 ### Comments & likes
 - Comments nest one level deep (top-level + one reply); the server rejects deeper nesting.
@@ -72,8 +73,9 @@ Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
 - In-app notification rows are always created; email/push are conditional on the user's preferences.
 
 ### Blocking & reporting
-- **Block** is one-directional: it only changes what *you* see (the blocked user's content is filtered out of your editions/comments). It does not require mutual consent and doesn't necessarily hide your content from them.
+- **Block** is one-directional: it only changes what *you* see (the blocked user's content is filtered out of your editions/comments). It does not require mutual consent and doesn't necessarily hide your content from them. (The profile page is a documented exception — it hides itself from view if *either* side has blocked the other.)
 - **Report** flags a post or comment for moderation and immediately hides it from the reporter's own view — it does not wait for admin action to do that. One report per user per item (idempotent).
+- Full post-visibility rule set, including how block/report interact with audience/friendship/circle checks: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
 - Admins (Reports tab) can **Remove content** (soft-removes the underlying post/comment and marks the report `ACTIONED`) or **Dismiss** the report. Admins can also directly soft-remove any post or comment outside the report flow.
 
 ### Roles

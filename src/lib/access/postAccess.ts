@@ -1,9 +1,38 @@
 // src/lib/access/postAccess.ts
+//
+// Single authority for "can viewer V see post P". Every post-reading code
+// path (routes, actions, feed builders) should go through
+// resolveVisiblePosts/canViewPost/requirePostAccess rather than
+// re-deriving any subset of these rules — see
+// docs/specs/2026-08-02-post-visibility-rules.md for the full spec.
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { getAcceptedFriendships } from "@/lib/friends";
 
 export type AudienceType = "ALL_USERS" | "FRIENDS" | "CIRCLE";
+
+/**
+ * The audience-eligibility half of the visibility rules (self / ALL_USERS /
+ * FRIENDS-with-friend / CIRCLE-with-member), expressed as a Prisma `OR`
+ * clause for cheap DB-level candidate filtering. Callers still need to run
+ * results through resolveVisiblePosts for the temporal/block/report checks
+ * this clause can't express — it only narrows PUBLISHED-eligible candidates.
+ * Single source of truth so a feed query can't forget an audience branch
+ * (see docs/specs/2026-08-02-post-visibility-rules.md).
+ */
+export function buildAudienceCandidateWhere(
+  userId: string,
+  friendIds: string[],
+  circleIds: string[],
+): Prisma.PostWhereInput["OR"] {
+  return [
+    { authorId: userId },
+    { audienceType: "ALL_USERS" },
+    { AND: [{ audienceType: "FRIENDS" }, { authorId: { in: friendIds } }] },
+    { AND: [{ audienceType: "CIRCLE" }, { circleId: { in: circleIds } }] },
+  ];
+}
 
 export type MinimalPost = {
   id: string;
@@ -25,9 +54,22 @@ function canViewPostPolicy(args: {
   viewerId: string | null;
   post: MinimalPost;
   friendshipAcceptedAt: Date | null; // null = not a friend
-  isInCircle: boolean;
+  circleJoinedAt: Date | null; // null = not a joined circle member
+  isBlocked: boolean; // viewer<->author block, either direction
+  isReported: boolean; // viewer reported this specific post
 }) {
-  const { viewerId, post, friendshipAcceptedAt, isInCircle } = args;
+  const {
+    viewerId,
+    post,
+    friendshipAcceptedAt,
+    circleJoinedAt,
+    isBlocked,
+    isReported,
+  } = args;
+
+  // Blocked/reported wins over everything, including authorship.
+  if (isBlocked) return false;
+  if (isReported) return false;
 
   // Removed → no one
   if (post.status === "REMOVED") return false;
@@ -56,7 +98,14 @@ function canViewPostPolicy(args: {
       );
 
     case "CIRCLE":
-      return !!viewerId && isInCircle;
+      // Same reasoning as FRIENDS: must be a current member AND membership
+      // must predate the post going live, so joining a circle doesn't grant
+      // retroactive access to its entire published history.
+      return (
+        !!viewerId &&
+        circleJoinedAt !== null &&
+        circleJoinedAt <= (post.publishedAt ?? post.createdAt)
+      );
 
     default:
       return false;
@@ -84,43 +133,61 @@ export async function resolveVisiblePosts(args: {
         viewerId: null,
         post,
         friendshipAcceptedAt: null,
-        isInCircle: false,
+        circleJoinedAt: null,
+        isBlocked: false,
+        isReported: false,
       }),
     );
   }
 
-  // Fetch friendships (with dates) once
-  const friendships = await getAcceptedFriendships(viewerId);
-  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
-
-  // Collect circleIds in this batch
+  const authorIds = Array.from(new Set(posts.map((p) => p.authorId)));
+  const postIds = posts.map((p) => p.id);
   const circleIds = Array.from(
     new Set(posts.map((p) => p.circleId).filter((id): id is string => !!id)),
   );
 
-  // Fetch memberships once
-  const joinedCircleIds =
+  const [friendships, blocks, reports, joinedCircles] = await Promise.all([
+    getAcceptedFriendships(viewerId),
+    // One-directional by design (see docs/reference/product-spec.md
+    // "Blocking & reporting"): blocking someone filters their content out of
+    // *your* view, it doesn't hide your content from them.
+    prisma.block.findMany({
+      where: { blockerId: viewerId, blockedId: { in: authorIds } },
+      select: { blockedId: true },
+    }),
+    prisma.report.findMany({
+      where: {
+        reporterId: viewerId,
+        contentType: "POST",
+        contentId: { in: postIds },
+      },
+      select: { contentId: true },
+    }),
     circleIds.length > 0
-      ? await prisma.circleMember
-          .findMany({
-            where: {
-              userId: viewerId,
-              status: "JOINED",
-              circleId: { in: circleIds },
-            },
-            select: { circleId: true },
-          })
-          .then((rows) => rows.map((r) => r.circleId))
-      : [];
+      ? prisma.circleMember.findMany({
+          where: {
+            userId: viewerId,
+            status: "JOINED",
+            circleId: { in: circleIds },
+          },
+          select: { circleId: true, joinedAt: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
-  const joinedSet = new Set(joinedCircleIds);
+  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
+  const blockedAuthorIds = new Set(blocks.map((b) => b.blockedId));
+  const reportedPostIds = new Set(reports.map((r) => r.contentId));
+  const circleJoinedMap = new Map(joinedCircles.map((c) => [c.circleId, c.joinedAt]));
 
   return posts.filter((post) =>
     canViewPostPolicy({
       viewerId,
       post,
       friendshipAcceptedAt: friendMap.get(post.authorId) ?? null,
-      isInCircle: post.circleId ? joinedSet.has(post.circleId) : false,
+      circleJoinedAt: post.circleId ? circleJoinedMap.get(post.circleId) ?? null : null,
+      isBlocked: blockedAuthorIds.has(post.authorId),
+      isReported: reportedPostIds.has(post.id),
     }),
   );
 }

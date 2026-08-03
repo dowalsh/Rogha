@@ -5,6 +5,7 @@ import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
 import { getReadMapForPosts } from "@/lib/postReads";
+import { buildAudienceCandidateWhere } from "@/lib/access/postAccess";
 
 type DbUser = { id: string };
 
@@ -134,6 +135,29 @@ export async function getPublishedEditions(user: DbUser) {
   const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
   const friendIds = Array.from(friendMap.keys());
 
+  const circleMemberships = await prisma.circleMember.findMany({
+    where: { userId: user.id, status: "JOINED" },
+    select: { circleId: true, joinedAt: true },
+  });
+  const circleJoinedMap = new Map(circleMemberships.map((c) => [c.circleId, c.joinedAt]));
+  const myCircleIds = Array.from(circleJoinedMap.keys());
+
+  // Blocks/reports for this viewer, fetched once (mirrors postAccess.ts).
+  // Block is one-directional by design (docs/reference/product-spec.md):
+  // blocking someone filters their content out of *your* view only.
+  const [blocks, reports] = await Promise.all([
+    prisma.block.findMany({
+      where: { blockerId: user.id },
+      select: { blockedId: true },
+    }),
+    prisma.report.findMany({
+      where: { reporterId: user.id, contentType: "POST" },
+      select: { contentId: true },
+    }),
+  ]);
+  const blockedAuthorIds = new Set(blocks.map((b) => b.blockedId));
+  const reportedPostIds = new Set(reports.map((r) => r.contentId));
+
   const editions = await prisma.edition.findMany({
     where: { NOT: { publishedAt: null } },
     orderBy: { weekStart: "desc" },
@@ -146,7 +170,7 @@ export async function getPublishedEditions(user: DbUser) {
         where: {
           editionId: ed.id,
           status: "PUBLISHED",
-          OR: [{ authorId: user.id }, { authorId: { in: friendIds } }],
+          OR: buildAudienceCandidateWhere(user.id, friendIds, myCircleIds),
         },
         orderBy: { updatedAt: "desc" },
         select: {
@@ -156,15 +180,27 @@ export async function getPublishedEditions(user: DbUser) {
           updatedAt: true,
           createdAt: true,
           authorId: true,
+          audienceType: true,
+          circleId: true,
           author: {
             select: { id: true, username: true, image: true },
           },
         },
       });
 
-      // Temporal gate: only include friend posts published after the friendship started
+      // Audience + temporal + block/report gate — mirrors postAccess.ts's
+      // canViewPostPolicy so this list stays consistent with the single-post
+      // and other feed read paths.
       const visiblePosts = posts.filter((p) => {
+        if (blockedAuthorIds.has(p.authorId)) return false;
+        if (reportedPostIds.has(p.id)) return false;
         if (p.authorId === user.id) return true;
+        if (p.audienceType === "ALL_USERS") return true;
+        if (p.audienceType === "CIRCLE") {
+          const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
+          return joinedAt !== undefined && joinedAt <= (ed.publishedAt ?? p.createdAt);
+        }
+        // FRIENDS
         const friendshipDate = friendMap.get(p.authorId);
         return friendshipDate !== undefined && friendshipDate <= (ed.publishedAt ?? p.createdAt);
       });
@@ -193,13 +229,14 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
   });
   if (!edition) return null;
 
-  // 3) Circles the viewer is part of (for CIRCLE audience)
-  const myCircleIds = await prisma.circleMember
-    .findMany({
-      where: { userId: user.id, status: "JOINED" },
-      select: { circleId: true },
-    })
-    .then((rows) => rows.map((r) => r.circleId));
+  // 3) Circles the viewer is part of (for CIRCLE audience), with joinedAt
+  //    for the temporal gate below
+  const circleMemberships = await prisma.circleMember.findMany({
+    where: { userId: user.id, status: "JOINED" },
+    select: { circleId: true, joinedAt: true },
+  });
+  const circleJoinedMap = new Map(circleMemberships.map((c) => [c.circleId, c.joinedAt]));
+  const myCircleIds = Array.from(circleJoinedMap.keys());
 
   // 4) Audience filter
   // - Author can see their own posts
@@ -211,19 +248,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     where: {
       editionId: edition.id,
       status: "PUBLISHED",
-      OR: [
-        { authorId: user.id },
-        { audienceType: "ALL_USERS" },
-        {
-          AND: [
-            { audienceType: "FRIENDS" },
-            { authorId: { in: validFriendIds } },
-          ],
-        },
-        {
-          AND: [{ audienceType: "CIRCLE" }, { circleId: { in: myCircleIds } }],
-        },
-      ],
+      OR: buildAudienceCandidateWhere(user.id, validFriendIds, myCircleIds),
     },
     orderBy: { updatedAt: "desc" },
     select: {
@@ -246,15 +271,19 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     },
   });
 
-  // Reported post IDs + blocked author IDs for this viewer
-  const [reportedPostIds, blockedAuthorIds] = await Promise.all([
+  // Reported post IDs + blocked author IDs for this viewer (either block direction)
+  const [reportedPostIds, blocks] = await Promise.all([
     prisma.report
       .findMany({ where: { reporterId: user.id, contentType: "POST" }, select: { contentId: true } })
       .then((rows) => new Set(rows.map((r) => r.contentId))),
-    prisma.block
-      .findMany({ where: { blockerId: user.id }, select: { blockedId: true } })
-      .then((rows) => new Set(rows.map((r) => r.blockedId))),
+    // Block is one-directional by design (docs/reference/product-spec.md):
+    // blocking someone filters their content out of *your* view only.
+    prisma.block.findMany({
+      where: { blockerId: user.id },
+      select: { blockedId: true },
+    }),
   ]);
+  const blockedAuthorIds = new Set(blocks.map((b) => b.blockedId));
 
   // Temporal gate + reporter/block exclusion
   const visiblePosts = posts
@@ -263,7 +292,12 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       if (blockedAuthorIds.has(p.authorId)) return false;
       if (p.authorId === user.id) return true;
       if (p.audienceType === "ALL_USERS") return true;
-      if (p.audienceType === "CIRCLE") return true; // circle membership already gated by DB query
+      if (p.audienceType === "CIRCLE") {
+        // Membership must predate the edition going live, so joining a
+        // circle doesn't grant retroactive access to its whole history.
+        const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
+        return joinedAt !== undefined && joinedAt <= (edition.publishedAt ?? p.createdAt);
+      }
       // FRIENDS: check friendship date against when the edition was published,
       // not when the post was drafted
       const friendshipDate = friendMap.get(p.authorId);

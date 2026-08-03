@@ -6,10 +6,12 @@ import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getUserByClerkId } from "@/actions/user.action";
 import { getAcceptedFriendIds } from "@/lib/friends";
+import { requirePostAccess } from "@/lib/access/postAccess";
 import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 
 /**
- * GET a single comment (with replies) if it's by the user or their friends.
+ * GET a single comment (with replies) if the viewer can see the underlying
+ * post, further narrowed to comments by the user or their friends.
  */
 export async function GET(
   _req: Request,
@@ -23,6 +25,15 @@ export async function GET(
 
     const dbUser = await getUserByClerkId(clerkUser.id);
     if (!dbUser) return new NextResponse("Unauthorized", { status: 401 });
+
+    const commentPost = await prisma.comment.findUnique({
+      where: { id: params.id },
+      select: { postId: true },
+    });
+    if (!commentPost) return new NextResponse("Not found", { status: 404 });
+
+    const post = await requirePostAccess(dbUser.id, commentPost.postId);
+    if (!post) return new NextResponse("Not found", { status: 404 });
 
     const friendIds = await getAcceptedFriendIds(dbUser.id);
     const allowedIds = [dbUser.id, ...friendIds];

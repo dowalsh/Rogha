@@ -94,7 +94,9 @@ export function ProfileSettingsTab() {
       toast.error("Enter a Last.fm username");
       return;
     }
-    saveJam({ lastfmUsername: trimmed });
+    // Saving a username is the whole "connect" action — turn Jam on in the
+    // same request rather than making it a separate step.
+    saveJam({ lastfmUsername: trimmed, jamEnabled: true });
   }
 
   async function toggle(field: keyof Prefs, value: boolean) {

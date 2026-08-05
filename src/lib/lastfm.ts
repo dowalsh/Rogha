@@ -5,6 +5,7 @@ export type LastfmTrack = {
   artist: string;
   playCount: number;
   imageUrl: string | null;
+  imageSource: "spotify" | "lastfm" | null;
   lastfmUrl: string;
   spotifySearchUrl: string;
 };
@@ -34,11 +35,13 @@ function pickImageUrl(images: LastfmImage[] | undefined): string | null {
 
 function normalizeTrack(raw: LastfmRawTrack): LastfmTrack {
   const artist = raw.artist.name;
+  const lastfmImageUrl = pickImageUrl(raw.image);
   return {
     name: raw.name,
     artist,
     playCount: Number(raw.playcount),
-    imageUrl: pickImageUrl(raw.image),
+    imageUrl: lastfmImageUrl,
+    imageSource: lastfmImageUrl ? "lastfm" : null,
     lastfmUrl: raw.url,
     spotifySearchUrl: `https://open.spotify.com/search/${encodeURIComponent(`${artist} ${raw.name}`)}`,
   };

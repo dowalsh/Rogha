@@ -109,23 +109,6 @@ export async function GET(
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
-    // Hide from reporter
-    if (user) {
-      const report = await prisma.report.findUnique({
-        where: {
-          contentType_contentId_reporterId: {
-            contentType: "POST",
-            contentId: id,
-            reporterId: user.id,
-          },
-        },
-        select: { id: true },
-      });
-      if (report) {
-        return NextResponse.json({ error: "Not Found" }, { status: 404 });
-      }
-    }
-
     console.log("[GET] Returning post to authorized viewer");
     return NextResponse.json(baseResponse, { status: 200 });
   } catch (error) {
@@ -161,6 +144,12 @@ export async function PUT(
       return NextResponse.json(
         { error: "Invalid audienceType" },
         { status: 400 },
+      );
+    }
+    if (incomingAudience === "ALL_USERS" && user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only admins can post to All Rogha Users" },
+        { status: 403 },
       );
     }
     if (incomingAudience === "CIRCLE" && !incomingCircleId) {

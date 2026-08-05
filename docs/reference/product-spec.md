@@ -45,16 +45,18 @@ The weekly publishing cycle — the core rhythm of the product.
 - A cron job runs **every Sunday at 07:00 UTC** and publishes all currently `SUBMITTED` posts into that week's Edition, regardless of when within the week they were submitted.
 - There is no separate "locked" state — submitting a post is effectively the commitment point; the next Sunday cron will sweep it into publication.
 - Editions support a **reveal gate**: posts are hidden behind a blurred overlay ("N others already opened this week") until the viewer explicitly clicks to open it. This is a ritual/pacing mechanic, not a reciprocity gate — you do **not** need to have posted yourself to open and view an edition.
+- **Weekly Jam** is treated as if it were a post: a compact card (blank author, the viewer's own track art as the thumbnail) appears in a fixed slot after all written posts — never interleaved by recency — on the Edition front page, the Editions listing preview, and the archive list. It shows each opted-in friend's auto-synced top track of the week (via Last.fm, art via Spotify) — passive participation for friends who never write a post. Clicking it opens a dedicated detail page (`/editions/[id]/jam`, mirroring the post reader's layout, read-only — no comments/likes) listing every visible friend's track. Same reveal-gated visibility as the posts above it; pre-publish, Coming Sunday shows only a static "N friends connected" count, not live track data. Full spec: [2026-08-04-weekly-jam-mvp.md](../specs/2026-08-04-weekly-jam-mvp.md).
 
 ### Post
 A single weekly submission, scoped to one audience.
 
 - Lifecycle: `DRAFT → SUBMITTED → PUBLISHED`, or `ARCHIVED` / `REMOVED` (moderation).
-- Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` (admin-only in practice).
-- **Temporal friend gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post's creation. Adding a new friend does not retroactively expose your back-catalog to them.
+- Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` — enforced admin-only server-side (`PUT /api/posts/[id]` rejects a non-admin setting `ALL_USERS`) and hidden from the audience picker for non-admins in the editor.
+- **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. The same rule applies to `CIRCLE`-audience posts against circle-membership `joinedAt`. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
+- A `SUBMITTED` (not-yet-published) post shows a title/thumbnail-only preview to its eligible audience immediately (no temporal gate — see the spec above), but full content stays author-only until it publishes.
 - A content filter runs once, at the moment a post is submitted (`DRAFT → SUBMITTED`) — not on every autosave keystroke.
 - Only the author can edit or delete their own post, at any status (there's no guard today preventing deletion of an already-published post).
-- Comments/likes/reports on a post you've blocked-or-been-blocked-by, or reported, are filtered out of your own view.
+- Comments/likes on a post you've blocked, or reported, are filtered out of your own view (comments/likes inherit their parent post's visibility rules).
 
 ### Comments & likes
 - Comments nest one level deep (top-level + one reply); the server rejects deeper nesting.
@@ -72,8 +74,9 @@ Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
 - In-app notification rows are always created; email/push are conditional on the user's preferences.
 
 ### Blocking & reporting
-- **Block** is one-directional: it only changes what *you* see (the blocked user's content is filtered out of your editions/comments). It does not require mutual consent and doesn't necessarily hide your content from them.
+- **Block** is one-directional: it only changes what *you* see (the blocked user's content is filtered out of your editions/comments). It does not require mutual consent and doesn't necessarily hide your content from them. (The profile page is a documented exception — it hides itself from view if *either* side has blocked the other.)
 - **Report** flags a post or comment for moderation and immediately hides it from the reporter's own view — it does not wait for admin action to do that. One report per user per item (idempotent).
+- Full post-visibility rule set, including how block/report interact with audience/friendship/circle checks: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
 - Admins (Reports tab) can **Remove content** (soft-removes the underlying post/comment and marks the report `ACTIONED`) or **Dismiss** the report. Admins can also directly soft-remove any post or comment outside the report flow.
 
 ### Roles
@@ -84,7 +87,7 @@ Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
 The signed-in home page orients a returning user in priority order and routes them to what they came back for. It replaced an earlier flat, reverse-chronological feed of individual `ActivityEvent`s. Top to bottom: **edition hero → Coming Sunday (nested in the hero) → New buzz → Earlier**.
 
 - **Edition hero** — a single, always-present card for the latest published edition. Its state follows how much of that edition the viewer has read: *not opened* (reveal-moment card, day-dependent copy), *partially read* ("keep reading" with an N-of-M progress indicator, linking to the edition front page rather than a specific post), or *caught up* (quiet card, no CTA). Before any edition exists, it's a first-run invite instead.
-- **Coming Sunday** — nested inside the hero, shown only when at least one post (including the viewer's own) has been submitted for the next edition. It lists those posts with titles visible but hero thumbnails blurred and a lock icon, and nudges the viewer to add their own before the reveal. Hidden entirely when nothing is queued.
+- **Coming Sunday** — nested inside the hero, always present, with three states driven by the viewer's friend graph and this week's submissions: *no friends* (prompts the viewer to add friends, linking to Circles, since there's nothing to queue without a circle), *friends but nothing submitted yet* ("nothing yet" plus a "Start a post" CTA), and *posts queued* (lists submitted posts with titles visible but hero thumbnails blurred and a lock icon, and nudges the viewer to add their own before the reveal if they haven't).
 - **Buzz** — everything below the hero, one row per post (never per event), ordered by most recent activity. **New buzz** is posts with unread activity; **Earlier** is the rest (capped, with "show more"). A post counts as unread when its latest *comment or reply* is newer than the last time the viewer opened it. Likes never count as activity, and newly submitted or published posts don't appear in Buzz at all — the hero owns new content, Buzz owns new conversation. Rows carry no actor names and no comment text; their only job is "is this worth opening?"
 
 ## Auth (summary)

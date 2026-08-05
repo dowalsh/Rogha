@@ -2,17 +2,39 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
+import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 import { shortTimeAgo } from "@/lib/utils";
 import type { ComingNextData } from "@/lib/home";
 
 type ComingSundayProps = {
-  data: Extract<ComingNextData, { visible: true }>;
+  data: ComingNextData;
   collapsed: boolean;
 };
+
+function jamTeaserText(count: number, viewerJamConnected: boolean): string {
+  if (count === 0) {
+    // Nobody's connected yet — if the viewer isn't either, make it a pitch,
+    // not a status report: they could be the first.
+    return viewerJamConnected
+      ? "No friends have connected to The Weekly Jam yet"
+      : "No one's connected to The Weekly Jam yet — be the first!";
+  }
+  return `${count} friend${count === 1 ? "" : "s"} ${count === 1 ? "has" : "have"} connected to The Weekly Jam`;
+}
+
+function JamTeaser({ data }: { data: Extract<ComingNextData, { state: "empty" | "posts" }> }) {
+  return (
+    <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+      <span>{jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}</span>
+      <WeeklyJamInfoDot />
+    </div>
+  );
+}
 
 export function ComingSunday({ data, collapsed }: ComingSundayProps) {
   const router = useRouter();
@@ -35,6 +57,39 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
       setCreating(false);
     }
   };
+
+  if (data.state === "no-friends") {
+    return (
+      <div className="space-y-1">
+        <p className="text-sm font-medium">Coming Sunday.</p>
+        <div className="flex items-center justify-between gap-2 pt-1 text-sm">
+          <span className="text-muted-foreground">
+            Add some friends to start seeing what they're writing.
+          </span>
+          <Button asChild size="sm">
+            <Link href="/circles">Find friends</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.state === "empty") {
+    return (
+      <div className="space-y-1">
+        <p className="text-sm font-medium">Coming Sunday.</p>
+        <div className="flex items-center justify-between gap-2 pt-1 text-sm">
+          <span className="text-muted-foreground">
+            Nothing yet · {data.daysLeft} day{data.daysLeft === 1 ? "" : "s"} left
+          </span>
+          <Button size="sm" onClick={handleStartPost} disabled={creating}>
+            Start a post
+          </Button>
+        </div>
+        <JamTeaser data={data} />
+      </div>
+    );
+  }
 
   if (!expanded) {
     return (
@@ -95,6 +150,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
           </>
         )}
       </div>
+      <JamTeaser data={data} />
     </div>
   );
 }

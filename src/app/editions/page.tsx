@@ -11,8 +11,15 @@ import { Button } from "@/components/ui/button";
 import { EditionsListSkeleton } from "@/components/editions/EditionsListSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
+import { jamPreviewFromRows, type WeeklyJamData } from "@/lib/jam-preview";
+import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 
 // ── Types ───────────────────────────────────────────────────────────────────
+
+// The archive list (getPublishedEditions) sends a lightweight precomputed
+// preview; the rich latest-edition preview (getPublishedEditionById) sends
+// the full row data — these are genuinely different API shapes.
+type WeeklyJamPreview = { hasData: boolean; ownImageUrl: string | null };
 
 type EditionRow = {
   id: string;
@@ -24,6 +31,7 @@ type EditionRow = {
     title?: string | null;
     author?: { id: string; username?: string | null } | null;
   }[];
+  weeklyJam?: WeeklyJamPreview | null;
 };
 
 type FullEdition = {
@@ -43,6 +51,7 @@ type FullEdition = {
     author?: { id: string; username?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;
   }>;
+  weeklyJam?: WeeklyJamData | null;
 };
 
 // ── Grouping helpers ────────────────────────────────────────────────────────
@@ -176,7 +185,7 @@ function WeekRow({ edition }: { edition: EditionRow }) {
       <span className="text-sm font-medium group-hover:underline">
         {formatWeekDate(edition.weekStart)}
       </span>
-      {edition.posts.length > 0 && (
+      {(edition.posts.length > 0 || edition.weeklyJam?.hasData) && (
         <ul className="mt-1 space-y-0.5">
           {edition.posts.map((post) => (
             <li
@@ -187,6 +196,9 @@ function WeekRow({ edition }: { edition: EditionRow }) {
               {post.author?.username ? ` — ${post.author.username}` : ""}
             </li>
           ))}
+          {edition.weeklyJam?.hasData && (
+            <li className="text-xs text-muted-foreground truncate">The Weekly Jam</li>
+          )}
         </ul>
       )}
     </Link>
@@ -285,7 +297,7 @@ function YearSection({
 
 function EditionsArchive({ editions }: { editions: EditionRow[] }) {
   const filtered = useMemo(
-    () => editions.filter((ed) => (ed.posts?.length ?? 0) > 0),
+    () => editions.filter((ed) => (ed.posts?.length ?? 0) > 0 || ed.weeklyJam?.hasData),
     [editions],
   );
 
@@ -351,13 +363,44 @@ function EditionsArchive({ editions }: { editions: EditionRow[] }) {
   );
 }
 
-// ── Latest Edition preview (single-link block) ─────────────────────────────
+// ── Latest Edition preview ──────────────────────────────────────────────────
 
 type FullEditionPost = FullEdition["posts"][number];
 
-function StoryLead({ post }: { post: FullEditionPost }) {
+// The Jam is appended as one more item after real posts (never interleaved)
+// — same treatment as src/components/Frontpage.tsx. Each item links itself
+// (rather than one shared outer Link) so the Jam item can point at its own
+// detail page and carry its own info dot, matching Frontpage.tsx.
+type PreviewItem =
+  | { kind: "post"; post: FullEditionPost }
+  | { kind: "jam"; editionId: string; ownImageUrl: string | null };
+
+function StoryLead({ item, editionId }: { item: PreviewItem; editionId: string }) {
+  if (item.kind === "jam") {
+    return (
+      <div className="relative border-b pb-8">
+        <Link href={`/editions/${editionId}/jam`} className="group block">
+          {item.ownImageUrl && (
+            <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
+              {/* Spotify/Last.fm-hosted art — plain <img>, not next/image,
+                  since these third-party CDNs aren't in next.config.js's
+                  remotePatterns allowlist. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.ownImageUrl} alt="The Weekly Jam" className="h-full w-full object-cover" />
+            </div>
+          )}
+          <h2 className="text-4xl font-black leading-tight group-hover:underline">The Weekly Jam</h2>
+        </Link>
+        <div className="absolute top-0 right-0">
+          <WeeklyJamInfoDot />
+        </div>
+      </div>
+    );
+  }
+
+  const { post } = item;
   return (
-    <div className="border-b pb-8">
+    <Link href={`/editions/${editionId}`} className="group block border-b pb-8">
       {post.heroImageUrl && (
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
           <Image
@@ -369,19 +412,39 @@ function StoryLead({ post }: { post: FullEditionPost }) {
           />
         </div>
       )}
-      <h2 className="text-4xl font-black leading-tight">
+      <h2 className="text-4xl font-black leading-tight group-hover:underline">
         {post.title ?? "Untitled"}
       </h2>
       {post.author?.username && (
         <p className="mt-2 text-sm text-muted-foreground">{post.author.username}</p>
       )}
-    </div>
+    </Link>
   );
 }
 
-function StoryCard({ post }: { post: FullEditionPost }) {
+function StoryCard({ item, editionId }: { item: PreviewItem; editionId: string }) {
+  if (item.kind === "jam") {
+    return (
+      <div className="relative border bg-card p-3 space-y-2">
+        <Link href={`/editions/${editionId}/jam`} className="group block space-y-2">
+          {item.ownImageUrl && (
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.ownImageUrl} alt="The Weekly Jam" className="h-full w-full object-cover" />
+            </div>
+          )}
+          <h3 className="text-base font-semibold leading-snug group-hover:underline">The Weekly Jam</h3>
+        </Link>
+        <div className="absolute top-1 right-1 z-10">
+          <WeeklyJamInfoDot />
+        </div>
+      </div>
+    );
+  }
+
+  const { post } = item;
   return (
-    <div className="border bg-card p-3 space-y-2">
+    <Link href={`/editions/${editionId}`} className="group block border bg-card p-3 space-y-2">
       {post.heroImageUrl && (
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           <Image
@@ -393,13 +456,13 @@ function StoryCard({ post }: { post: FullEditionPost }) {
           />
         </div>
       )}
-      <h3 className="text-base font-semibold leading-snug">
+      <h3 className="text-base font-semibold leading-snug group-hover:underline">
         {post.title ?? "Untitled"}
       </h3>
       {post.author?.username && (
         <p className="text-xs text-muted-foreground">{post.author.username}</p>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -413,7 +476,15 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
     setTimeout(() => router.push(`/editions/${edition.id}`), 200);
   };
 
-  const [lead, ...rest] = edition.posts;
+  const items: PreviewItem[] = edition.posts.map((post) => ({ kind: "post" as const, post }));
+  if (edition.weeklyJam) {
+    items.push({
+      kind: "jam",
+      editionId: edition.id,
+      ownImageUrl: jamPreviewFromRows(edition.weeklyJam.rows).ownImageUrl,
+    });
+  }
+  const [lead, ...rest] = items;
   const dateLabel = formatWeekDate(edition.weekStart);
 
   return (
@@ -428,37 +499,39 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
           mode="inline"
         />
       )}
-      <Link
-        href={`/editions/${edition.id}`}
-        className={`block group space-y-6 p-6 transition-colors ${
-          showOverlay
-            ? "pointer-events-none"
-            : "hover:border-foreground/40 hover:shadow-sm"
-        }`}
-      >
-        {/* Date + arrow */}
-        <div className="flex items-center justify-between border-b pb-3 font-serif">
+      {/* Each item below links itself (to the edition, or — for the Jam —
+          to its own detail page), rather than one shared outer Link, since
+          nesting an anchor inside an anchor is invalid HTML. */}
+      <div className={`space-y-6 p-6 ${showOverlay ? "pointer-events-none" : ""}`}>
+        <Link
+          href={`/editions/${edition.id}`}
+          className="group flex items-center justify-between border-b pb-3 font-serif hover:text-foreground"
+        >
           <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
           <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-        </div>
+        </Link>
 
-        {edition.posts.length === 0 ? (
+        {items.length === 0 ? (
           <p className="py-8 text-center text-muted-foreground uppercase tracking-widest font-bold text-sm">
             No stories this week
           </p>
         ) : (
           <div className="font-serif space-y-6">
-            {lead && <StoryLead post={lead} />}
+            {lead && <StoryLead item={lead} editionId={edition.id} />}
             {rest.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {rest.map((post) => (
-                  <StoryCard key={post.id} post={post} />
+                {rest.map((item) => (
+                  <StoryCard
+                    key={item.kind === "jam" ? `jam-${item.editionId}` : item.post.id}
+                    item={item}
+                    editionId={edition.id}
+                  />
                 ))}
               </div>
             )}
           </div>
         )}
-      </Link>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
+import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
+import { jamPreviewFromRows, type WeeklyJamRow } from "@/lib/jam-preview";
 
 // Front page posts as they arrive from the Edition page
 type Post = {
@@ -17,6 +19,18 @@ type Post = {
   circle?: { id: string; name: string } | null;
   heroImageUrl?: string | null;
 };
+
+type WeeklyJam = {
+  rows: WeeklyJamRow[];
+  viewerConnected: boolean;
+};
+
+// The Jam is treated as one more item competing for the lead/secondary
+// slots (always appended last, never interleaved) rather than a separate
+// section — see docs/specs/2026-08-04-weekly-jam-mvp.md.
+type FrontpageItem =
+  | { kind: "post"; post: Post }
+  | { kind: "jam"; jam: WeeklyJam; editionId: string };
 
 type FrontpageProps = {
   edition: {
@@ -31,6 +45,7 @@ type FrontpageProps = {
     viewerNames: string[];
   };
   currentUserId?: string | null;
+  weeklyJam?: WeeklyJam | null;
 };
 
 
@@ -56,7 +71,45 @@ function getAuthorName(post: Post): string {
   return post.author?.username ?? "Unknown";
 }
 
-function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+function jamHref(editionId: string): string {
+  return `/editions/${editionId}/jam`;
+}
+
+function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: FrontpageItem; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+  if (item.kind === "jam") {
+    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows);
+    return (
+      <section className="border-b pb-8 relative">
+        <Link href={jamHref(item.editionId)} className="group block w-full">
+          <article className="grid gap-6 transition-shadow duration-200 lg:grid-cols-[2fr,1fr] lg:items-stretch">
+            <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+              {ownImageUrl && (
+                // Spotify/Last.fm-hosted art — plain <img>, not next/image,
+                // since these third-party CDNs aren't (and shouldn't need to
+                // be) in next.config.js's remotePatterns allowlist.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={ownImageUrl}
+                  alt="The Weekly Jam"
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
+            <div className="flex flex-col justify-center">
+              <h2 className="text-3xl font-black leading-tight group-hover:underline">
+                The Weekly Jam
+              </h2>
+            </div>
+          </article>
+        </Link>
+        <div className="absolute top-0 right-0">
+          <WeeklyJamInfoDot />
+        </div>
+      </section>
+    );
+  }
+
+  const { post } = item;
   const authorName = getAuthorName(post);
   const hasImage = Boolean(post.heroImageUrl);
   const isOwn = !!currentUserId && post.author?.id === currentUserId;
@@ -127,7 +180,38 @@ function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post;
   );
 }
 
-function SecondaryStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: FrontpageItem; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+  if (item.kind === "jam") {
+    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows);
+    return (
+      <div className="relative h-full">
+        <Link href={jamHref(item.editionId)} className="group block h-full">
+          <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200">
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+              {ownImageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={ownImageUrl}
+                  alt="The Weekly Jam"
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
+            <div className="mt-2 space-y-2">
+              <h3 className="text-lg font-semibold leading-snug group-hover:underline">
+                The Weekly Jam
+              </h3>
+            </div>
+          </article>
+        </Link>
+        <div className="absolute top-1 right-1 z-10">
+          <WeeklyJamInfoDot />
+        </div>
+      </div>
+    );
+  }
+
+  const { post } = item;
   const authorName = getAuthorName(post);
   const isOwn = !!currentUserId && post.author?.id === currentUserId;
 
@@ -203,7 +287,7 @@ function TertiaryStory({ post }: { post: Post }) {
   );
 }
 
-export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProps) {
+export function Frontpage({ edition, revealProps, currentUserId, weeklyJam }: FrontpageProps) {
   const editionLabel = formatEditionLabel(edition);
   const allPosts = edition.posts ?? [];
 
@@ -227,27 +311,19 @@ export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProp
     setTimeout(() => setRevealed(true), 200);
   };
 
-  if (posts.length === 0) {
-    return (
-      <div className="mx-auto max-w-5xl space-y-8 font-serif">
-        <header className="border-b pb-4 text-center">
-          <h1 className="text-5xl font-black uppercase tracking-wide whitespace-nowrap">
-            {editionLabel}
-          </h1>
-        </header>
-
-        <div className="py-20 text-center text-3xl font-bold uppercase tracking-widest text-muted-foreground">
-          NO STORIES THIS WEEK
-        </div>
-      </div>
-    );
+  // The Jam is always the last item, if present — see FrontpageItem above.
+  const items: FrontpageItem[] = posts.map((post) => ({ kind: "post" as const, post }));
+  if (weeklyJam) {
+    items.push({ kind: "jam", jam: weeklyJam, editionId: edition.id });
   }
+  const [lead, ...secondary] = items;
 
-  // const [lead, ...rest] = posts;
-  // const secondary = rest.slice(0, 3);
-  // const others = rest.slice(3);
-  const [lead, ...rest] = posts;
-  const secondary = rest;
+  function itemId(item: FrontpageItem): string {
+    return item.kind === "jam" ? `jam-${item.editionId}` : item.post.id;
+  }
+  function itemAuthorId(item: FrontpageItem): string {
+    return item.kind === "jam" ? "" : item.post.author?.id ?? "";
+  }
 
   return (
     <>
@@ -263,35 +339,45 @@ export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProp
     <div className="mx-auto max-w-5xl space-y-8 font-serif">
       {/* Masthead */}
       <header className="border-b pb-4 text-center">
-        <h1 className="text-5xl font-black uppercase tracking-wide">
+        <h1 className="text-3xl font-black uppercase tracking-wide sm:text-5xl sm:whitespace-nowrap">
           {editionLabel}
         </h1>
       </header>
 
-      {/* Lead story */}
-      {lead && <LeadStory post={lead} currentUserId={currentUserId} onReported={() => handleReported(lead.id)} onBlocked={() => handleBlocked(lead.author?.id ?? "")} />}
+      {items.length === 0 ? (
+        <div className="py-20 text-center text-3xl font-bold uppercase tracking-widest text-muted-foreground">
+          NO STORIES THIS WEEK
+        </div>
+      ) : (
+        <>
+          {/* Lead story */}
+          {lead && (
+            <LeadStory
+              item={lead}
+              currentUserId={currentUserId}
+              onReported={() => handleReported(itemId(lead))}
+              onBlocked={() => handleBlocked(itemAuthorId(lead))}
+            />
+          )}
 
-      {/* Secondary grid: 2–3 stories underneath the lead */}
-      {secondary.length > 0 && (
-        <section className="border-b pb-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {secondary.map((post) => (
-              <SecondaryStory key={post.id} post={post} currentUserId={currentUserId} onReported={() => handleReported(post.id)} onBlocked={() => handleBlocked(post.author?.id ?? "")} />
-            ))}
-          </div>
-        </section>
+          {/* Secondary grid: 2–3 stories underneath the lead */}
+          {secondary.length > 0 && (
+            <section className="border-b pb-6">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {secondary.map((item) => (
+                  <SecondaryStory
+                    key={itemId(item)}
+                    item={item}
+                    currentUserId={currentUserId}
+                    onReported={() => handleReported(itemId(item))}
+                    onBlocked={() => handleBlocked(itemAuthorId(item))}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
-
-      {/* Remaining stories as a vertical list, like bottom-of-front-page teasers */}
-      {/* {others.length > 0 && (
-        <section className="pb-10">
-          <ul className="border bg-card px-3">
-            {others.map((post) => (
-              <TertiaryStory key={post.id} post={post} />
-            ))}
-          </ul>
-        </section>
-      )} */}
     </div>
     </>
   );

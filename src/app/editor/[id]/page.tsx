@@ -140,7 +140,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     "/api/circles",
   );
 
-  const { data: me } = useSWR<{ signoffEmoji?: string | null }>("/api/me");
+  const { data: me } = useSWR<{ signoffEmoji?: string | null; isAdmin?: boolean }>("/api/me");
+  const isAdmin = me?.isAdmin ?? false;
 
   const isShareable = status === "PUBLISHED";
 
@@ -414,21 +415,23 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
             All Friends
           </label>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="audience"
-              value="ALL_USERS"
-              checked={audienceType === "ALL_USERS"}
-              onChange={() => {
-                setAudienceType("ALL_USERS");
-                setCircleId(null);
-                setSaved(false);
-              }}
-              disabled={editorLocked}
-            />
-            All Rogha Users
-          </label>
+          {isAdmin && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="audience"
+                value="ALL_USERS"
+                checked={audienceType === "ALL_USERS"}
+                onChange={() => {
+                  setAudienceType("ALL_USERS");
+                  setCircleId(null);
+                  setSaved(false);
+                }}
+                disabled={editorLocked}
+              />
+              All Rogha Users
+            </label>
+          )}
 
           <label className="flex items-center gap-2 text-sm">
             <input

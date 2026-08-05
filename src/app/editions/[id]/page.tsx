@@ -66,16 +66,17 @@ export default async function EditionPage({
     editionData.title ?? `Week of ${editionData.weekStart.slice(0, 10)}`;
   return (
     <div className="space-y-4">
-      <Link href="/editions">
-        <Button
-          variant="ghost"
-          className="text-muted-foreground"
-          title="Back to editions"
-        >
+      <Button
+        variant="ghost"
+        className="text-muted-foreground"
+        title="Back to editions"
+        asChild
+      >
+        <Link href="/editions">
           <Newspaper className="h-4 w-4 mr-2" />
           all editions
-        </Button>
-      </Link>
+        </Link>
+      </Button>
 
       <Frontpage
         edition={editionData}
@@ -85,6 +86,7 @@ export default async function EditionPage({
           viewerNames: edition.viewerNames,
         }}
         currentUserId={user.id}
+        weeklyJam={edition.weeklyJam}
       />
     </div>
   );

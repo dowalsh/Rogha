@@ -30,40 +30,87 @@ automatically; Rogha only ever *reads* Last.fm, which needs nothing but an
 API key and a username (no per-user OAuth, no quota review). Spotify never
 talks to Rogha. See the earlier exploration notes for the full reasoning.
 
-## Setup steps for Dylan (do these first)
+## Setup steps
 
-These are one-time, done in the Last.fm UI and your env — the agent building
-the feature can't do them for you.
+### What Last.fm actually is (read this first if you're unfamiliar)
 
-1. **Last.fm account.** If you don't have one, create it at
-   <https://www.last.fm/join>. Note your **username** (it's in your profile
-   URL: `last.fm/user/<username>`).
-2. **Connect Spotify → Last.fm.** Go to
-   <https://www.last.fm/settings/applications> and connect Spotify. From then
-   on, everything you play on Spotify (any device) scrobbles to Last.fm.
-   Only *new* listens scrobble — there's no need to backfill for this test.
-3. **Make scrobbles readable.** In
-   <https://www.last.fm/settings/privacy>, ensure "Hide recent listening
-   information" is **off**. API-key reads only see public listening data.
-4. **Create a Last.fm API key.** Apply at
-   <https://www.last.fm/api/account/create>. You'll get an **API key** (and a
-   shared secret — not needed here, reads are unauthenticated). This is
-   instant, no review.
-5. **Generate some data.** Play a handful of tracks on Spotify so there's
-   something in the last 7 days when you hit the button. Scrobbles appear
-   within seconds, but give it a few plays so a clear #1 exists.
-6. **Hand the agent two values:** `LASTFM_API_KEY` and your Last.fm
-   username. See [Config](#config).
+[Last.fm](https://www.last.fm) is an old (2002!) music website that does one
+thing relevant here: it keeps a public log of what you listen to, called
+**"scrobbling."** You connect a music player you already use — Spotify,
+Apple Music, whatever — to your Last.fm account once, and from then on every
+song you play gets silently reported to Last.fm and added to your listening
+history. That history is readable through Last.fm's own free, public API:
+give it a username, and it'll tell you what someone's top tracks were over
+some time window.
 
-Sanity check you can do yourself before any code exists — paste this in a
-browser (replace the two values):
+That's the entire reason Rogha uses it. **Spotify's own API can't answer
+"what was my top track this week"** — it has no weekly window, and (see
+[Why Last.fm and not Spotify directly](#why-last.fm-and-not-spotify-directly)
+above) Spotify's 2026 developer-access rules make calling it for this kind of
+per-user data impractical for a small app anyway. Last.fm sidesteps both
+problems: Spotify already scrobbles to it automatically, so Rogha only has to
+*read* Last.fm's API — no login, no per-user permission screen, nothing to
+build on Spotify's side at all.
+
+**Two separate identities are involved, don't mix them up:**
+- **Your Last.fm *account*** — created once, holds your listening history.
+  This is what supplies the **username** each connected person needs (see
+  below).
+- **A Last.fm *API key*** — a separate, one-time credential that lets
+  Rogha's server *read* Last.fm's data at all. This is not a personal
+  account and isn't tied to any one listener; it's configured once as
+  `LASTFM_API_KEY` and shared by every user's reads.
+
+### One-time setup (whoever is standing up the feature — an env var, done once)
+
+1. **Create a Last.fm account**, if you don't have one already:
+   <https://www.last.fm/join>.
+2. **Create a Last.fm API key.** Go to
+   <https://www.last.fm/api/account/create> and fill in the short form (app
+   name/description can be anything — this isn't reviewed or public-facing).
+   You'll immediately get an **API key** (a long string of letters/numbers)
+   and a "shared secret" — ignore the secret, it's only needed for *writing*
+   to Last.fm, and this feature only ever reads. Put the API key in
+   `.env`/`.env.local` and Vercel as `LASTFM_API_KEY` — this is the one
+   value that needs real infrastructure setup; everything below is
+   per-listener and doesn't touch env vars or code.
+
+### Per-listener setup (anyone who wants their music to show up — no env vars, no code)
+
+Each person doing this needs their own Last.fm account (step 1 above, if they
+don't have one) plus:
+
+1. **Connect your music player to Last.fm ("scrobbling").** Go to
+   <https://www.last.fm/settings/applications> and connect Spotify (or
+   whichever service you use — Last.fm supports most). Once connected, every
+   track you play from then on gets logged automatically, on any device, with
+   no further action. **Only new listens scrobble** — there's nothing to
+   "backfill" or import from before you connected.
+2. **Make sure your listening history is publicly readable.** In
+   <https://www.last.fm/settings/privacy>, confirm "Hide recent listening
+   information" is **off**. The API can only ever see *public* listening
+   data — if this is on, reads come back empty even though scrobbling is
+   working.
+3. **Play some music.** Scrobbles land within seconds of a track finishing,
+   but play a handful of songs so there's a clear "top track," not a
+   three-way tie from one listen each.
+4. **Find your username** — it's in your profile URL, `last.fm/user/<username>`.
+   For the admin spike, hand this to whoever configured `LASTFM_API_KEY`
+   (see [Config](#config)); for the real Weekly Jam feature, enter it
+   directly in **Settings → Connect your Music** — no env var, no deploy.
+
+### Sanity check
+
+You can confirm the whole pipeline works, before touching any Rogha code or
+UI, by pasting this into a browser with your own two values filled in:
 
 ```
 https://ws.audioscrobbler.com/2.0/?method=user.gettoptracks&user=YOUR_USERNAME&period=7day&limit=1&api_key=YOUR_API_KEY&format=json
 ```
 
-If that returns a track, the whole pipeline works and the button is just a
-wrapper around it.
+If that returns a track (JSON with a `toptracks.track` entry), everything is
+wired correctly — scrobbling, privacy, and the API key are all working — and
+the button/card in Rogha is just a wrapper around this exact call.
 
 ## Scope
 
@@ -199,6 +246,16 @@ Using an env var for the username (rather than a `User` field) keeps v1 free
 of schema changes. The real feature moves this to `User.lastfmUsername` per
 account; the env value goes away then.
 
+Two more, for the Spotify album-art resolver (optional — if unset, the route
+silently falls back to Last.fm's image):
+
+- `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` — a Spotify app's Client
+  Credentials flow keys (app-only auth, no per-user login/consent). Create
+  one at <https://developer.spotify.com/dashboard>: "Create app," any name/
+  description, any placeholder Redirect URI (required by the form but unused
+  by this flow), Web API checked. Copy the Client ID and Client Secret into
+  `.env`/`.env.local` and Vercel.
+
 ## Compliance (Last.fm API ToS)
 
 Not legal advice — but here's how this maps to the
@@ -226,8 +283,16 @@ past them:**
    Last.fm, and deep-link correctly: profile info → `last.fm/user/<username>`,
    track info → `last.fm/music/<artist>/_/<track>`. The track link exists in
    the v1 card; the AudioScrobbler button is the missing piece.
-3. **Album art (§5.1.8).** Source cover art from the Spotify-link resolver, or
-   omit it — don't serve Last.fm image URLs in the public feed.
+3. **Album art (§5.1.8).** ~~Source cover art from the Spotify-link
+   resolver, or omit it — don't serve Last.fm image URLs in the public
+   feed.~~ **Done** — `src/lib/spotify.ts` resolves album art via Spotify's
+   Search API (Client Credentials flow) and the route prefers it over
+   Last.fm's image (`imageSource: "spotify" | "lastfm" | null` on the
+   response, so the UI/logs can tell which source served a given card).
+   Falls back to the Last.fm image if Spotify isn't configured or has no
+   match for the track — this admin screen is still fine either way per the
+   v1 compliance note above, but the fallback is now the *rare* path instead
+   of the only path.
 
 Also §2.7's "public pages… approved by Last.fm in writing" — rarely enforced,
 but it exists; the `partners@last.fm` contact covers it.

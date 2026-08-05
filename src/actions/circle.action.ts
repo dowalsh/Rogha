@@ -70,6 +70,7 @@ export async function getCirclesForUser() {
               },
             },
             posts: {
+              where: { status: "PUBLISHED" },
               select: {
                 id: true,
                 title: true,
@@ -105,7 +106,7 @@ export async function addMemberToCircle({
 
     // Verify current user is part of the circle
     const isMember = await prisma.circleMember.findFirst({
-      where: { circleId, userId: currentUserId },
+      where: { circleId, userId: currentUserId, status: "JOINED" },
     });
     if (!isMember) throw new Error("You are not a member of this circle");
 
@@ -129,7 +130,7 @@ export async function addMemberToCircle({
           userId: friendId,
         },
       },
-      update: { status: "JOINED" },
+      update: { status: "JOINED", joinedAt: new Date() },
       create: {
         circleId,
         userId: friendId,
@@ -155,7 +156,7 @@ export async function removeMemberFromCircle(
     if (!currentUserId) throw new Error("Not authenticated");
 
     const isMember = await prisma.circleMember.findFirst({
-      where: { circleId, userId: currentUserId },
+      where: { circleId, userId: currentUserId, status: "JOINED" },
     });
     if (!isMember) throw new Error("You are not a member of this circle");
 
@@ -193,7 +194,7 @@ export async function getCircleById(circleId: string) {
     const circle = await prisma.circle.findFirst({
       where: {
         id: circleId,
-        members: { some: { userId } },
+        members: { some: { userId, status: "JOINED" } },
       },
       include: {
         members: {
@@ -204,6 +205,7 @@ export async function getCircleById(circleId: string) {
           },
         },
         posts: {
+          where: { status: "PUBLISHED" },
           include: {
             author: {
               select: { id: true, username: true },

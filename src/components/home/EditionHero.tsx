@@ -25,7 +25,6 @@ function ComingSundaySlot({
   comingNext: ComingNextData;
   collapsed: boolean;
 }) {
-  if (!comingNext.visible) return null;
   return (
     <div className="border-t pt-3">
       <ComingSunday data={comingNext} collapsed={collapsed} />

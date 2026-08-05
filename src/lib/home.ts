@@ -12,6 +12,7 @@ import {
   getPublishedEditionById,
   plannedPublishAt,
 } from "@/lib/editions";
+import { getJamConnectedFriendCount } from "@/lib/jam";
 import { getWeekStartUTC } from "@/lib/utils";
 
 // --- hero -------------------------------------------------------------
@@ -93,13 +94,23 @@ export type ComingNextPost = {
 };
 
 export type ComingNextData =
-  | { visible: false }
+  | { visible: true; state: "no-friends" }
   | {
       visible: true;
+      state: "empty";
+      daysLeft: number;
+      jamConnectedCount: number;
+      viewerJamConnected: boolean;
+    }
+  | {
+      visible: true;
+      state: "posts";
       posts: ComingNextPost[];
       hasSubmitted: boolean;
       friendsSubmittedCount: number;
       daysLeft: number;
+      jamConnectedCount: number;
+      viewerJamConnected: boolean;
     };
 
 function computeDaysLeft(now: Date): number {
@@ -129,7 +140,26 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     },
   });
 
-  if (submitted.length === 0) return { visible: false };
+  if (friendIds.length === 0) return { visible: true, state: "no-friends" };
+
+  const [jamConnectedCount, viewer] = await Promise.all([
+    getJamConnectedFriendCount(friendIds),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { jamEnabled: true, lastfmUsername: true },
+    }),
+  ]);
+  const viewerJamConnected = Boolean(viewer?.jamEnabled && viewer?.lastfmUsername);
+
+  if (submitted.length === 0) {
+    return {
+      visible: true,
+      state: "empty",
+      daysLeft: computeDaysLeft(new Date()),
+      jamConnectedCount,
+      viewerJamConnected,
+    };
+  }
 
   const own = submitted.filter((p) => p.authorId === userId);
   const others = submitted.filter((p) => p.authorId !== userId);
@@ -137,6 +167,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
 
   return {
     visible: true,
+    state: "posts",
     posts: ordered.map((p) => ({
       id: p.id,
       title: p.title ?? "Untitled post",
@@ -149,6 +180,8 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     hasSubmitted: own.length > 0,
     friendsSubmittedCount: others.length,
     daysLeft: computeDaysLeft(new Date()),
+    jamConnectedCount,
+    viewerJamConnected,
   };
 }
 

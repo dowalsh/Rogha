@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { shortTimeAgo } from "@/lib/utils";
 import type { ComingNextData } from "@/lib/home";
 
 type ComingSundayProps = {
-  data: Extract<ComingNextData, { visible: true }>;
+  data: ComingNextData;
   collapsed: boolean;
 };
 
@@ -35,6 +36,38 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
       setCreating(false);
     }
   };
+
+  if (data.state === "no-friends") {
+    return (
+      <div className="space-y-1">
+        <p className="text-sm font-medium">Coming Sunday.</p>
+        <div className="flex items-center justify-between gap-2 pt-1 text-sm">
+          <span className="text-muted-foreground">
+            Add some friends to start seeing what they're writing.
+          </span>
+          <Button asChild size="sm">
+            <Link href="/circles">Find friends</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.state === "empty") {
+    return (
+      <div className="space-y-1">
+        <p className="text-sm font-medium">Coming Sunday.</p>
+        <div className="flex items-center justify-between gap-2 pt-1 text-sm">
+          <span className="text-muted-foreground">
+            Nothing yet · {data.daysLeft} day{data.daysLeft === 1 ? "" : "s"} left
+          </span>
+          <Button size="sm" onClick={handleStartPost} disabled={creating}>
+            Start a post
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!expanded) {
     return (

@@ -199,6 +199,16 @@ Using an env var for the username (rather than a `User` field) keeps v1 free
 of schema changes. The real feature moves this to `User.lastfmUsername` per
 account; the env value goes away then.
 
+Two more, for the Spotify album-art resolver (optional — if unset, the route
+silently falls back to Last.fm's image):
+
+- `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` — a Spotify app's Client
+  Credentials flow keys (app-only auth, no per-user login/consent). Create
+  one at <https://developer.spotify.com/dashboard>: "Create app," any name/
+  description, any placeholder Redirect URI (required by the form but unused
+  by this flow), Web API checked. Copy the Client ID and Client Secret into
+  `.env`/`.env.local` and Vercel.
+
 ## Compliance (Last.fm API ToS)
 
 Not legal advice — but here's how this maps to the
@@ -226,8 +236,16 @@ past them:**
    Last.fm, and deep-link correctly: profile info → `last.fm/user/<username>`,
    track info → `last.fm/music/<artist>/_/<track>`. The track link exists in
    the v1 card; the AudioScrobbler button is the missing piece.
-3. **Album art (§5.1.8).** Source cover art from the Spotify-link resolver, or
-   omit it — don't serve Last.fm image URLs in the public feed.
+3. **Album art (§5.1.8).** ~~Source cover art from the Spotify-link
+   resolver, or omit it — don't serve Last.fm image URLs in the public
+   feed.~~ **Done** — `src/lib/spotify.ts` resolves album art via Spotify's
+   Search API (Client Credentials flow) and the route prefers it over
+   Last.fm's image (`imageSource: "spotify" | "lastfm" | null` on the
+   response, so the UI/logs can tell which source served a given card).
+   Falls back to the Last.fm image if Spotify isn't configured or has no
+   match for the track — this admin screen is still fine either way per the
+   v1 compliance note above, but the fallback is now the *rare* path instead
+   of the only path.
 
 Also §2.7's "public pages… approved by Last.fm in writing" — rarely enforced,
 but it exists; the `partners@last.fm` contact covers it.

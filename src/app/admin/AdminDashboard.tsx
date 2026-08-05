@@ -530,6 +530,7 @@ type LastfmTrack = {
   artist: string;
   playCount: number;
   imageUrl: string | null;
+  imageSource: "spotify" | "lastfm" | null;
   lastfmUrl: string;
   spotifySearchUrl: string;
 };
@@ -590,6 +591,11 @@ function MusicTab() {
             <p className="font-medium">{track.name}</p>
             <p className="text-sm text-muted-foreground">{track.artist}</p>
             <p className="text-xs text-muted-foreground">{track.playCount} plays this week</p>
+            {track.imageSource && (
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                Art: {track.imageSource === "spotify" ? "Spotify" : "Last.fm"}
+              </p>
+            )}
             <div className="flex gap-3 pt-1 text-xs">
               <a href={track.lastfmUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
                 Last.fm

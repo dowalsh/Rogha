@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { getTopTrackLastWeek } from "@/lib/lastfm";
+import { resolveSpotifyAlbumImage } from "@/lib/spotify";
 
 export async function GET() {
   const { error } = await requireAdmin();
@@ -19,5 +20,18 @@ export async function GET() {
     return NextResponse.json({ error: "LASTFM_ERROR" }, { status: 502 });
   }
 
-  return NextResponse.json({ track: result.track });
+  const track = result.track;
+  if (track) {
+    // Prefer Spotify's cover art — Last.fm's is excluded from its API
+    // licence (see the spec's Compliance section). Best-effort: falls back
+    // to the Last.fm image already on the track if Spotify has no match or
+    // isn't configured.
+    const spotifyImageUrl = await resolveSpotifyAlbumImage(track.artist, track.name);
+    if (spotifyImageUrl) {
+      track.imageUrl = spotifyImageUrl;
+      track.imageSource = "spotify";
+    }
+  }
+
+  return NextResponse.json({ track });
 }

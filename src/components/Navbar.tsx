@@ -54,12 +54,11 @@ function Navbar() {
       <div className="max-w-7xl mx-auto px-4">
         {/* Desktop row: logo left, nav right */}
         <div className="hidden md:flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="relative block h-12 w-32 shrink-0">
             <Image
               src="/logo.png"
               alt="Rogha Logo"
-              width={120}
-              height={60}
+              fill
               className="object-contain"
               priority
             />
@@ -88,13 +87,15 @@ function Navbar() {
             )}
           </div>
 
-          <Link href="/" className="flex items-center justify-self-center">
+          <Link
+            href="/"
+            className="relative block h-9 w-24 shrink-0 justify-self-center"
+          >
             <Image
               src="/logo.png"
               alt="Rogha Logo"
-              width={120}
-              height={60}
-              className="h-10 w-28 object-cover"
+              fill
+              className="object-contain"
               priority
             />
           </Link>

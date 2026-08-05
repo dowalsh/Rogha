@@ -344,7 +344,7 @@ export function Frontpage({ edition, revealProps, currentUserId, weeklyJam }: Fr
     <div className="mx-auto max-w-5xl space-y-8 font-serif">
       {/* Masthead */}
       <header className="border-b pb-4 text-center">
-        <h1 className="text-5xl font-black uppercase tracking-wide whitespace-nowrap">
+        <h1 className="text-3xl font-black uppercase tracking-wide sm:text-5xl sm:whitespace-nowrap">
           {editionLabel}
         </h1>
       </header>

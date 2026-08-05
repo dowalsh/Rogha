@@ -130,7 +130,7 @@ export async function addMemberToCircle({
           userId: friendId,
         },
       },
-      update: { status: "JOINED" },
+      update: { status: "JOINED", joinedAt: new Date() },
       create: {
         circleId,
         userId: friendId,

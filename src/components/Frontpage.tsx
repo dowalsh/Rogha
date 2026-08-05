@@ -85,13 +85,14 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
           <article className="grid gap-6 transition-shadow duration-200 lg:grid-cols-[2fr,1fr] lg:items-stretch">
             <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
               {ownImageUrl && (
-                <Image
+                // Spotify/Last.fm-hosted art — plain <img>, not next/image,
+                // since these third-party CDNs aren't (and shouldn't need to
+                // be) in next.config.js's remotePatterns allowlist.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={ownImageUrl}
                   alt="Weekly Jam"
-                  fill
-                  sizes="(min-width: 1024px) 640px, 100vw"
-                  className="object-cover"
-                  priority
+                  className="h-full w-full object-cover"
                 />
               )}
             </div>
@@ -191,12 +192,11 @@ function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: 
           <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200">
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
               {ownImageUrl && (
-                <Image
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={ownImageUrl}
                   alt="Weekly Jam"
-                  fill
-                  sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
-                  className="object-cover"
+                  className="h-full w-full object-cover"
                 />
               )}
             </div>

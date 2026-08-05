@@ -380,13 +380,11 @@ function StoryLead({ item }: { item: PreviewItem }) {
       <div className="border-b pb-8">
         {item.ownImageUrl && (
           <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
-            <Image
-              src={item.ownImageUrl}
-              alt="Weekly Jam"
-              fill
-              sizes="(min-width: 1024px) 640px, 100vw"
-              className="object-cover"
-            />
+            {/* Spotify/Last.fm-hosted art — plain <img>, not next/image,
+                since these third-party CDNs aren't in next.config.js's
+                remotePatterns allowlist. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.ownImageUrl} alt="Weekly Jam" className="h-full w-full object-cover" />
           </div>
         )}
         <h2 className="text-4xl font-black leading-tight">Weekly Jam</h2>
@@ -424,13 +422,8 @@ function StoryCard({ item }: { item: PreviewItem }) {
       <div className="border bg-card p-3 space-y-2">
         {item.ownImageUrl && (
           <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-            <Image
-              src={item.ownImageUrl}
-              alt="Weekly Jam"
-              fill
-              sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
-              className="object-cover"
-            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.ownImageUrl} alt="Weekly Jam" className="h-full w-full object-cover" />
           </div>
         )}
         <h3 className="text-base font-semibold leading-snug">Weekly Jam</h3>

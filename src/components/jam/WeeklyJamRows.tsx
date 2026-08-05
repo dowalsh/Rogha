@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Check } from "lucide-react";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
 import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
@@ -10,12 +11,22 @@ type WeeklyJamRowsProps = {
   viewerConnected: boolean;
 };
 
-function ConnectButton() {
+// Always rendered — never hidden — but reflects connection state: an active
+// CTA when not connected, a passive status line once connected.
+function ConnectButton({ viewerConnected }: { viewerConnected: boolean }) {
+  if (viewerConnected) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Check className="h-4 w-4" />
+        Music connected
+      </span>
+    );
+  }
   return (
     <WeeklyJamExplainer
       trigger={
         <Button variant="outline" size="sm">
-          Connect your Music
+          Connect Music
         </Button>
       }
     />
@@ -70,15 +81,13 @@ export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          No friends have connected their Jam yet!
+          No friends have connected to The Weekly Jam yet!
         </p>
       )}
 
-      {!viewerConnected && (
-        <div className="pt-1">
-          <ConnectButton />
-        </div>
-      )}
+      <div className="pt-1">
+        <ConnectButton viewerConnected={viewerConnected} />
+      </div>
 
       {rows.length > 0 && (
         <p className="pt-1 text-[10px] text-muted-foreground">

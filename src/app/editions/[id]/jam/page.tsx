@@ -5,8 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
 import { WeeklyJamRows } from "@/components/jam/WeeklyJamRows";
-import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
-import { NewBadge } from "@/components/ui/new-badge";
+import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +36,8 @@ export default async function WeeklyJamPage({
 
       <header className="space-y-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold leading-tight">Weekly Jam</h1>
-          {!viewerConnected && <WeeklyJamExplainer trigger={<NewBadge />} />}
+          <h1 className="text-2xl font-semibold leading-tight">The Weekly Jam</h1>
+          <WeeklyJamInfoDot />
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{editionLabel}</span>

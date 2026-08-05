@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/Spinner";
 import { SettingsSkeleton } from "@/components/settings/SettingsSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
-import { Check, Info } from "lucide-react";
+import { Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { mutate } from "swr";
-import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
+import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 
 type Prefs = {
   emailEnabled: boolean;
@@ -201,17 +201,7 @@ export function ProfileSettingsTab() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-1.5">
             <CardTitle className="text-base">Connect your Music</CardTitle>
-            <WeeklyJamExplainer
-              trigger={
-                <button
-                  type="button"
-                  aria-label="What is Weekly Jam?"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Info className="h-4 w-4" />
-                </button>
-              }
-            />
+            <WeeklyJamInfoDot />
           </div>
           {jamSaveStatus === "saving" && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -249,7 +239,7 @@ export function ProfileSettingsTab() {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-sm">Show my Weekly Jam</span>
+                <span className="text-sm">Show me in The Weekly Jam</span>
                 <Switch
                   checked={jam.jamEnabled}
                   disabled={!jam.lastfmUsername}

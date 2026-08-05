@@ -6,8 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
-import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
-import { NewBadge } from "@/components/ui/new-badge";
+import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 import { jamPreviewFromRows, type WeeklyJamRow } from "@/lib/jam-preview";
 
 // Front page posts as they arrive from the Edition page
@@ -91,23 +90,21 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={ownImageUrl}
-                  alt="Weekly Jam"
+                  alt="The Weekly Jam"
                   className="h-full w-full object-cover"
                 />
               )}
             </div>
             <div className="flex flex-col justify-center">
               <h2 className="text-3xl font-black leading-tight group-hover:underline">
-                Weekly Jam
+                The Weekly Jam
               </h2>
             </div>
           </article>
         </Link>
-        {!item.jam.viewerConnected && (
-          <div className="absolute top-0 right-0">
-            <WeeklyJamExplainer trigger={<NewBadge />} />
-          </div>
-        )}
+        <div className="absolute top-0 right-0">
+          <WeeklyJamInfoDot />
+        </div>
       </section>
     );
   }
@@ -195,23 +192,21 @@ function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: 
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={ownImageUrl}
-                  alt="Weekly Jam"
+                  alt="The Weekly Jam"
                   className="h-full w-full object-cover"
                 />
               )}
             </div>
             <div className="mt-2 space-y-2">
               <h3 className="text-lg font-semibold leading-snug group-hover:underline">
-                Weekly Jam
+                The Weekly Jam
               </h3>
             </div>
           </article>
         </Link>
-        {!item.jam.viewerConnected && (
-          <div className="absolute top-1 right-1 z-10">
-            <WeeklyJamExplainer trigger={<NewBadge />} />
-          </div>
-        )}
+        <div className="absolute top-1 right-1 z-10">
+          <WeeklyJamInfoDot />
+        </div>
       </div>
     );
   }

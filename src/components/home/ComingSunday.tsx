@@ -7,8 +7,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
-import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
-import { NewBadge } from "@/components/ui/new-badge";
+import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 import { shortTimeAgo } from "@/lib/utils";
 import type { ComingNextData } from "@/lib/home";
 
@@ -17,16 +16,22 @@ type ComingSundayProps = {
   collapsed: boolean;
 };
 
-function jamTeaserText(count: number): string {
-  if (count === 0) return "No friends have connected their Weekly Jam yet";
-  return `${count} friend${count === 1 ? "" : "s"} ${count === 1 ? "has" : "have"} connected their Weekly Jam`;
+function jamTeaserText(count: number, viewerJamConnected: boolean): string {
+  if (count === 0) {
+    // Nobody's connected yet — if the viewer isn't either, make it a pitch,
+    // not a status report: they could be the first.
+    return viewerJamConnected
+      ? "No friends have connected to The Weekly Jam yet"
+      : "No one's connected to The Weekly Jam yet — be the first!";
+  }
+  return `${count} friend${count === 1 ? "" : "s"} ${count === 1 ? "has" : "have"} connected to The Weekly Jam`;
 }
 
 function JamTeaser({ data }: { data: Extract<ComingNextData, { state: "empty" | "posts" }> }) {
   return (
     <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-      <span>{jamTeaserText(data.jamConnectedCount)}</span>
-      {!data.viewerJamConnected && <WeeklyJamExplainer trigger={<NewBadge />} />}
+      <span>{jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}</span>
+      <WeeklyJamInfoDot />
     </div>
   );
 }

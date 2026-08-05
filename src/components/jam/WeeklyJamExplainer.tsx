@@ -21,7 +21,7 @@ export function WeeklyJamExplainer({ trigger }: { trigger: React.ReactNode }) {
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Weekly Jam</DialogTitle>
+          <DialogTitle>The Weekly Jam</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3 text-sm text-muted-foreground">
@@ -30,7 +30,7 @@ export function WeeklyJamExplainer({ trigger }: { trigger: React.ReactNode }) {
             For a lot of people - thats music.
           </p>
           <p>
-            introducing the Weekly Jam. Every week - see a top track from each of your friends.
+            introducing The Weekly Jam. Every week - see a top track from each of your friends.
           </p>
           <p>
             to join in - you need to connect your music.
@@ -58,13 +58,13 @@ export function WeeklyJamExplainer({ trigger }: { trigger: React.ReactNode }) {
             and then just add your last.fm username to rogha in settings.
           </p>
           <p>
-            then - Weekly Jam will auto-sync every week to show your top track!
+            then - The Weekly Jam will auto-sync every week to show your top track!
           </p>
         </div>
 
         <DialogFooter>
           <Button asChild>
-            <Link href="/settings">Connect your Music</Link>
+            <Link href="/settings">Connect Music</Link>
           </Button>
         </DialogFooter>
       </DialogContent>

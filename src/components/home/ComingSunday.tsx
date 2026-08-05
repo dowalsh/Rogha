@@ -27,9 +27,15 @@ function jamTeaserText(count: number, viewerJamConnected: boolean): string {
   return `${count} friend${count === 1 ? "" : "s"} ${count === 1 ? "has" : "have"} connected to The Weekly Jam`;
 }
 
-function JamTeaser({ data }: { data: Extract<ComingNextData, { state: "empty" | "posts" }> }) {
+function JamTeaser({
+  data,
+  className,
+}: {
+  data: Extract<ComingNextData, { state: "empty" | "posts" }>;
+  className?: string;
+}) {
   return (
-    <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+    <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className ?? ""}`}>
       <span>{jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}</span>
       <WeeklyJamInfoDot />
     </div>
@@ -78,6 +84,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
     return (
       <div className="space-y-1">
         <p className="text-sm font-medium">Coming Sunday.</p>
+        <JamTeaser data={data} className="pt-1" />
         <div className="flex items-center justify-between gap-2 pt-1 text-sm">
           <span className="text-muted-foreground">
             Nothing yet · {data.daysLeft} day{data.daysLeft === 1 ? "" : "s"} left
@@ -86,7 +93,6 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
             Start a post
           </Button>
         </div>
-        <JamTeaser data={data} />
       </div>
     );
   }
@@ -131,6 +137,10 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
             href={p.isOwn ? `/editor/${p.id}` : undefined}
           />
         ))}
+        {/* Positioned like one more row at the end of the list (not
+            functionally part of `data.posts`) so it reads as a card in the
+            list rather than trailing status text after the CTA below. */}
+        <JamTeaser data={data} className="py-2" />
       </div>
 
       <div className="flex items-center justify-between pt-2 text-sm">
@@ -150,7 +160,6 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
           </>
         )}
       </div>
-      <JamTeaser data={data} />
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
+import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
+import { NewBadge } from "@/components/ui/new-badge";
 import { shortTimeAgo } from "@/lib/utils";
 import type { ComingNextData } from "@/lib/home";
 
@@ -66,10 +68,13 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
           </Button>
         </div>
         {data.jamConnectedCount > 0 && (
-          <p className="pt-1 text-xs text-muted-foreground">
-            {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
-            {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
-          </p>
+          <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+            <span>
+              {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
+              {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
+            </span>
+            {!data.viewerJamConnected && <WeeklyJamExplainer trigger={<NewBadge />} />}
+          </div>
         )}
       </div>
     );
@@ -135,10 +140,13 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         )}
       </div>
       {data.jamConnectedCount > 0 && (
-        <p className="pt-1 text-xs text-muted-foreground">
-          {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
-          {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
-        </p>
+        <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+          <span>
+            {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
+            {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
+          </span>
+          {!data.viewerJamConnected && <WeeklyJamExplainer trigger={<NewBadge />} />}
+        </div>
       )}
     </div>
   );

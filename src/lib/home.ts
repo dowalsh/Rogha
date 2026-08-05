@@ -95,7 +95,13 @@ export type ComingNextPost = {
 
 export type ComingNextData =
   | { visible: true; state: "no-friends" }
-  | { visible: true; state: "empty"; daysLeft: number; jamConnectedCount: number }
+  | {
+      visible: true;
+      state: "empty";
+      daysLeft: number;
+      jamConnectedCount: number;
+      viewerJamConnected: boolean;
+    }
   | {
       visible: true;
       state: "posts";
@@ -104,6 +110,7 @@ export type ComingNextData =
       friendsSubmittedCount: number;
       daysLeft: number;
       jamConnectedCount: number;
+      viewerJamConnected: boolean;
     };
 
 function computeDaysLeft(now: Date): number {
@@ -135,7 +142,14 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
 
   if (friendIds.length === 0) return { visible: true, state: "no-friends" };
 
-  const jamConnectedCount = await getJamConnectedFriendCount(friendIds);
+  const [jamConnectedCount, viewer] = await Promise.all([
+    getJamConnectedFriendCount(friendIds),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { jamEnabled: true, lastfmUsername: true },
+    }),
+  ]);
+  const viewerJamConnected = Boolean(viewer?.jamEnabled && viewer?.lastfmUsername);
 
   if (submitted.length === 0) {
     return {
@@ -143,6 +157,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       state: "empty",
       daysLeft: computeDaysLeft(new Date()),
       jamConnectedCount,
+      viewerJamConnected,
     };
   }
 
@@ -166,6 +181,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     friendsSubmittedCount: others.length,
     daysLeft: computeDaysLeft(new Date()),
     jamConnectedCount,
+    viewerJamConnected,
   };
 }
 

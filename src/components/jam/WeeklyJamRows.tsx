@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { WeeklyJamRow } from "@/lib/jam";
+import type { WeeklyJamRow } from "@/lib/jam-preview";
 import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
 

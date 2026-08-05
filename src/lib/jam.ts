@@ -9,6 +9,10 @@ import { prisma } from "@/lib/prisma";
 import { getTopTrackLastWeek } from "@/lib/lastfm";
 import { resolveSpotifyAlbumImage } from "@/lib/spotify";
 import { getAcceptedFriendIds } from "@/lib/friends";
+import type { WeeklyJamData, WeeklyJamRow } from "@/lib/jam-preview";
+
+export type { WeeklyJamRow, WeeklyJamData } from "@/lib/jam-preview";
+export { jamPreviewFromRows } from "@/lib/jam-preview";
 
 // ── Capture ──────────────────────────────────────────────────────────────
 
@@ -61,24 +65,6 @@ export async function captureWeeklyJamTracks(editionId: string): Promise<void> {
 }
 
 // ── Read ─────────────────────────────────────────────────────────────────
-
-export type WeeklyJamRow = {
-  userId: string;
-  username: string;
-  image: string | null;
-  name: string;
-  artist: string;
-  playCount: number;
-  imageUrl: string | null;
-  spotifySearchUrl: string;
-  lastfmUrl: string;
-  isViewer: boolean;
-};
-
-export type WeeklyJamData = {
-  rows: WeeklyJamRow[];
-  viewerConnected: boolean;
-};
 
 /**
  * The Jam rows a viewer should see for an edition: their own row (if any)
@@ -136,21 +122,6 @@ export async function getWeeklyJamForEdition(
   return {
     rows,
     viewerConnected: Boolean(viewer?.jamEnabled && viewer?.lastfmUsername),
-  };
-}
-
-/**
- * Derives the compact "post-like" preview shown for the Jam on the Edition
- * front page and the Editions listing: the viewer's own track art (never a
- * friend's), and whether there's anything to show at all.
- */
-export function jamPreviewFromRows(rows: WeeklyJamRow[]): {
-  hasData: boolean;
-  ownImageUrl: string | null;
-} {
-  return {
-    hasData: rows.length > 0,
-    ownImageUrl: rows.find((r) => r.isViewer)?.imageUrl ?? null,
   };
 }
 

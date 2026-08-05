@@ -11,9 +11,15 @@ import { Button } from "@/components/ui/button";
 import { EditionsListSkeleton } from "@/components/editions/EditionsListSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
+import { jamPreviewFromRows, type WeeklyJamData } from "@/lib/jam-preview";
+import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
+import { NewBadge } from "@/components/ui/new-badge";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+// The archive list (getPublishedEditions) sends a lightweight precomputed
+// preview; the rich latest-edition preview (getPublishedEditionById) sends
+// the full row data — these are genuinely different API shapes.
 type WeeklyJamPreview = { hasData: boolean; ownImageUrl: string | null };
 
 type EditionRow = {
@@ -46,7 +52,7 @@ type FullEdition = {
     author?: { id: string; username?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;
   }>;
-  weeklyJam?: WeeklyJamPreview | null;
+  weeklyJam?: WeeklyJamData | null;
 };
 
 // ── Grouping helpers ────────────────────────────────────────────────────────
@@ -471,7 +477,7 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
     items.push({
       kind: "jam",
       editionId: edition.id,
-      ownImageUrl: edition.weeklyJam.ownImageUrl,
+      ownImageUrl: jamPreviewFromRows(edition.weeklyJam.rows).ownImageUrl,
     });
   }
   const [lead, ...rest] = items;
@@ -523,6 +529,11 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
           </div>
         )}
       </Link>
+      {edition.weeklyJam && !edition.weeklyJam.viewerConnected && (
+        <div className="absolute top-3 right-3 z-10">
+          <WeeklyJamExplainer trigger={<NewBadge />} />
+        </div>
+      )}
     </div>
   );
 }

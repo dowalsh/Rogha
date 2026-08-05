@@ -6,6 +6,7 @@ import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
 import { getReadMapForPosts } from "@/lib/postReads";
 import { buildAudienceCandidateWhere } from "@/lib/access/postAccess";
+import { getWeeklyJamForEdition } from "@/lib/jam";
 
 type DbUser = { id: string };
 
@@ -157,6 +158,7 @@ export async function getPublishedEditions(user: DbUser) {
   ]);
   const blockedAuthorIds = new Set(blocks.map((b) => b.blockedId));
   const reportedPostIds = new Set(reports.map((r) => r.contentId));
+  const jamCandidateIds = [user.id, ...friendIds].filter((id) => !blockedAuthorIds.has(id));
 
   const editions = await prisma.edition.findMany({
     where: { NOT: { publishedAt: null } },
@@ -205,13 +207,22 @@ export async function getPublishedEditions(user: DbUser) {
         return friendshipDate !== undefined && friendshipDate <= (ed.publishedAt ?? p.createdAt);
       });
 
+      const jamTracks = await prisma.weeklyTrack.findMany({
+        where: { editionId: ed.id, userId: { in: jamCandidateIds } },
+        select: { userId: true, imageUrl: true },
+      });
+      const weeklyJam = {
+        hasData: jamTracks.length > 0,
+        ownImageUrl: jamTracks.find((t) => t.userId === user.id)?.imageUrl ?? null,
+      };
+
       console.debug(
         "[getPublishedEditions] edition:",
         ed.id,
         "posts:",
         visiblePosts.length
       );
-      return { ...ed, posts: visiblePosts };
+      return { ...ed, posts: visiblePosts, weeklyJam };
     })
   );
 }
@@ -346,6 +357,8 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     }),
   ]);
 
+  const weeklyJam = await getWeeklyJamForEdition(user.id, edition.id);
+
   console.debug(
     "[getPublishedEditionById] edition:",
     edition.id,
@@ -358,6 +371,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     hasOpened: Boolean(viewRecord),
     viewerCount,
     viewerNames: viewerPreview.map((v) => v.user.username),
+    weeklyJam,
   };
 }
 

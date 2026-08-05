@@ -5,7 +5,7 @@ import type { WeeklyJamRow } from "@/lib/jam";
 import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
 
-type WeeklyJamCardProps = {
+type WeeklyJamRowsProps = {
   rows: WeeklyJamRow[];
   viewerConnected: boolean;
 };
@@ -56,11 +56,12 @@ function JamRow({ row }: { row: WeeklyJamRow }) {
   );
 }
 
-export function WeeklyJamCard({ rows, viewerConnected }: WeeklyJamCardProps) {
+// The body of the Weekly Jam — reused by both the detail page
+// (src/app/editions/[id]/jam/page.tsx) and, previously, the inline Edition
+// card (now a compact teaser rendered by Frontpage.tsx instead).
+export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
   return (
-    <section className="border-t pt-6 space-y-3">
-      <h2 className="text-lg font-black uppercase tracking-wide">Weekly Jam</h2>
-
+    <div className="space-y-3">
       {rows.length > 0 ? (
         <div className="divide-y">
           {rows.map((row) => (
@@ -87,6 +88,6 @@ export function WeeklyJamCard({ rows, viewerConnected }: WeeklyJamCardProps) {
           </Link>
         </p>
       )}
-    </section>
+    </div>
   );
 }

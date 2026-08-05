@@ -25,15 +25,29 @@ gated to the Edition and to accepted friends).
 - **Weekly capture.** The Sunday cron (`publishEditionForWeek()`) fetches each
   opted-in user's #1 track for the past 7 days and stores one `WeeklyTrack`
   row per user per edition.
-- **The Jam card.** One aggregate card per Edition, rendered **below the
-  written posts**, per-viewer: shows the viewer's accepted friends (plus the
-  viewer) who opted in and have data this week. Each row = track name, artist,
-  play count, and an "Open in Spotify" search link.
-- **In-card connect CTA.** A "Connect your Music" button at the bottom of the
-  Jam, shown **only if the viewer is not connected**. It opens an explainer
-  popup (see [Connect flow](#connect-flow--explainer)).
+- **Treated as a post.** The Jam is one more item competing for the Edition
+  front page's lead/secondary card slots — always appended last, never
+  interleaved into recency ordering with real posts. Compact card: title
+  "Weekly Jam", no author (blank), the viewer's own track art as the
+  thumbnail (never a friend's; placeholder if the viewer has none). The same
+  compact card appears in the Editions listing's rich preview and a plain
+  text row in the archive list. Clicking it opens a dedicated detail page
+  (`/editions/[id]/jam`) mirroring the post reader's layout — hero image,
+  header, body — but read-only (no comments/likes, per
+  [Explicitly out](#explicitly-out-deliberately-for-v1)).
+- **The detail page body.** Per-viewer: shows the viewer's accepted friends
+  (plus the viewer) who opted in and have data this week. Each row = track
+  name, artist, play count, and an "Open in Spotify" search link.
+- **Connect CTA.** A "Connect your Music" button, shown on the detail page
+  **only if the viewer is not connected**. It opens an explainer popup (see
+  [Connect flow](#connect-flow--explainer)).
+- **Coming Sunday teaser.** A static "N friends have connected their Jam"
+  line pre-publish — no live track data (that doesn't exist until the Sunday
+  capture runs, and fetching it live on every home load doesn't scale).
 - **Reveal-gated.** The card lives inside the Edition and follows the same
-  reveal/visibility behaviour as other edition content.
+  reveal/visibility behaviour as other edition content. An edition with zero
+  written posts but existing Jam data shows the Jam as the lead item instead
+  of "NO STORIES THIS WEEK" — the intended effect of treating it as a post.
 
 ## Explicitly out (deliberately, for v1)
 
@@ -81,21 +95,26 @@ enough and needs zero timestamp math. Aligning to the edition's exact window
 ## Display & states
 
 The Jam is a **synthetic aggregate, not a `Post`** — no changes to the Post
-model. It queries the viewer's accepted friends' `WeeklyTrack`s for the current
-edition and applies the existing friend-visibility rules (accepted friendships
-only; reuse the `canViewPostPolicy`-style filtering). It renders below the
-edition's written posts.
+model — but is *treated* like one in every surface that lists posts (see
+[In scope](#in-scope-mvp)). It queries the viewer's accepted friends'
+`WeeklyTrack`s for the current edition and applies the existing
+friend-visibility rules (accepted friendships only, one-directional block
+exclusion — reuse the `canViewPostPolicy`-style filtering).
 
-States:
+Detail-page body states:
 
 - **Populated.** One compact row per participating person (viewer included):
   avatar/name, track, artist, play count, "Open in Spotify" link. Plus the
-  in-card **"Connect your Music"** button *iff the viewer is not connected*.
-- **No friends with data.** The card **still renders** — it is never hidden —
+  **"Connect your Music"** button *iff the viewer is not connected*.
+- **No friends with data.** The page **still renders** — it is never hidden —
   showing the message **"No friends have connected their Jam yet!"** and the
   **"Connect your Music"** button.
 - **Viewer connected but no scrobbles this week.** The viewer's own row is
-  simply absent (not an error); the card behaves per the two states above.
+  simply absent (not an error); the page behaves per the two states above.
+
+The compact card/preview (front page, listing, archive) always shows once
+the edition is published, regardless of row count — the empty-state nuance
+only matters on the detail page.
 
 Include the "powered by AudioScrobbler" attribution required by the Last.fm
 ToS, with correct track deep-links (`last.fm/music/<artist>/_/<track>`).

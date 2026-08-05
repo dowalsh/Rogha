@@ -6,8 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
-import { WeeklyJamCard } from "@/components/jam/WeeklyJamCard";
-import type { WeeklyJamRow } from "@/lib/jam";
+import { jamPreviewFromRows, type WeeklyJamRow } from "@/lib/jam";
 
 // Front page posts as they arrive from the Edition page
 type Post = {
@@ -19,6 +18,18 @@ type Post = {
   circle?: { id: string; name: string } | null;
   heroImageUrl?: string | null;
 };
+
+type WeeklyJam = {
+  rows: WeeklyJamRow[];
+  viewerConnected: boolean;
+};
+
+// The Jam is treated as one more item competing for the lead/secondary
+// slots (always appended last, never interleaved) rather than a separate
+// section — see docs/specs/2026-08-04-weekly-jam-mvp.md.
+type FrontpageItem =
+  | { kind: "post"; post: Post }
+  | { kind: "jam"; jam: WeeklyJam; editionId: string };
 
 type FrontpageProps = {
   edition: {
@@ -33,10 +44,7 @@ type FrontpageProps = {
     viewerNames: string[];
   };
   currentUserId?: string | null;
-  weeklyJam?: {
-    rows: WeeklyJamRow[];
-    viewerConnected: boolean;
-  } | null;
+  weeklyJam?: WeeklyJam | null;
 };
 
 
@@ -62,7 +70,41 @@ function getAuthorName(post: Post): string {
   return post.author?.username ?? "Unknown";
 }
 
-function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+function jamHref(editionId: string): string {
+  return `/editions/${editionId}/jam`;
+}
+
+function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: FrontpageItem; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+  if (item.kind === "jam") {
+    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows);
+    return (
+      <section className="border-b pb-8 relative">
+        <Link href={jamHref(item.editionId)} className="group block w-full">
+          <article className="grid gap-6 transition-shadow duration-200 lg:grid-cols-[2fr,1fr] lg:items-stretch">
+            <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+              {ownImageUrl && (
+                <Image
+                  src={ownImageUrl}
+                  alt="Weekly Jam"
+                  fill
+                  sizes="(min-width: 1024px) 640px, 100vw"
+                  className="object-cover"
+                  priority
+                />
+              )}
+            </div>
+            <div className="flex flex-col justify-center">
+              <h2 className="text-3xl font-black leading-tight group-hover:underline">
+                Weekly Jam
+              </h2>
+            </div>
+          </article>
+        </Link>
+      </section>
+    );
+  }
+
+  const { post } = item;
   const authorName = getAuthorName(post);
   const hasImage = Boolean(post.heroImageUrl);
   const isOwn = !!currentUserId && post.author?.id === currentUserId;
@@ -133,7 +175,36 @@ function LeadStory({ post, currentUserId, onReported, onBlocked }: { post: Post;
   );
 }
 
-function SecondaryStory({ post, currentUserId, onReported, onBlocked }: { post: Post; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: FrontpageItem; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
+  if (item.kind === "jam") {
+    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows);
+    return (
+      <div className="relative h-full">
+        <Link href={jamHref(item.editionId)} className="group block h-full">
+          <article className="flex h-full flex-col justify-between border bg-card p-3 transition-shadow duration-200">
+            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+              {ownImageUrl && (
+                <Image
+                  src={ownImageUrl}
+                  alt="Weekly Jam"
+                  fill
+                  sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
+                  className="object-cover"
+                />
+              )}
+            </div>
+            <div className="mt-2 space-y-2">
+              <h3 className="text-lg font-semibold leading-snug group-hover:underline">
+                Weekly Jam
+              </h3>
+            </div>
+          </article>
+        </Link>
+      </div>
+    );
+  }
+
+  const { post } = item;
   const authorName = getAuthorName(post);
   const isOwn = !!currentUserId && post.author?.id === currentUserId;
 
@@ -233,11 +304,19 @@ export function Frontpage({ edition, revealProps, currentUserId, weeklyJam }: Fr
     setTimeout(() => setRevealed(true), 200);
   };
 
-  // const [lead, ...rest] = posts;
-  // const secondary = rest.slice(0, 3);
-  // const others = rest.slice(3);
-  const [lead, ...rest] = posts;
-  const secondary = rest;
+  // The Jam is always the last item, if present — see FrontpageItem above.
+  const items: FrontpageItem[] = posts.map((post) => ({ kind: "post" as const, post }));
+  if (weeklyJam) {
+    items.push({ kind: "jam", jam: weeklyJam, editionId: edition.id });
+  }
+  const [lead, ...secondary] = items;
+
+  function itemId(item: FrontpageItem): string {
+    return item.kind === "jam" ? `jam-${item.editionId}` : item.post.id;
+  }
+  function itemAuthorId(item: FrontpageItem): string {
+    return item.kind === "jam" ? "" : item.post.author?.id ?? "";
+  }
 
   return (
     <>
@@ -258,42 +337,39 @@ export function Frontpage({ edition, revealProps, currentUserId, weeklyJam }: Fr
         </h1>
       </header>
 
-      {posts.length === 0 ? (
+      {items.length === 0 ? (
         <div className="py-20 text-center text-3xl font-bold uppercase tracking-widest text-muted-foreground">
           NO STORIES THIS WEEK
         </div>
       ) : (
         <>
           {/* Lead story */}
-          {lead && <LeadStory post={lead} currentUserId={currentUserId} onReported={() => handleReported(lead.id)} onBlocked={() => handleBlocked(lead.author?.id ?? "")} />}
+          {lead && (
+            <LeadStory
+              item={lead}
+              currentUserId={currentUserId}
+              onReported={() => handleReported(itemId(lead))}
+              onBlocked={() => handleBlocked(itemAuthorId(lead))}
+            />
+          )}
 
           {/* Secondary grid: 2–3 stories underneath the lead */}
           {secondary.length > 0 && (
             <section className="border-b pb-6">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {secondary.map((post) => (
-                  <SecondaryStory key={post.id} post={post} currentUserId={currentUserId} onReported={() => handleReported(post.id)} onBlocked={() => handleBlocked(post.author?.id ?? "")} />
+                {secondary.map((item) => (
+                  <SecondaryStory
+                    key={itemId(item)}
+                    item={item}
+                    currentUserId={currentUserId}
+                    onReported={() => handleReported(itemId(item))}
+                    onBlocked={() => handleBlocked(itemAuthorId(item))}
+                  />
                 ))}
               </div>
             </section>
           )}
-
-          {/* Remaining stories as a vertical list, like bottom-of-front-page teasers */}
-          {/* {others.length > 0 && (
-            <section className="pb-10">
-              <ul className="border bg-card px-3">
-                {others.map((post) => (
-                  <TertiaryStory key={post.id} post={post} />
-                ))}
-              </ul>
-            </section>
-          )} */}
         </>
-      )}
-
-      {/* Weekly Jam — reveal-gated like the posts above, always renders once revealed */}
-      {weeklyJam && revealed && (
-        <WeeklyJamCard rows={weeklyJam.rows} viewerConnected={weeklyJam.viewerConnected} />
       )}
     </div>
     </>

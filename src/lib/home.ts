@@ -12,6 +12,7 @@ import {
   getPublishedEditionById,
   plannedPublishAt,
 } from "@/lib/editions";
+import { getJamConnectedFriendCount } from "@/lib/jam";
 import { getWeekStartUTC } from "@/lib/utils";
 
 // --- hero -------------------------------------------------------------
@@ -94,7 +95,7 @@ export type ComingNextPost = {
 
 export type ComingNextData =
   | { visible: true; state: "no-friends" }
-  | { visible: true; state: "empty"; daysLeft: number }
+  | { visible: true; state: "empty"; daysLeft: number; jamConnectedCount: number }
   | {
       visible: true;
       state: "posts";
@@ -102,6 +103,7 @@ export type ComingNextData =
       hasSubmitted: boolean;
       friendsSubmittedCount: number;
       daysLeft: number;
+      jamConnectedCount: number;
     };
 
 function computeDaysLeft(now: Date): number {
@@ -133,8 +135,15 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
 
   if (friendIds.length === 0) return { visible: true, state: "no-friends" };
 
+  const jamConnectedCount = await getJamConnectedFriendCount(friendIds);
+
   if (submitted.length === 0) {
-    return { visible: true, state: "empty", daysLeft: computeDaysLeft(new Date()) };
+    return {
+      visible: true,
+      state: "empty",
+      daysLeft: computeDaysLeft(new Date()),
+      jamConnectedCount,
+    };
   }
 
   const own = submitted.filter((p) => p.authorId === userId);
@@ -156,6 +165,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     hasSubmitted: own.length > 0,
     friendsSubmittedCount: others.length,
     daysLeft: computeDaysLeft(new Date()),
+    jamConnectedCount,
   };
 }
 

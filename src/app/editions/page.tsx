@@ -14,6 +14,8 @@ import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+type WeeklyJamPreview = { hasData: boolean; ownImageUrl: string | null };
+
 type EditionRow = {
   id: string;
   title?: string | null;
@@ -24,6 +26,7 @@ type EditionRow = {
     title?: string | null;
     author?: { id: string; username?: string | null } | null;
   }[];
+  weeklyJam?: WeeklyJamPreview | null;
 };
 
 type FullEdition = {
@@ -43,6 +46,7 @@ type FullEdition = {
     author?: { id: string; username?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;
   }>;
+  weeklyJam?: WeeklyJamPreview | null;
 };
 
 // ── Grouping helpers ────────────────────────────────────────────────────────
@@ -176,7 +180,7 @@ function WeekRow({ edition }: { edition: EditionRow }) {
       <span className="text-sm font-medium group-hover:underline">
         {formatWeekDate(edition.weekStart)}
       </span>
-      {edition.posts.length > 0 && (
+      {(edition.posts.length > 0 || edition.weeklyJam?.hasData) && (
         <ul className="mt-1 space-y-0.5">
           {edition.posts.map((post) => (
             <li
@@ -187,6 +191,9 @@ function WeekRow({ edition }: { edition: EditionRow }) {
               {post.author?.username ? ` — ${post.author.username}` : ""}
             </li>
           ))}
+          {edition.weeklyJam?.hasData && (
+            <li className="text-xs text-muted-foreground truncate">Weekly Jam</li>
+          )}
         </ul>
       )}
     </Link>
@@ -285,7 +292,7 @@ function YearSection({
 
 function EditionsArchive({ editions }: { editions: EditionRow[] }) {
   const filtered = useMemo(
-    () => editions.filter((ed) => (ed.posts?.length ?? 0) > 0),
+    () => editions.filter((ed) => (ed.posts?.length ?? 0) > 0 || ed.weeklyJam?.hasData),
     [editions],
   );
 
@@ -355,7 +362,33 @@ function EditionsArchive({ editions }: { editions: EditionRow[] }) {
 
 type FullEditionPost = FullEdition["posts"][number];
 
-function StoryLead({ post }: { post: FullEditionPost }) {
+// The Jam is appended as one more item after real posts (never interleaved)
+// — same treatment as src/components/Frontpage.tsx.
+type PreviewItem =
+  | { kind: "post"; post: FullEditionPost }
+  | { kind: "jam"; editionId: string; ownImageUrl: string | null };
+
+function StoryLead({ item }: { item: PreviewItem }) {
+  if (item.kind === "jam") {
+    return (
+      <div className="border-b pb-8">
+        {item.ownImageUrl && (
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
+            <Image
+              src={item.ownImageUrl}
+              alt="Weekly Jam"
+              fill
+              sizes="(min-width: 1024px) 640px, 100vw"
+              className="object-cover"
+            />
+          </div>
+        )}
+        <h2 className="text-4xl font-black leading-tight">Weekly Jam</h2>
+      </div>
+    );
+  }
+
+  const { post } = item;
   return (
     <div className="border-b pb-8">
       {post.heroImageUrl && (
@@ -379,7 +412,27 @@ function StoryLead({ post }: { post: FullEditionPost }) {
   );
 }
 
-function StoryCard({ post }: { post: FullEditionPost }) {
+function StoryCard({ item }: { item: PreviewItem }) {
+  if (item.kind === "jam") {
+    return (
+      <div className="border bg-card p-3 space-y-2">
+        {item.ownImageUrl && (
+          <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+            <Image
+              src={item.ownImageUrl}
+              alt="Weekly Jam"
+              fill
+              sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
+              className="object-cover"
+            />
+          </div>
+        )}
+        <h3 className="text-base font-semibold leading-snug">Weekly Jam</h3>
+      </div>
+    );
+  }
+
+  const { post } = item;
   return (
     <div className="border bg-card p-3 space-y-2">
       {post.heroImageUrl && (
@@ -413,7 +466,15 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
     setTimeout(() => router.push(`/editions/${edition.id}`), 200);
   };
 
-  const [lead, ...rest] = edition.posts;
+  const items: PreviewItem[] = edition.posts.map((post) => ({ kind: "post" as const, post }));
+  if (edition.weeklyJam) {
+    items.push({
+      kind: "jam",
+      editionId: edition.id,
+      ownImageUrl: edition.weeklyJam.ownImageUrl,
+    });
+  }
+  const [lead, ...rest] = items;
   const dateLabel = formatWeekDate(edition.weekStart);
 
   return (
@@ -442,17 +503,20 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
           <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
         </div>
 
-        {edition.posts.length === 0 ? (
+        {items.length === 0 ? (
           <p className="py-8 text-center text-muted-foreground uppercase tracking-widest font-bold text-sm">
             No stories this week
           </p>
         ) : (
           <div className="font-serif space-y-6">
-            {lead && <StoryLead post={lead} />}
+            {lead && <StoryLead item={lead} />}
             {rest.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {rest.map((post) => (
-                  <StoryCard key={post.id} post={post} />
+                {rest.map((item) => (
+                  <StoryCard
+                    key={item.kind === "jam" ? `jam-${item.editionId}` : item.post.id}
+                    item={item}
+                  />
                 ))}
               </div>
             )}

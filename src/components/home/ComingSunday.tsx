@@ -65,6 +65,12 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
             Start a post
           </Button>
         </div>
+        {data.jamConnectedCount > 0 && (
+          <p className="pt-1 text-xs text-muted-foreground">
+            {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
+            {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
+          </p>
+        )}
       </div>
     );
   }
@@ -128,6 +134,12 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
           </>
         )}
       </div>
+      {data.jamConnectedCount > 0 && (
+        <p className="pt-1 text-xs text-muted-foreground">
+          {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
+          {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
+        </p>
+      )}
     </div>
   );
 }

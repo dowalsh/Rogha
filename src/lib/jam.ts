@@ -138,3 +138,36 @@ export async function getWeeklyJamForEdition(
     viewerConnected: Boolean(viewer?.jamEnabled && viewer?.lastfmUsername),
   };
 }
+
+/**
+ * Derives the compact "post-like" preview shown for the Jam on the Edition
+ * front page and the Editions listing: the viewer's own track art (never a
+ * friend's), and whether there's anything to show at all.
+ */
+export function jamPreviewFromRows(rows: WeeklyJamRow[]): {
+  hasData: boolean;
+  ownImageUrl: string | null;
+} {
+  return {
+    hasData: rows.length > 0,
+    ownImageUrl: rows.find((r) => r.isViewer)?.imageUrl ?? null,
+  };
+}
+
+/**
+ * Cheap count of how many of the given (accepted-friend) ids have opted
+ * into Jam — powers the static "N friends have connected their Jam" teaser
+ * in Coming Sunday. No Last.fm/Spotify calls; that data doesn't exist yet
+ * pre-publish. Takes friend ids directly so callers that already fetched
+ * them (e.g. getComingNext) don't re-query.
+ */
+export async function getJamConnectedFriendCount(friendIds: string[]): Promise<number> {
+  if (friendIds.length === 0) return 0;
+  return prisma.user.count({
+    where: {
+      id: { in: friendIds },
+      jamEnabled: true,
+      lastfmUsername: { not: null },
+    },
+  });
+}

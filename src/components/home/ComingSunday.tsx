@@ -17,6 +17,20 @@ type ComingSundayProps = {
   collapsed: boolean;
 };
 
+function jamTeaserText(count: number): string {
+  if (count === 0) return "No friends have connected their Weekly Jam yet";
+  return `${count} friend${count === 1 ? "" : "s"} ${count === 1 ? "has" : "have"} connected their Weekly Jam`;
+}
+
+function JamTeaser({ data }: { data: Extract<ComingNextData, { state: "empty" | "posts" }> }) {
+  return (
+    <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+      <span>{jamTeaserText(data.jamConnectedCount)}</span>
+      {!data.viewerJamConnected && <WeeklyJamExplainer trigger={<NewBadge />} />}
+    </div>
+  );
+}
+
 export function ComingSunday({ data, collapsed }: ComingSundayProps) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(!collapsed);
@@ -67,15 +81,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
             Start a post
           </Button>
         </div>
-        {data.jamConnectedCount > 0 && (
-          <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-            <span>
-              {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
-              {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
-            </span>
-            {!data.viewerJamConnected && <WeeklyJamExplainer trigger={<NewBadge />} />}
-          </div>
-        )}
+        <JamTeaser data={data} />
       </div>
     );
   }
@@ -139,15 +145,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
           </>
         )}
       </div>
-      {data.jamConnectedCount > 0 && (
-        <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-          <span>
-            {data.jamConnectedCount} friend{data.jamConnectedCount === 1 ? "" : "s"}{" "}
-            {data.jamConnectedCount === 1 ? "has" : "have"} connected their Weekly Jam
-          </span>
-          {!data.viewerJamConnected && <WeeklyJamExplainer trigger={<NewBadge />} />}
-        </div>
-      )}
+      <JamTeaser data={data} />
     </div>
   );
 }

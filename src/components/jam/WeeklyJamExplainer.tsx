@@ -26,15 +26,39 @@ export function WeeklyJamExplainer({ trigger }: { trigger: React.ReactNode }) {
 
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>
-            Every friend who connects shows up in the weekly Edition with
-            their top track from the last 7 days — no writing, no picking,
-            nothing to do after you connect once.
+            We wanted to make an easy way for rogha users to share what's important to them with their friends.
+            For a lot of people - thats music.
           </p>
           <p>
-            It autosyncs from Last.fm: connect your Spotify (or any player)
-            to Last.fm, then link your Last.fm username here. Rogha reads
-            your top track each week — it never posts or touches your
-            Spotify or Last.fm account.
+            introducing the Weekly Jam. Every week - see a top track from each of your friends.
+          </p>
+          <p>
+            to join in - you need to connect your music.
+          </p>
+          <p>
+            Spotify makes grabbing data difficult, so we're using a great third party site called{" "}
+            <Link
+              href="https://www.last.fm"
+              target="_blank"
+              rel="noreferrer"
+              className="text-foreground underline hover:no-underline"
+            >
+              last.fm
+            </Link>
+            . To set up - head over to{" "}
+            <Link
+              href="https://www.last.fm"
+              target="_blank"
+              rel="noreferrer"
+              className="text-foreground underline hover:no-underline"
+            >
+              last.fm
+            </Link>
+            , make an account, connect your spotify, enable Scrobbling (aka music tracking)
+            and then just add your last.fm username to rogha in settings.
+          </p>
+          <p>
+            then - Weekly Jam will auto-sync every week to show your top track!
           </p>
         </div>
 

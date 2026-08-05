@@ -6,6 +6,7 @@ import { Newspaper } from "lucide-react";
 import { Frontpage } from "@/components/Frontpage";
 import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
+import { getWeeklyJamForEdition } from "@/lib/jam";
 import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,10 @@ export default async function EditionPage({
   );
   if (!edition) notFound();
 
+  const weeklyJam = await time("jam.getWeeklyJamForEdition", rid, () =>
+    getWeeklyJamForEdition(user.id, params.id)
+  );
+
   logTiming("editions.page.total", rid, performance.now() - pageStart, { editionId: params.id });
 
   // ✅ convert Dates -> strings
@@ -85,6 +90,7 @@ export default async function EditionPage({
           viewerNames: edition.viewerNames,
         }}
         currentUserId={user.id}
+        weeklyJam={weeklyJam}
       />
     </div>
   );

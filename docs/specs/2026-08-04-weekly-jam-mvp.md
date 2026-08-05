@@ -1,6 +1,6 @@
 # Spec: Weekly Jam — weekly song card (MVP v1)
 
-Status: **design — not yet built.** Promotes the shipped Last.fm admin spike
+Status: **implemented.** Promotes the shipped Last.fm admin spike
 ([2026-08-01-lastfm-top-track-admin-spike.md](./2026-08-01-lastfm-top-track-admin-spike.md))
 from admin-only/env-configured into a real per-user, per-edition feature at the
 smallest scope that delivers value. Builds on the "Later, not now" items that
@@ -40,15 +40,23 @@ gated to the Edition and to accepted friends).
 Veto/override of the auto-pick; manual song choice; multiple tracks per
 person; the "one line of why" blurb; comments or reactions on tracks;
 head-to-head / brackets / guess-the-friend; collaborative playlist stitching;
-streaks; circle-scoped audiences (MVP is friends-only); album artwork; exact
-edition-week alignment (see [Capture](#capture)); backfill.
+streaks; circle-scoped audiences (MVP is friends-only); exact edition-week
+alignment (see [Capture](#capture)); backfill.
+
+Album artwork was originally planned as out-of-scope (see
+[Compliance](#compliance-gates--decisions-before-ship)) but shipped as part
+of MVP once a compliant source existed — see below.
 
 ## Data
 
-**`WeeklyTrack`** — new entity. `(userId, editionId)` composite key. Fields:
-`name`, `artist`, `playCount` (int), `spotifySearchUrl`, `lastfmUrl`,
-`capturedAt`. One row per participating user per edition. **No album-art
-field** (licensing — see [Compliance](#compliance-gates--decisions-before-ship)).
+**`WeeklyTrack`** — new entity. `(editionId, userId)` composite key. Fields:
+`name`, `artist`, `playCount` (int), `imageUrl` (nullable), `imageSource`
+(nullable, `"spotify" | "lastfm"`), `spotifySearchUrl`, `lastfmUrl`,
+`capturedAt`. One row per participating user per edition. Album art is
+sourced from Spotify's catalog (`src/lib/spotify.ts`'s
+`resolveSpotifyAlbumImage()`, built for the admin spike) with Last.fm's
+image as a last-resort fallback — see
+[Compliance](#compliance-gates--decisions-before-ship).
 
 `User` gains:
 
@@ -112,12 +120,22 @@ feature:
 Carried forward from the spike's compliance section; these block launch and
 are decisions, not code:
 
-1. **Non-commercial licence.** Confirm Rogha's use qualifies under the Last.fm
-   API ToS, or obtain a commercial-use agreement (`partners@last.fm`) first.
-   "No ads" is not by itself sufficient.
-2. **No album art.** MVP omits artwork entirely (name / artist / plays only),
-   sidestepping the licensing exclusion cleanly.
-3. **Attribution.** "Powered by AudioScrobbler" credit + correct deep-links.
+1. **Non-commercial licence — still open, not resolved by this build.**
+   Confirm Rogha's use qualifies under the Last.fm API ToS, or obtain a
+   commercial-use agreement (`partners@last.fm`) first. "No ads" is not by
+   itself sufficient. Track *metadata* (name/artist/play count) still comes
+   from Last.fm even though art doesn't — this gate isn't sidestepped by the
+   art decision below.
+2. **Album art — resolved differently than originally planned.** Rather than
+   omitting artwork, it's sourced from Spotify's catalog API
+   (`resolveSpotifyAlbumImage()`), which sidesteps Last.fm's art-licensing
+   exclusion (§5.1.8) specifically — Last.fm's own image is kept only as a
+   fallback if Spotify has no match. Spotify's Client Credentials access is
+   itself subject to its own 2026 Developer Terms and Dev Mode quota
+   changes — see the admin spike doc's compliance notes for what's known
+   there.
+3. **Attribution.** "Powered by AudioScrobbler" credit shown on the Jam card
+   whenever it has rows.
 
 ## Config
 
@@ -154,9 +172,11 @@ response.
   same `WeeklyTrack`.
 - Playful modes (head-to-head, guess-the-friend, streaks) as opt-in events.
 
-## Open questions
+## Resolved questions
 
-- **Entity/field naming** — `WeeklyTrack` + `User.jamEnabled` proposed; confirm
-  before the migration lands.
+- **Entity/field naming** — confirmed as proposed: `WeeklyTrack`,
+  `User.lastfmUsername`, `User.jamEnabled`.
+- **Album art** — included (see [Compliance](#compliance-gates--decisions-before-ship)
+  point 2), reversing the original "explicitly out" call.
 - **Backfill** — none at launch (matching `PostRead`'s "start empty"
   precedent); the first populated Jam is the first Sunday after ship.

@@ -6,11 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/Spinner";
 import { SettingsSkeleton } from "@/components/settings/SettingsSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
-import { Check } from "lucide-react";
+import { Check, Info } from "lucide-react";
 import toast from "react-hot-toast";
+import { mutate } from "swr";
+import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
 
 type Prefs = {
   emailEnabled: boolean;
@@ -34,11 +37,17 @@ const rows: { label: string; email: keyof Prefs; push: keyof Prefs }[] = [
 
 type SaveStatus = "idle" | "saving" | "saved";
 
+type JamPrefs = { lastfmUsername: string | null; jamEnabled: boolean };
+
 export function ProfileSettingsTab() {
   const { openUserProfile } = useClerk();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+
+  const [jam, setJam] = useState<JamPrefs | null>(null);
+  const [lastfmInput, setLastfmInput] = useState("");
+  const [jamSaveStatus, setJamSaveStatus] = useState<SaveStatus>("idle");
 
   useEffect(() => {
     fetch("/api/settings/notifications")
@@ -47,6 +56,46 @@ export function ProfileSettingsTab() {
       .catch(() => toast.error("Failed to load preferences"))
       .finally(() => setIsLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/settings/jam")
+      .then((r) => r.json())
+      .then((data: JamPrefs) => {
+        setJam(data);
+        setLastfmInput(data.lastfmUsername ?? "");
+      })
+      .catch(() => toast.error("Failed to load Weekly Jam settings"));
+  }, []);
+
+  async function saveJam(next: Partial<JamPrefs>) {
+    if (!jam) return;
+    const merged = { ...jam, ...next };
+    setJam(merged);
+    setJamSaveStatus("saving");
+    try {
+      const res = await fetch("/api/settings/jam", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) throw new Error();
+      setJamSaveStatus("saved");
+      mutate("/api/me");
+    } catch {
+      setJam(jam);
+      setJamSaveStatus("idle");
+      toast.error("Failed to save");
+    }
+  }
+
+  function handleSaveLastfmUsername() {
+    const trimmed = lastfmInput.trim();
+    if (!trimmed) {
+      toast.error("Enter a Last.fm username");
+      return;
+    }
+    saveJam({ lastfmUsername: trimmed });
+  }
 
   async function toggle(field: keyof Prefs, value: boolean) {
     if (!prefs) return;
@@ -143,6 +192,75 @@ export function ProfileSettingsTab() {
               </div>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <CardTitle className="text-base">Connect your Music</CardTitle>
+            <WeeklyJamExplainer
+              trigger={
+                <button
+                  type="button"
+                  aria-label="What is Weekly Jam?"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+              }
+            />
+          </div>
+          {jamSaveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Spinner className="h-3 w-3" /> Saving…
+            </span>
+          )}
+          {jamSaveStatus === "saved" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="h-3 w-3" /> Saved
+            </span>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {jam && (
+            <>
+              <div className="space-y-2">
+                <label htmlFor="lastfm-username" className="text-sm font-medium">
+                  Last.fm username
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="lastfm-username"
+                    placeholder="your-lastfm-username"
+                    value={lastfmInput}
+                    onChange={(e) => setLastfmInput(e.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleSaveLastfmUsername}
+                    disabled={lastfmInput.trim() === (jam.lastfmUsername ?? "")}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Show my Weekly Jam</span>
+                <Switch
+                  checked={jam.jamEnabled}
+                  disabled={!jam.lastfmUsername}
+                  onCheckedChange={(v) => saveJam({ jamEnabled: v })}
+                />
+              </div>
+              {!jam.lastfmUsername && (
+                <p className="text-xs text-muted-foreground">
+                  Save a Last.fm username to turn this on.
+                </p>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 

@@ -6,6 +6,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
+import { WeeklyJamCard } from "@/components/jam/WeeklyJamCard";
+import type { WeeklyJamRow } from "@/lib/jam";
 
 // Front page posts as they arrive from the Edition page
 type Post = {
@@ -31,6 +33,10 @@ type FrontpageProps = {
     viewerNames: string[];
   };
   currentUserId?: string | null;
+  weeklyJam?: {
+    rows: WeeklyJamRow[];
+    viewerConnected: boolean;
+  } | null;
 };
 
 
@@ -203,7 +209,7 @@ function TertiaryStory({ post }: { post: Post }) {
   );
 }
 
-export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProps) {
+export function Frontpage({ edition, revealProps, currentUserId, weeklyJam }: FrontpageProps) {
   const editionLabel = formatEditionLabel(edition);
   const allPosts = edition.posts ?? [];
 
@@ -227,22 +233,6 @@ export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProp
     setTimeout(() => setRevealed(true), 200);
   };
 
-  if (posts.length === 0) {
-    return (
-      <div className="mx-auto max-w-5xl space-y-8 font-serif">
-        <header className="border-b pb-4 text-center">
-          <h1 className="text-5xl font-black uppercase tracking-wide whitespace-nowrap">
-            {editionLabel}
-          </h1>
-        </header>
-
-        <div className="py-20 text-center text-3xl font-bold uppercase tracking-widest text-muted-foreground">
-          NO STORIES THIS WEEK
-        </div>
-      </div>
-    );
-  }
-
   // const [lead, ...rest] = posts;
   // const secondary = rest.slice(0, 3);
   // const others = rest.slice(3);
@@ -263,35 +253,48 @@ export function Frontpage({ edition, revealProps, currentUserId }: FrontpageProp
     <div className="mx-auto max-w-5xl space-y-8 font-serif">
       {/* Masthead */}
       <header className="border-b pb-4 text-center">
-        <h1 className="text-5xl font-black uppercase tracking-wide">
+        <h1 className="text-5xl font-black uppercase tracking-wide whitespace-nowrap">
           {editionLabel}
         </h1>
       </header>
 
-      {/* Lead story */}
-      {lead && <LeadStory post={lead} currentUserId={currentUserId} onReported={() => handleReported(lead.id)} onBlocked={() => handleBlocked(lead.author?.id ?? "")} />}
+      {posts.length === 0 ? (
+        <div className="py-20 text-center text-3xl font-bold uppercase tracking-widest text-muted-foreground">
+          NO STORIES THIS WEEK
+        </div>
+      ) : (
+        <>
+          {/* Lead story */}
+          {lead && <LeadStory post={lead} currentUserId={currentUserId} onReported={() => handleReported(lead.id)} onBlocked={() => handleBlocked(lead.author?.id ?? "")} />}
 
-      {/* Secondary grid: 2–3 stories underneath the lead */}
-      {secondary.length > 0 && (
-        <section className="border-b pb-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {secondary.map((post) => (
-              <SecondaryStory key={post.id} post={post} currentUserId={currentUserId} onReported={() => handleReported(post.id)} onBlocked={() => handleBlocked(post.author?.id ?? "")} />
-            ))}
-          </div>
-        </section>
+          {/* Secondary grid: 2–3 stories underneath the lead */}
+          {secondary.length > 0 && (
+            <section className="border-b pb-6">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {secondary.map((post) => (
+                  <SecondaryStory key={post.id} post={post} currentUserId={currentUserId} onReported={() => handleReported(post.id)} onBlocked={() => handleBlocked(post.author?.id ?? "")} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Remaining stories as a vertical list, like bottom-of-front-page teasers */}
+          {/* {others.length > 0 && (
+            <section className="pb-10">
+              <ul className="border bg-card px-3">
+                {others.map((post) => (
+                  <TertiaryStory key={post.id} post={post} />
+                ))}
+              </ul>
+            </section>
+          )} */}
+        </>
       )}
 
-      {/* Remaining stories as a vertical list, like bottom-of-front-page teasers */}
-      {/* {others.length > 0 && (
-        <section className="pb-10">
-          <ul className="border bg-card px-3">
-            {others.map((post) => (
-              <TertiaryStory key={post.id} post={post} />
-            ))}
-          </ul>
-        </section>
-      )} */}
+      {/* Weekly Jam — reveal-gated like the posts above, always renders once revealed */}
+      {weeklyJam && revealed && (
+        <WeeklyJamCard rows={weeklyJam.rows} viewerConnected={weeklyJam.viewerConnected} />
+      )}
     </div>
     </>
   );

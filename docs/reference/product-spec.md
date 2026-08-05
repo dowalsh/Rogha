@@ -45,6 +45,7 @@ The weekly publishing cycle — the core rhythm of the product.
 - A cron job runs **every Sunday at 07:00 UTC** and publishes all currently `SUBMITTED` posts into that week's Edition, regardless of when within the week they were submitted.
 - There is no separate "locked" state — submitting a post is effectively the commitment point; the next Sunday cron will sweep it into publication.
 - Editions support a **reveal gate**: posts are hidden behind a blurred overlay ("N others already opened this week") until the viewer explicitly clicks to open it. This is a ritual/pacing mechanic, not a reciprocity gate — you do **not** need to have posted yourself to open and view an edition.
+- Below the written posts, a **Weekly Jam** card shows each opted-in friend's auto-synced top track of the week (via Last.fm, art via Spotify) — passive participation for friends who never write a post. Same reveal-gated visibility as the posts above it. Full spec: [2026-08-04-weekly-jam-mvp.md](../specs/2026-08-04-weekly-jam-mvp.md).
 
 ### Post
 A single weekly submission, scoped to one audience.

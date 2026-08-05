@@ -10,5 +10,7 @@ export async function GET() {
     image: user.image,
     signoffEmoji: user.signoffEmoji,
     isAdmin: user.role === "ADMIN",
+    jamEnabled: user.jamEnabled,
+    lastfmUsername: user.lastfmUsername,
   });
 }

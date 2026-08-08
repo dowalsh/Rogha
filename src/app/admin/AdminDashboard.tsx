@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AdminTableSkeleton } from "@/components/admin/AdminTableSkeleton";
+import AdminStatsTab from "@/components/admin/AdminStatsTab";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import toast from "react-hot-toast";
 
@@ -617,13 +618,17 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 space-y-6">
       <h1 className="text-2xl font-semibold">Admin</h1>
-      <Tabs defaultValue="posts">
+      <Tabs defaultValue="stats">
         <TabsList>
+          <TabsTrigger value="stats">Stats</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
           <TabsTrigger value="music">Music</TabsTrigger>
         </TabsList>
+        <TabsContent value="stats" className="mt-6">
+          <AdminStatsTab />
+        </TabsContent>
         <TabsContent value="posts" className="mt-6">
           <PostsTab />
         </TabsContent>

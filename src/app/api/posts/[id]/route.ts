@@ -29,6 +29,8 @@ export async function GET(
         authorId: true,
         audienceType: true,
         circleId: true,
+        officialKind: true,
+        notifyAllUsers: true,
         editionId: true,
         heroImageUrl: true,
         createdAt: true,
@@ -134,9 +136,30 @@ export async function PUT(
     const body = await req.json();
     const { id } = params;
 
+    // ---- Official post normalization ----
+    const allowedOfficialKind = new Set(["EDITORS_NOTE", "COMMUNITY_FEATURE"]);
+    const incomingOfficialKind = body.officialKind as string | null | undefined;
+    const incomingNotifyAllUsers = Boolean(body.notifyAllUsers);
+
+    if (incomingOfficialKind != null && !allowedOfficialKind.has(incomingOfficialKind)) {
+      return NextResponse.json(
+        { error: "Invalid officialKind" },
+        { status: 400 },
+      );
+    }
+    if ((incomingOfficialKind != null || incomingNotifyAllUsers) && user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only admins can post official content" },
+        { status: 403 },
+      );
+    }
+
     // ---- Audience normalization ----
     const allowedAudience = new Set(["CIRCLE", "FRIENDS", "ALL_USERS"]);
-    const incomingAudience = body.audienceType as string | undefined;
+    // Official posts always force ALL_USERS, regardless of what the client sent.
+    const incomingAudience = incomingOfficialKind != null
+      ? "ALL_USERS"
+      : (body.audienceType as string | undefined);
     const incomingCircleId =
       (body.circleId as string | null | undefined) ?? null;
 
@@ -197,6 +220,8 @@ export async function PUT(
       ...thumbUpdate,
       audienceType: incomingAudience,
       circleId: incomingAudience === "CIRCLE" ? incomingCircleId : null,
+      officialKind: incomingOfficialKind ?? null,
+      notifyAllUsers: incomingOfficialKind != null ? incomingNotifyAllUsers : false,
     };
 
     const { previousPost, updatedPost, firstTimeSubmitFromDraft } =

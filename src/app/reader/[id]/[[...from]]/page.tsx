@@ -33,6 +33,7 @@ type PostDTO = {
   status?: "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED" | "REMOVED";
   editionId?: string | null;
   heroImageUrl?: string | null;
+  officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
   author?: {
     id: string;
     clerkId?: string | null;
@@ -215,7 +216,8 @@ function ReadPostPageInner({
     ? `/editions/${post.editionId}`
     : "/editions";
   const title = post?.title ?? "Untitled Post";
-  const authorName = post?.author?.username ?? "Unknown author";
+  const isOfficial = post?.officialKind != null;
+  const authorName = isOfficial ? "Rogha" : (post?.author?.username ?? "Unknown author");
   const rawContent = post?.content;
   const heroImageUrl = post?.heroImageUrl;
 
@@ -342,7 +344,7 @@ function ReadPostPageInner({
       <header className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <h1 className="text-2xl font-semibold leading-tight">{title}</h1>
-          {!isAuthor && (
+          {!isAuthor && !isOfficial && (
             <ContentOverflowMenu
               contentType="POST"
               contentId={post.id}

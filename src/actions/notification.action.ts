@@ -397,17 +397,24 @@ export async function createSubmitNotifications({
     select: {
       audienceType: true, // "ALL_USERS" | "FRIENDS" | "CIRCLE"
       circleId: true,
+      officialKind: true,
+      notifyAllUsers: true,
     },
   });
 
   if (!post) return;
 
-  // 2. ALL ROGHA USERS => no notifications, no emails
-  if (post.audienceType === "ALL_USERS") {
-    return;
-  }
-
   let recipientIds: string[] = [];
+
+  // 2. ALL ROGHA USERS => silent by default, unless this is an official post
+  // with the admin's "notify all users" toggle on (launch-style announcement).
+  if (post.audienceType === "ALL_USERS") {
+    if (post.officialKind == null || !post.notifyAllUsers) {
+      return;
+    }
+    const allUsers = await prisma.user.findMany({ select: { id: true } });
+    recipientIds = allUsers.map((u) => u.id);
+  }
 
   // 3. FRIENDS => all accepted friends
   if (post.audienceType === "FRIENDS") {

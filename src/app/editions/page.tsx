@@ -29,6 +29,7 @@ type EditionRow = {
   posts: {
     id: string;
     title?: string | null;
+    officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
     author?: { id: string; username?: string | null } | null;
   }[];
   weeklyJam?: WeeklyJamPreview | null;
@@ -47,6 +48,7 @@ type FullEdition = {
     title?: string | null;
     audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
     circleId?: string | null;
+    officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
     circle?: { id: string; name: string } | null;
     author?: { id: string; username?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;
@@ -193,7 +195,11 @@ function WeekRow({ edition }: { edition: EditionRow }) {
               className="text-xs text-muted-foreground truncate"
             >
               {post.title ?? "Untitled"}
-              {post.author?.username ? ` — ${post.author.username}` : ""}
+              {post.officialKind != null
+                ? " — Rogha"
+                : post.author?.username
+                  ? ` — ${post.author.username}`
+                  : ""}
             </li>
           ))}
           {edition.weeklyJam?.hasData && (
@@ -415,8 +421,10 @@ function StoryLead({ item, editionId }: { item: PreviewItem; editionId: string }
       <h2 className="text-4xl font-black leading-tight group-hover:underline">
         {post.title ?? "Untitled"}
       </h2>
-      {post.author?.username && (
-        <p className="mt-2 text-sm text-muted-foreground">{post.author.username}</p>
+      {(post.officialKind != null || post.author?.username) && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {post.officialKind != null ? "Rogha" : post.author!.username}
+        </p>
       )}
     </Link>
   );
@@ -459,8 +467,10 @@ function StoryCard({ item, editionId }: { item: PreviewItem; editionId: string }
       <h3 className="text-base font-semibold leading-snug group-hover:underline">
         {post.title ?? "Untitled"}
       </h3>
-      {post.author?.username && (
-        <p className="text-xs text-muted-foreground">{post.author.username}</p>
+      {(post.officialKind != null || post.author?.username) && (
+        <p className="text-xs text-muted-foreground">
+          {post.officialKind != null ? "Rogha" : post.author!.username}
+        </p>
       )}
     </Link>
   );

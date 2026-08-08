@@ -16,7 +16,7 @@ The stated philosophy (from the in-app About page):
 
 ## Non-goals
 
-- **No public feed for ordinary users.** Posts are visible only to friends or circle members. The `ALL_USERS` audience option exists in the schema but is admin-only by convention — regular users can't broadcast site-wide.
+- **No public feed for ordinary users.** Posts are visible only to friends or circle members. The `ALL_USERS` audience option exists in the schema but is admin-only by convention — regular users can't broadcast site-wide. `ALL_USERS` is also the substrate for admin-authored **official posts** (Editor's Note, Community Feature) — see the Post section below.
 - **No algorithmic ranking.** Content is ordered chronologically (by edition week / update time), not by engagement or relevance scoring.
 - **No always-on feed.** There is no scrollable, real-time timeline — content surfaces weekly, per Edition.
 - **No open circle joining.** Circles aren't discoverable or joinable by link/search — membership only grows through your existing friend graph.
@@ -58,6 +58,18 @@ A single weekly submission, scoped to one audience.
 - Only the author can edit or delete their own post, at any status (there's no guard today preventing deletion of an already-published post).
 - Comments/likes on a post you've blocked, or reported, are filtered out of your own view (comments/likes inherit their parent post's visibility rules).
 
+#### Official posts (Editor's Note / Community Feature)
+Admin-authored, first-party content published into the edition — an **Editor's Note** (creator commentary) or a **Community Feature** (spotlighting a real user post). Driven by `Post.officialKind` (`EDITORS_NOTE` | `COMMUNITY_FEATURE` | `null`), admin-only to set.
+
+- Setting `officialKind` forces `audienceType = ALL_USERS` and hides the normal audience picker in the composer; a non-admin supplying `officialKind` is rejected server-side, same as `ALL_USERS` today.
+- Authorship is **presentational only** — `authorId` stays the admin (so they keep edit/delete ownership and reply notifications), but the display name renders as **"Rogha"** with the app logo, is not a profile link, and suppresses the report/block overflow menu. This override lives in the shared author-render paths (`Frontpage.tsx`'s `getAuthorName`, the reader header, the Editions listing/archive), so it's consistent everywhere a post's author is shown.
+- Official posts follow the **normal lifecycle and Sunday cadence** — no instant/mid-week publish — and are reveal-gated like any other post.
+- They're pinned to the **bottom of the edition's post stack** (after friends'/circle posts, before the Weekly Jam card), on the edition front page, the Editions listing preview, and the archive list.
+- They appear in **every user's Coming Sunday queue** while `SUBMITTED` (not just the admin's friends), via `getComingNext()`'s query.
+- Comments/likes work normally; because the post is `ALL_USERS`, comments are visible to *all* users, same as any other `ALL_USERS` post.
+- Titles follow a manual convention (not enforced by code): `Editor's Note {roman numeral}: {tagline}`, `Community Feature: {post name}`.
+- Full spec: [2026-08-07-official-posts.md](../specs/2026-08-07-official-posts.md).
+
 ### Comments & likes
 - Comments nest one level deep (top-level + one reply); the server rejects deeper nesting.
 - Comments run the same content filter as posts, on creation.
@@ -69,7 +81,7 @@ A single weekly submission, scoped to one audience.
 ### Notifications
 Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
 
-- `SUBMIT` notifications fan out based on the post's audience: all accepted friends (`FRIENDS`), all joined circle members (`CIRCLE`), or nobody (`ALL_USERS` — deliberately silent).
+- `SUBMIT` notifications fan out based on the post's audience: all accepted friends (`FRIENDS`), all joined circle members (`CIRCLE`), or nobody (`ALL_USERS` — deliberately silent). The one exception: an official post (`officialKind != null`) with the admin's opt-in `notifyAllUsers` checked fans `SUBMIT` out to every user, respecting each user's `NotificationPreference` — a launch-style broadcast, off by default.
 - Each user has independent, per-category toggles for in-app, email, and push delivery (`NotificationPreference`). A missing preference row defaults to everything enabled.
 - In-app notification rows are always created; email/push are conditional on the user's preferences.
 

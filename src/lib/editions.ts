@@ -184,6 +184,7 @@ export async function getPublishedEditions(user: DbUser) {
           authorId: true,
           audienceType: true,
           circleId: true,
+          officialKind: true,
           author: {
             select: { id: true, username: true, image: true },
           },
@@ -216,13 +217,21 @@ export async function getPublishedEditions(user: DbUser) {
         ownImageUrl: jamTracks.find((t) => t.userId === user.id)?.imageUrl ?? null,
       };
 
+      // Official posts (Editor's Note / Community Feature) sort last,
+      // mirroring the Jam's fixed bottom slot — see docs/specs/2026-08-07-official-posts.md.
+      const orderedPosts = [...visiblePosts].sort((a, b) => {
+        const aOfficial = a.officialKind != null ? 1 : 0;
+        const bOfficial = b.officialKind != null ? 1 : 0;
+        return aOfficial - bOfficial;
+      });
+
       console.debug(
         "[getPublishedEditions] edition:",
         ed.id,
         "posts:",
-        visiblePosts.length
+        orderedPosts.length
       );
-      return { ...ed, posts: visiblePosts, weeklyJam };
+      return { ...ed, posts: orderedPosts, weeklyJam };
     })
   );
 }
@@ -271,6 +280,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       authorId: true,
       audienceType: true,
       circleId: true,
+      officialKind: true,
       circle: { select: { id: true, name: true } },
       author: { select: { id: true, clerkId: true, username: true, image: true } },
       heroImageUrl: true,
@@ -338,6 +348,15 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     const aRead = a.readByMe ? 1 : 0;
     const bRead = b.readByMe ? 1 : 0;
     return aRead - bRead;
+  });
+
+  // Official posts (Editor's Note / Community Feature) sort last, above the
+  // Jam — mirroring the Jam's fixed bottom slot. Stable sort preserves the
+  // unread-first ordering within each group.
+  postsWithReadState.sort((a, b) => {
+    const aOfficial = a.officialKind != null ? 1 : 0;
+    const bOfficial = b.officialKind != null ? 1 : 0;
+    return aOfficial - bOfficial;
   });
 
   // View data for reveal overlay

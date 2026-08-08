@@ -126,7 +126,11 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
   const submitted = await prisma.post.findMany({
     where: {
       status: "SUBMITTED",
-      OR: [{ authorId: userId }, { authorId: { in: friendIds } }],
+      OR: [
+        { authorId: userId },
+        { authorId: { in: friendIds } },
+        { audienceType: "ALL_USERS" }, // official posts queue for every user
+      ],
     },
     orderBy: { createdAt: "desc" },
     select: {
@@ -136,11 +140,14 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       createdAt: true,
       heroThumbUrl: true,
       heroThumbBlurUrl: true,
+      officialKind: true,
       author: { select: { id: true, username: true } },
     },
   });
 
-  if (friendIds.length === 0) return { visible: true, state: "no-friends" };
+  if (friendIds.length === 0 && submitted.length === 0) {
+    return { visible: true, state: "no-friends" };
+  }
 
   const [jamConnectedCount, viewer] = await Promise.all([
     getJamConnectedFriendCount(friendIds),
@@ -171,7 +178,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     posts: ordered.map((p) => ({
       id: p.id,
       title: p.title ?? "Untitled post",
-      authorName: p.author.username,
+      authorName: p.officialKind != null ? "Rogha" : p.author.username,
       heroThumbUrl: p.heroThumbUrl,
       heroThumbBlurUrl: p.heroThumbBlurUrl,
       submittedAt: p.createdAt.toISOString(),

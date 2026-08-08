@@ -24,11 +24,18 @@ export async function triggerPostSubmittedEmails(
     select: {
       id: true,
       title: true,
+      officialKind: true,
       author: { select: { id: true, username: true, signoffEmoji: true } },
     },
   });
 
   if (!post || !post.author) return { sent: 0 };
+
+  // Official posts are presentationally "Rogha" everywhere the author is
+  // rendered — see docs/specs/2026-08-07-official-posts.md.
+  const isOfficial = post.officialKind != null;
+  const authorName = isOfficial ? "Rogha" : post.author.username;
+  const authorSignoff = isOfficial ? null : post.author.signoffEmoji;
 
   // Only send to the explicit recipients we were given
   const users = await prisma.user.findMany({
@@ -45,10 +52,10 @@ export async function triggerPostSubmittedEmails(
   if (!recipients.length) return { sent: 0 };
 
   const email = buildPostSubmittedEmail(
-    post.author.username,
+    authorName,
     post.title ?? "",
     appUrl,
-    post.author.signoffEmoji
+    authorSignoff
   );
 
   const batchSize = 25;

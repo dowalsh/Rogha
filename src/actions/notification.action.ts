@@ -508,13 +508,15 @@ export async function createSubmitNotifications({
     return !p || (p.pushEnabled && p.pushSubmissions);
   });
 
-  // Look up author name for push message
+  // Look up author name for push message — official posts are presentationally
+  // "Rogha", same as everywhere else the author is rendered (see
+  // docs/specs/2026-08-07-official-posts.md).
   const author = await prisma.user.findUnique({
     where: { id: userId },
     select: { username: true, signoffEmoji: true },
   });
-  const authorName = author?.username ?? "Someone";
-  const authorSignoff = author?.signoffEmoji ?? "";
+  const authorName = post.officialKind != null ? "Rogha" : (author?.username ?? "Someone");
+  const authorSignoff = post.officialKind != null ? "" : (author?.signoffEmoji ?? "");
 
   try {
     await triggerPostSubmittedEmails(postId, emailRecipientIds);

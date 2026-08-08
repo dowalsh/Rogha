@@ -44,14 +44,14 @@ function WeeklyBarChart({
 
   return (
     <div>
-      <div className="flex h-40 items-end gap-[2px]">
+      <div className="flex h-40 items-stretch gap-[2px]">
         {values.map((v, i) => {
           const heightPct = v === 0 ? 2 : Math.max(3, (v / max) * 100);
           const isHover = hoverIdx === i;
           return (
             <div
               key={labels[i]}
-              className="group relative flex min-w-[4px] flex-1 flex-col justify-end"
+              className="group relative flex h-full min-w-[4px] flex-1 flex-col justify-end"
               onMouseEnter={() => setHoverIdx(i)}
               onMouseLeave={() => setHoverIdx((cur) => (cur === i ? null : cur))}
             >

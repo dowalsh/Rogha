@@ -23,6 +23,7 @@ type EditionResponse = {
     authorId: string;
     circleId?: string | null;
     audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
+    officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
     circle?: { id: string; name: string } | null;
     author?: { id: string; name?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;

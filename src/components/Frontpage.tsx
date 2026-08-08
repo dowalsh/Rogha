@@ -18,6 +18,7 @@ type Post = {
   circleId?: string | null;
   circle?: { id: string; name: string } | null;
   heroImageUrl?: string | null;
+  officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
 };
 
 type WeeklyJam = {
@@ -68,6 +69,7 @@ function getAudienceLabel(post: Post): string {
 }
 
 function getAuthorName(post: Post): string {
+  if (post.officialKind != null) return "Rogha";
   return post.author?.username ?? "Unknown";
 }
 
@@ -131,7 +133,7 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
             </div>
           </article>
         </Link>
-        {!isOwn && currentUserId && (
+        {!isOwn && currentUserId && post.officialKind == null && (
           <div className="absolute top-0 right-0">
             <ContentOverflowMenu contentType="POST" contentId={post.id} authorId={post.author?.id ?? ""} authorName={authorName} onReported={onReported} onBlocked={onBlocked} />
           </div>
@@ -171,7 +173,7 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
           </div>
         </article>
       </Link>
-      {!isOwn && currentUserId && (
+      {!isOwn && currentUserId && post.officialKind == null && (
         <div className="absolute top-0 right-0">
           <ContentOverflowMenu contentType="POST" contentId={post.id} authorId={post.author?.id ?? ""} authorName={authorName} onReported={onReported} onBlocked={onBlocked} />
         </div>
@@ -244,7 +246,7 @@ function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: 
           </div>
         </article>
       </Link>
-      {!isOwn && currentUserId && (
+      {!isOwn && currentUserId && post.officialKind == null && (
         <div className="absolute top-1 right-1 z-10">
           <ContentOverflowMenu contentType="POST" contentId={post.id} authorId={post.author?.id ?? ""} authorName={authorName} onReported={onReported} onBlocked={onBlocked} />
         </div>

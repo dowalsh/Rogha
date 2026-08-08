@@ -18,6 +18,8 @@ import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import toast from "react-hot-toast";
 import { FetchError } from "@/lib/swr";
 
+type OfficialKind = "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
+
 type PostData = {
   content?: Content;
   title?: string;
@@ -25,6 +27,8 @@ type PostData = {
   heroImageUrl?: string | null;
   audienceType?: AudienceType;
   circleId?: string | null;
+  officialKind?: OfficialKind;
+  notifyAllUsers?: boolean;
 };
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
@@ -77,6 +81,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [status, setStatus] = useState<PostStatus>("DRAFT");
   const [audienceType, setAudienceType] = useState<AudienceType>("FRIENDS");
   const [circleId, setCircleId] = useState<string | null>(null);
+  const [officialKind, setOfficialKind] = useState<OfficialKind>(null);
+  const [notifyAllUsers, setNotifyAllUsers] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
@@ -130,6 +136,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     else setHeroImageUrl(null);
     if (postData.audienceType) setAudienceType(postData.audienceType);
     setCircleId(postData.circleId ?? null);
+    setOfficialKind(postData.officialKind ?? null);
+    setNotifyAllUsers(postData.notifyAllUsers ?? false);
 
     setSaved(true);
   }, [postData, params.id]);
@@ -171,6 +179,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           heroImageUrl,
           audienceType,
           circleId: audienceType === "CIRCLE" ? circleId : null,
+          officialKind,
+          notifyAllUsers,
         }),
       });
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
@@ -220,6 +230,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           heroImageUrl,
           audienceType,
           circleId: audienceType === "CIRCLE" ? circleId : null,
+          officialKind,
+          notifyAllUsers,
         }),
       });
       if (!res.ok) {
@@ -394,82 +406,152 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         placeholder="Write your post…"
         editable={!editorLocked}
       />
-      {/* Audience selection */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Audience</label>
-
-        <div className="flex flex-wrap gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="audience"
-              value="FRIENDS"
-              checked={audienceType === "FRIENDS"}
-              onChange={() => {
-                setAudienceType("FRIENDS");
-                setCircleId(null);
-                setSaved(false);
-              }}
-              disabled={editorLocked}
-            />
-            All Friends
-          </label>
-
-          {isAdmin && (
+      {/* Admin-only: Post type (Editor's Note / Community Feature) */}
+      {isAdmin && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Post type</label>
+          <div className="flex flex-wrap gap-3">
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="audience"
-                value="ALL_USERS"
-                checked={audienceType === "ALL_USERS"}
+                name="officialKind"
+                checked={officialKind === null}
                 onChange={() => {
+                  setOfficialKind(null);
+                  setNotifyAllUsers(false);
+                  setSaved(false);
+                }}
+                disabled={editorLocked}
+              />
+              Normal
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="officialKind"
+                checked={officialKind === "EDITORS_NOTE"}
+                onChange={() => {
+                  setOfficialKind("EDITORS_NOTE");
                   setAudienceType("ALL_USERS");
                   setCircleId(null);
                   setSaved(false);
                 }}
                 disabled={editorLocked}
               />
-              All Rogha Users
+              Editor's Note
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="officialKind"
+                checked={officialKind === "COMMUNITY_FEATURE"}
+                onChange={() => {
+                  setOfficialKind("COMMUNITY_FEATURE");
+                  setAudienceType("ALL_USERS");
+                  setCircleId(null);
+                  setSaved(false);
+                }}
+                disabled={editorLocked}
+              />
+              Community Feature
+            </label>
+          </div>
+
+          {officialKind !== null && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={notifyAllUsers}
+                onChange={(e) => {
+                  setNotifyAllUsers(e.target.checked);
+                  setSaved(false);
+                }}
+                disabled={editorLocked}
+              />
+              Notify all users
             </label>
           )}
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="audience"
-              value="CIRCLE"
-              checked={audienceType === "CIRCLE"}
-              onChange={() => {
-                setAudienceType("CIRCLE");
-                setSaved(false);
-              }}
-              disabled={editorLocked}
-            />
-            Circle
-          </label>
         </div>
+      )}
 
-        {audienceType === "CIRCLE" && (
-          <div className="flex items-center gap-2">
-            <select
-              className="w-full rounded-md border px-3 py-2 text-base md:text-sm"
-              value={circleId ?? ""}
-              onChange={(e) => {
-                setCircleId(e.target.value || null);
-                setSaved(false);
-              }}
-              disabled={editorLocked}
-            >
-              <option value="">Select a circle…</option>
-              {myCircles.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+      {/* Audience selection — hidden for official posts, which are always ALL_USERS */}
+      {officialKind === null && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Audience</label>
+
+          <div className="flex flex-wrap gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="audience"
+                value="FRIENDS"
+                checked={audienceType === "FRIENDS"}
+                onChange={() => {
+                  setAudienceType("FRIENDS");
+                  setCircleId(null);
+                  setSaved(false);
+                }}
+                disabled={editorLocked}
+              />
+              All Friends
+            </label>
+
+            {isAdmin && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="audience"
+                  value="ALL_USERS"
+                  checked={audienceType === "ALL_USERS"}
+                  onChange={() => {
+                    setAudienceType("ALL_USERS");
+                    setCircleId(null);
+                    setSaved(false);
+                  }}
+                  disabled={editorLocked}
+                />
+                All Rogha Users
+              </label>
+            )}
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="audience"
+                value="CIRCLE"
+                checked={audienceType === "CIRCLE"}
+                onChange={() => {
+                  setAudienceType("CIRCLE");
+                  setSaved(false);
+                }}
+                disabled={editorLocked}
+              />
+              Circle
+            </label>
           </div>
-        )}
-      </div>
+
+          {audienceType === "CIRCLE" && (
+            <div className="flex items-center gap-2">
+              <select
+                className="w-full rounded-md border px-3 py-2 text-base md:text-sm"
+                value={circleId ?? ""}
+                onChange={(e) => {
+                  setCircleId(e.target.value || null);
+                  setSaved(false);
+                }}
+                disabled={editorLocked}
+              >
+                <option value="">Select a circle…</option>
+                {myCircles.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between gap-2">

@@ -4,11 +4,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
 import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
-import { shortTimeAgo } from "@/lib/utils";
+import { shortTimeAgo, cn } from "@/lib/utils";
 import type { ComingNextData } from "@/lib/home";
 
 type ComingSundayProps = {
@@ -27,6 +27,11 @@ function jamTeaserText(count: number, viewerJamConnected: boolean): string {
   return `${count} friend${count === 1 ? "" : "s"} ${count === 1 ? "has" : "have"} connected to The Weekly Jam`;
 }
 
+// Mirrors PostPreviewRow's exact row shape (leading spacer, h-12 thumb,
+// title/subtitle stack, trailing slot) so it reads as a post — same
+// vertical rhythm as the real rows above it, title "The Weekly Jam" with
+// the teaser line as its subtitle, info dot standing in for the trailing
+// lock/chevron icon.
 function JamTeaser({
   data,
   className,
@@ -35,9 +40,20 @@ function JamTeaser({
   className?: string;
 }) {
   return (
-    <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className ?? ""}`}>
-      <span>{jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}</span>
-      <WeeklyJamInfoDot />
+    <div className={cn("flex items-center gap-3 py-2", className)}>
+      <div className="flex h-12 w-3 shrink-0 items-center justify-center" />
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
+        <Music className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-serif text-sm">The Weekly Jam</div>
+        <div className="truncate text-xs text-muted-foreground">
+          {jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center">
+        <WeeklyJamInfoDot />
+      </div>
     </div>
   );
 }
@@ -84,7 +100,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
     return (
       <div className="space-y-1">
         <p className="text-sm font-medium">Coming Sunday.</p>
-        <JamTeaser data={data} className="pt-1" />
+        <JamTeaser data={data} />
         <div className="flex items-center justify-between gap-2 pt-1 text-sm">
           <span className="text-muted-foreground">
             Nothing yet · {data.daysLeft} day{data.daysLeft === 1 ? "" : "s"} left
@@ -140,7 +156,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         {/* Positioned like one more row at the end of the list (not
             functionally part of `data.posts`) so it reads as a card in the
             list rather than trailing status text after the CTA below. */}
-        <JamTeaser data={data} className="py-2" />
+        <JamTeaser data={data} />
       </div>
 
       <div className="flex items-center justify-between pt-2 text-sm">

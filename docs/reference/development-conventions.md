@@ -59,11 +59,19 @@ Every branch auto-deploys a Vercel preview. Keep branches focused enough that th
 
 Preview is fully isolated from production: its own Clerk **dev instance** and its own **separate Prisma Postgres database**, so testing never touches real users or data. Full detail — the authoritative Vercel env-var scoping, the database separation, admin-role promotion, and webhook/lazy-sync behavior — lives in [preview-testing.md](./preview-testing.md). Read it before your first preview test session.
 
-## Gotcha: Tailwind `hover:` needs two taps on iOS unless guarded
+## General practice: Tailwind `hover:` and touch devices
 
-Any element with an unconditional Tailwind `hover:` utility requires **two taps** on iOS/WKWebView to activate — the first tap only triggers the `:hover` state (WebKit's stand-in for "mouse enters"), the second fires the actual click. This is native WebKit touch behavior, not a bug in our code, and it's easy to mistake for a broken click handler (it was — cost a long debugging session on the reader's "Keep reading" links before being traced to this).
+On WebKit touch devices, an element with an unconditional `hover:` CSS rule can require **two taps** to activate — the first tap only triggers the `:hover` state (WebKit's stand-in for "mouse enters"), the second fires the actual click. `tailwind.config.ts` sets `future.hoverOnlyWhenSupported: true`, which scopes every `hover:` utility behind `@media (hover: hover) and (pointer: fine)` app-wide, so plain `hover:` classes are safe to use normally with no per-component workaround needed. This is good practice generally — if you add hover styling outside Tailwind's utility (a raw inline `:hover` rule, a styled-components/emotion `&:hover`, etc.), it bypasses this guard and would need the same media-query treatment applied manually.
 
-`tailwind.config.ts` sets `future.hoverOnlyWhenSupported: true`, which scopes every `hover:` utility behind `@media (hover: hover) and (pointer: fine)` app-wide, so plain `hover:` classes are safe to use normally — no per-component workaround needed. **Don't reintroduce this bug** via a raw inline `:hover` CSS rule, a styled-components/emotion `&:hover`, or any other hover mechanism that bypasses Tailwind's utility (and therefore this guard) — those would need the same media-query treatment applied manually.
+(This was investigated as a suspect during the prefetch bug below, but ruled out — the bug reproduced even with this guard fully in place and verified working. It's kept for its own, unrelated merit.)
+
+## Gotcha: Link prefetch can cause a tap to silently miss its target
+
+A `<Link>` with prefetching enabled (Next's default) can trigger an internal router state transition — traced to a `componentDidUpdate` call to `.focus()` on the page's root container — that sometimes fires *before* an in-flight tap's `click` event resolves, rather than after a real navigation (where it's expected and harmless). Focusing that element scrolls the page back to the top mid-gesture. Since the browser's synthesized `click` event re-does hit-testing at the tap's screen coordinates ~35ms *after* `touchend`, and the page has already snapped back underneath the finger by then, the click lands on whatever's now at that position instead of the link.
+
+**Symptom fingerprint** (so this isn't re-discovered from scratch): looks like a silently-failing tap on a working link — no console error, no failed network request, a `click` event does fire but its `target` doesn't match what was visually tapped. Cost a long debugging session on the reader's "Keep reading" links before being traced to this, confirmed with a monkey-patched `HTMLElement.prototype.focus` + `history.pushState`/`click`/`touch*` tracer watching for a `.focus()`/`componentDidUpdate` call landing *before* `pushState` instead of after.
+
+**Fix**: `prefetch={false}` on the affected `Link` (see `src/components/PostPreviewRow.tsx`) removes the background prefetch trigger entirely. If a similar silently-missed-tap bug shows up on another `Link`, try this first.
 
 ## Debugging: request timing
 

@@ -101,13 +101,14 @@ export function PostPreviewRow({
   );
 
   if (href) {
-    // TEMP diagnostic: prefetch disabled to test whether Next's background
-    // route-prefetching (triggered when this link scrolls into view) is
-    // what's causing a premature focus()/scroll-to-top reset to sometimes
-    // fire before a tap's click event resolves, making the click land on
-    // stale-position content instead of this link. Revert once confirmed
-    // either way — see docs/reference/development-conventions.md if this
-    // pans out and needs to become permanent.
+    // prefetch disabled: Next's background route-prefetching (triggered
+    // when this link scrolls into view) can kick off an internal router
+    // state transition that sometimes calls .focus() on the page root
+    // before an in-flight tap's click event resolves — the resulting
+    // scroll-to-top snap moves the page underneath the finger, so the
+    // synthesized click's coordinate-based hit-test lands on whatever's
+    // now there instead of this link. See
+    // docs/reference/development-conventions.md for the full writeup.
     return (
       <Link
         href={href}

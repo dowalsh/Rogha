@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { FetchError } from "@/lib/swr";
-import { cn } from "@/lib/utils";
 
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
@@ -122,19 +121,6 @@ function ReadPostPageInner({
   const [editionStatusChecked, setEditionStatusChecked] = useState(false);
   const [editionRevealed, setEditionRevealed] = useState(true);
   const [revealFading, setRevealFading] = useState(false);
-
-  // Next's App Router focuses this page's root container right after it
-  // mounts (its own accessibility route-change handling), which makes the
-  // browser auto-scroll back to the top. A tap already in flight at that
-  // moment — e.g. a follow-up "Keep reading" tap right after navigating
-  // here — can land on whatever's now at the top of THIS post instead of
-  // where the user aimed, because the page snapped back underneath their
-  // finger. Block input briefly so no tap can land during that reset.
-  const [inputReady, setInputReady] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setInputReady(true), 400);
-    return () => clearTimeout(t);
-  }, []);
 
   const { isLoaded, isSignedIn, user } = useUser();
 
@@ -325,12 +311,7 @@ function ReadPostPageInner({
   // console.log("post.audienceType:", post?.audienceType ?? "undefined");
 
   return (
-    <div
-      className={cn(
-        "mx-auto max-w-3xl p-6 space-y-6",
-        !inputReady && "pointer-events-none",
-      )}
-    >
+    <div className="mx-auto max-w-3xl p-6 space-y-6">
       {/* Edition reveal overlay — covers post content until opened */}
       {!editionRevealed && editionStatus && post?.editionId && (
         <EditionRevealOverlay

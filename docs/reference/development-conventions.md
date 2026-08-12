@@ -59,6 +59,12 @@ Every branch auto-deploys a Vercel preview. Keep branches focused enough that th
 
 Preview is fully isolated from production: its own Clerk **dev instance** and its own **separate Prisma Postgres database**, so testing never touches real users or data. Full detail — the authoritative Vercel env-var scoping, the database separation, admin-role promotion, and webhook/lazy-sync behavior — lives in [preview-testing.md](./preview-testing.md). Read it before your first preview test session.
 
+## Gotcha: Tailwind `hover:` needs two taps on iOS unless guarded
+
+Any element with an unconditional Tailwind `hover:` utility requires **two taps** on iOS/WKWebView to activate — the first tap only triggers the `:hover` state (WebKit's stand-in for "mouse enters"), the second fires the actual click. This is native WebKit touch behavior, not a bug in our code, and it's easy to mistake for a broken click handler (it was — cost a long debugging session on the reader's "Keep reading" links before being traced to this).
+
+`tailwind.config.ts` sets `future.hoverOnlyWhenSupported: true`, which scopes every `hover:` utility behind `@media (hover: hover) and (pointer: fine)` app-wide, so plain `hover:` classes are safe to use normally — no per-component workaround needed. **Don't reintroduce this bug** via a raw inline `:hover` CSS rule, a styled-components/emotion `&:hover`, or any other hover mechanism that bypasses Tailwind's utility (and therefore this guard) — those would need the same media-query treatment applied manually.
+
 ## Debugging: request timing
 
 The auth + data path (`auth()`/`currentUser()`, `getDbUser`, the layout's Clerk upsert, per-page Prisma queries) has dormant timing instrumentation in `src/lib/timing.ts`. Set `TIMING_LOGS=1` in the environment to turn it on — it logs `[timing] rid=<id> <label> <ms>ms ...` lines, correlated per request via an `x-rogha-rid` header middleware attaches. Off by default, zero overhead when unset.

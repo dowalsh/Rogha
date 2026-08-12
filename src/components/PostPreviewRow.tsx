@@ -101,12 +101,8 @@ export function PostPreviewRow({
   );
 
   if (href) {
-    // TEMP diagnostic: hover style stripped to test whether iOS's classic
-    // "first tap only triggers :hover, second tap fires the click" quirk
-    // is the cause of the Keep-reading first-tap-always-misses bug.
-    // Restore `hover:bg-accent/50` once confirmed either way.
     return (
-      <Link href={href} className="block rounded-md px-1 -mx-1 transition">
+      <Link href={href} className="block hover:bg-accent/50 rounded-md px-1 -mx-1 transition">
         {content}
       </Link>
     );

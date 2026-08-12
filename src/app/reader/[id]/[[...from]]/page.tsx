@@ -413,10 +413,7 @@ function ReadPostPageInner({
           backHref={fallbackBackHref}
         />
       )}
-      {/* TEMP diagnostic: FAB disabled to confirm/rule out as the cause of
-          the "Keep reading" navigation bug — restore once confirmed either
-          way. */}
-      {/* <ReaderJumpFab commentsAnchorId="comments" /> */}
+      <ReaderJumpFab commentsAnchorId="comments" />
     </div>
   );
 }

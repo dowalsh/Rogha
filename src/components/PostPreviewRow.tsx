@@ -101,10 +101,15 @@ export function PostPreviewRow({
   );
 
   if (href) {
+    // TEMP diagnostic: plain <a> instead of next/link's <Link>, to isolate
+    // whether the native-app "tap does nothing" bug is in Next's client-side
+    // router/click handling, or upstream of React entirely (e.g. a WKWebView
+    // scroll-momentum touch getting swallowed before it reaches the DOM).
+    // Revert to <Link> once the cause is confirmed.
     return (
-      <Link href={href} className="block hover:bg-accent/50 rounded-md px-1 -mx-1 transition">
+      <a href={href} className="block hover:bg-accent/50 rounded-md px-1 -mx-1 transition">
         {content}
-      </Link>
+      </a>
     );
   }
 

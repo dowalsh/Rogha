@@ -208,6 +208,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       return;
     }
 
+    if (next === "SUBMITTED" && title.trim().length === 0) {
+      toast.error("Please add a title before submitting.");
+      return;
+    }
+
     try {
       setIsSaving(true);
 

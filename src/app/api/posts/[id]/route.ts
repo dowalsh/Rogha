@@ -184,6 +184,13 @@ export async function PUT(
 
     // Content filter — only on submission (not every autosave keystroke)
     if (body.status === "SUBMITTED") {
+      if (typeof body.title !== "string" || body.title.trim().length === 0) {
+        return NextResponse.json(
+          { error: "Title is required" },
+          { status: 400 },
+        );
+      }
+
       const bodyText = extractTextFromDoc(body.content);
       if (isContentBlocked(body.title, bodyText)) {
         return NextResponse.json(

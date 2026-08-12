@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useSWRConfig } from "swr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -36,6 +37,7 @@ type FriendItem = {
 type Props = { refreshKey?: number };
 
 export function FriendsCarousel({ refreshKey = 0 }: Props) {
+  const { mutate: globalMutate } = useSWRConfig();
   const [items, setItems] = useState<FriendItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -165,6 +167,9 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
         throw new Error(data?.message || data?.error || res.statusText);
       toast.success("Friend request accepted");
       await loadAll();
+      // A newly-accepted friend's submitted-for-next-edition posts need to
+      // appear in the home feed's "Coming Sunday" section right away.
+      await globalMutate("/api/home");
     } catch (e: any) {
       console.error("[FriendsCarousel] accept failed:", e);
       toast.error(e?.message || "Failed to accept");

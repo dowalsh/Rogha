@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Loader2, Check, X, Users } from "lucide-react";
@@ -30,6 +30,7 @@ export function PendingRequestsCard() {
   const { data, mutate, isLoading } = useSWR<{ items: PendingItem[] }>(
     "/api/friends?box=incoming"
   );
+  const { mutate: globalMutate } = useSWRConfig();
   const [acting, setActing] = useState<{ userId: string; action: "accept" | "decline" } | null>(
     null
   );
@@ -47,13 +48,18 @@ export function PendingRequestsCard() {
         if (!res.ok) throw new Error(body?.message || body?.error || res.statusText);
         toast.success(action === "accept" ? "Friend request accepted" : "Request declined");
         await mutate();
+        if (action === "accept") {
+          // A newly-accepted friend's submitted-for-next-edition posts need
+          // to appear in the home feed's "Coming Sunday" section right away.
+          await globalMutate("/api/home");
+        }
       } catch (e: any) {
         toast.error(e?.message || `Failed to ${action}`);
       } finally {
         setActing(null);
       }
     },
-    [mutate]
+    [mutate, globalMutate]
   );
 
   const items = data?.items ?? [];

@@ -101,8 +101,20 @@ export function PostPreviewRow({
   );
 
   if (href) {
+    // prefetch disabled: Next's background route-prefetching (triggered
+    // when this link scrolls into view) can kick off an internal router
+    // state transition that sometimes calls .focus() on the page root
+    // before an in-flight tap's click event resolves — the resulting
+    // scroll-to-top snap moves the page underneath the finger, so the
+    // synthesized click's coordinate-based hit-test lands on whatever's
+    // now there instead of this link. See
+    // docs/reference/development-conventions.md for the full writeup.
     return (
-      <Link href={href} className="block hover:bg-accent/50 rounded-md px-1 -mx-1 transition">
+      <Link
+        href={href}
+        prefetch={false}
+        className="block hover:bg-accent/50 rounded-md px-1 -mx-1 transition"
+      >
         {content}
       </Link>
     );

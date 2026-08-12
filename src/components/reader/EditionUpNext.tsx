@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type EditionPost = {
   id: string;
@@ -34,7 +35,24 @@ export function EditionUpNext({
     `/api/editions/${editionId}`,
   );
 
-  if (isLoading || !data) return null;
+  // Reserve the same footprint a loaded card would take instead of
+  // rendering nothing — an empty-then-pop-in section shifts the page while
+  // someone's mid-scroll and can land their tap on whatever used to be
+  // there (e.g. the comment/article text above) instead of the link that
+  // appears a moment later.
+  if (isLoading || !data) {
+    return (
+      <section className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-32" />
+          <div className="space-y-3 rounded-xl border bg-background/60 p-3 sm:p-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   const siblings = data.posts.filter((p) => p.id !== currentPostId);
   const unread = siblings.filter((p) => !p.readByMe);

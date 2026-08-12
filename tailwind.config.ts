@@ -3,6 +3,16 @@ import { withUt } from "uploadthing/tw";
 
 const config: Config = withUt({
   darkMode: ["class"],
+  // Scopes every `hover:` utility behind `@media (hover: hover) and
+  // (pointer: fine)` instead of applying unconditionally. Without this,
+  // WebKit's touch devices treat the first tap on any hover-styled element
+  // as only entering the :hover state (never firing a click) and require a
+  // second tap to actually activate it — this was the root cause of the
+  // "first tap always misses" reader navigation bug, and affects every
+  // Button/Link with hover: styles app-wide, not just that one flow.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",

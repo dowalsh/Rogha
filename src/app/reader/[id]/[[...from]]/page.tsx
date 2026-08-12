@@ -407,17 +407,11 @@ function ReadPostPageInner({
         />
       </div>
       {post.editionId && (
-        <>
-          <EditionUpNext
-            editionId={post.editionId}
-            currentPostId={post.id}
-            backHref={fallbackBackHref}
-          />
-          {/* Keeps the last "Keep reading" row from ever landing under the
-              fixed ReaderJumpFab pill when scrolled to the bottom — without
-              this, taps there hit the FAB instead of the link underneath. */}
-          <div aria-hidden className="h-20" />
-        </>
+        <EditionUpNext
+          editionId={post.editionId}
+          currentPostId={post.id}
+          backHref={fallbackBackHref}
+        />
       )}
       <ReaderJumpFab commentsAnchorId="comments" />
     </div>

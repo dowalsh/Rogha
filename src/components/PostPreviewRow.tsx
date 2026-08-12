@@ -101,8 +101,19 @@ export function PostPreviewRow({
   );
 
   if (href) {
+    // TEMP diagnostic: prefetch disabled to test whether Next's background
+    // route-prefetching (triggered when this link scrolls into view) is
+    // what's causing a premature focus()/scroll-to-top reset to sometimes
+    // fire before a tap's click event resolves, making the click land on
+    // stale-position content instead of this link. Revert once confirmed
+    // either way — see docs/reference/development-conventions.md if this
+    // pans out and needs to become permanent.
     return (
-      <Link href={href} className="block hover:bg-accent/50 rounded-md px-1 -mx-1 transition">
+      <Link
+        href={href}
+        prefetch={false}
+        className="block hover:bg-accent/50 rounded-md px-1 -mx-1 transition"
+      >
         {content}
       </Link>
     );

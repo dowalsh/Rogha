@@ -42,3 +42,6 @@ next-env.d.ts
 
 analytics/
 .env*
+
+# ad-hoc debugging captures (HAR/webarchive dumps, etc.) - never committed
+/debug-artifacts/

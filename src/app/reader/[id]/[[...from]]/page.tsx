@@ -407,19 +407,16 @@ function ReadPostPageInner({
         />
       </div>
       {post.editionId && (
-        <>
-          <EditionUpNext
-            editionId={post.editionId}
-            currentPostId={post.id}
-            backHref={fallbackBackHref}
-          />
-          {/* Keeps the last "Keep reading" row from ever landing under the
-              fixed ReaderJumpFab pill when scrolled to the bottom — without
-              this, taps there hit the FAB instead of the link underneath. */}
-          <div aria-hidden className="h-20" />
-        </>
+        <EditionUpNext
+          editionId={post.editionId}
+          currentPostId={post.id}
+          backHref={fallbackBackHref}
+        />
       )}
-      <ReaderJumpFab commentsAnchorId="comments" />
+      {/* TEMP diagnostic: FAB disabled to confirm/rule out as the cause of
+          the "Keep reading" navigation bug — restore once confirmed either
+          way. */}
+      {/* <ReaderJumpFab commentsAnchorId="comments" /> */}
     </div>
   );
 }

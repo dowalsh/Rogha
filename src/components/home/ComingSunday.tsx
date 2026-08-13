@@ -141,18 +141,28 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
       </button>
 
       <div className="divide-y">
-        {data.posts.map((p) => (
-          <PostPreviewRow
-            key={p.id}
-            variant={p.isOwn ? "own" : "coming"}
-            postId={p.id}
-            title={p.title}
-            authorName={p.isOwn ? "You" : p.authorName}
-            metaText={`submitted ${shortTimeAgo(new Date(p.submittedAt))}`}
-            thumbUrl={p.isOwn ? p.heroThumbUrl : p.heroThumbBlurUrl}
-            href={p.isOwn ? `/editor/${p.id}` : undefined}
-          />
-        ))}
+        {data.posts.map((p) => {
+          const metaText =
+            p.isOwn && p.isRepublish
+              ? `You republished "${p.title}" to ${p.recipientCount ?? 0} friend${
+                  p.recipientCount === 1 ? "" : "s"
+                }`
+              : p.isRepublish
+                ? `Republished · submitted ${shortTimeAgo(new Date(p.submittedAt))}`
+                : `submitted ${shortTimeAgo(new Date(p.submittedAt))}`;
+          return (
+            <PostPreviewRow
+              key={p.id}
+              variant={p.isOwn ? "own" : "coming"}
+              postId={p.id}
+              title={p.title}
+              authorName={p.isOwn ? "You" : p.authorName}
+              metaText={metaText}
+              thumbUrl={p.isOwn ? p.heroThumbUrl : p.heroThumbBlurUrl}
+              href={p.isOwn ? `/editor/${p.id}` : undefined}
+            />
+          );
+        })}
         {/* Positioned like one more row at the end of the list (not
             functionally part of `data.posts`) so it reads as a card in the
             list rather than trailing status text after the CTA below. */}

@@ -8,6 +8,7 @@ import { PostRow, PostCard } from "@/components/PostRow";
 import { Button } from "@/components/ui/button";
 import { PostsSkeleton } from "@/components/posts/PostsSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { RepublishModal, type RepublishTarget } from "@/components/RepublishModal";
 
 // ✅ rename to avoid shadowing the component & match API shape
 type PostRowData = {
@@ -25,6 +26,7 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [republishTarget, setRepublishTarget] = useState<RepublishTarget | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +123,7 @@ export default function PostsPage() {
                     heroImageUrl={p.heroImageUrl ?? undefined}
                     onDelete={() => handleDeletePost(p.id)}
                     isDeleting={deletingId === p.id}
+                    onRepublish={() => setRepublishTarget({ mode: "fromPost", postId: p.id })}
                   />
                 ))}
               </div>
@@ -147,6 +150,7 @@ export default function PostsPage() {
                         heroImageUrl={p.heroImageUrl ?? undefined}
                         onDelete={() => handleDeletePost(p.id)}
                         isDeleting={deletingId === p.id}
+                        onRepublish={() => setRepublishTarget({ mode: "fromPost", postId: p.id })}
                       />
                     ))}
                   </tbody>
@@ -154,6 +158,8 @@ export default function PostsPage() {
               </div>
             </>
           )}
+
+          <RepublishModal target={republishTarget} onClose={() => setRepublishTarget(null)} />
         </div>
       </SignedIn>
     </>

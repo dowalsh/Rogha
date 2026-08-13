@@ -19,6 +19,7 @@ import { Spinner } from "@/components/Spinner";
 import { LikeButton } from "@/components/LikeButton";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
+import { RepublishModal, type RepublishTarget } from "@/components/RepublishModal";
 import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { ReaderJumpFab } from "@/components/reader/ReaderJumpFab";
 import { EditionUpNext } from "@/components/reader/EditionUpNext";
@@ -45,6 +46,8 @@ type PostDTO = {
   audienceType: AudienceType;
   edition?: { publishedAt: string | null } | null;
   newCommentCount?: number | null;
+  republishedFromPostId?: string | null;
+  republishedFrom?: { edition: { publishedAt: string | null } | null } | null;
 };
 
 // --- helpers: quick validator & explainer (diagnostics only) ---
@@ -208,6 +211,7 @@ function ReadPostPageInner({
   });
 
   const [postReported, setPostReported] = useState(false);
+  const [republishTarget, setRepublishTarget] = useState<RepublishTarget | null>(null);
 
   const isAuthor = !!(user && post && user.id === post.author?.clerkId);
   const isShareable = post?.status === "PUBLISHED";
@@ -355,6 +359,15 @@ function ReadPostPageInner({
             />
           )}
         </div>
+        {post.republishedFromPostId && (
+          <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+            Republished
+            {post.republishedFrom?.edition?.publishedAt &&
+              ` · originally from ${new Date(
+                post.republishedFrom.edition.publishedAt,
+              ).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`}
+          </span>
+        )}
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{authorName}</span>
           {post.edition?.publishedAt && (
@@ -383,8 +396,21 @@ function ReadPostPageInner({
             </>
           )}
         </div>
-        {isAuthor && isShareable && <ShareLinkControls postId={post.id} />}
+        {isAuthor && isShareable && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <ShareLinkControls postId={post.id} />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setRepublishTarget({ mode: "fromPost", postId: post.id })}
+            >
+              Republish
+            </Button>
+          </div>
+        )}
       </header>
+
+      <RepublishModal target={republishTarget} onClose={() => setRepublishTarget(null)} />
 
       {/* Rendered content or diagnostics */}
       <div className="prose prose-neutral max-w-none break-words">{contentNode}</div>

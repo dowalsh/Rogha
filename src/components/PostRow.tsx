@@ -21,6 +21,7 @@ type PostRowProps = {
   heroImageUrl?: string;
   onDelete?: () => void;
   isDeleting?: boolean;
+  onRepublish?: () => void;
 };
 
 export function PostRow({
@@ -31,6 +32,7 @@ export function PostRow({
   heroImageUrl,
   onDelete,
   isDeleting,
+  onRepublish,
 }: PostRowProps) {
   return (
     <tr className="border-t align-middle">
@@ -101,6 +103,12 @@ export function PostRow({
             </Link>
           </Button>
 
+          {status === "PUBLISHED" && onRepublish && (
+            <Button variant="outline" size="sm" onClick={onRepublish}>
+              Republish
+            </Button>
+          )}
+
           <ConfirmDelete
             trigger={
               <Button variant="ghost" size="icon" disabled={isDeleting}>
@@ -129,6 +137,7 @@ export function PostCard({
   heroImageUrl,
   onDelete,
   isDeleting,
+  onRepublish,
 }: PostRowProps) {
   return (
     <div className="rounded-md border p-3 space-y-3">
@@ -174,6 +183,12 @@ export function PostCard({
             {status === "PUBLISHED" ? "View" : "Edit"}
           </Link>
         </Button>
+
+        {status === "PUBLISHED" && onRepublish && (
+          <Button variant="outline" size="sm" onClick={onRepublish}>
+            Republish
+          </Button>
+        )}
 
         <ConfirmDelete
           trigger={

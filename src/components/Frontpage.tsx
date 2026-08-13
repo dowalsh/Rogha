@@ -14,7 +14,7 @@ type Post = {
   id: string;
   title?: string | null;
   author?: { id: string; username?: string | null; image?: string | null } | null;
-  audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
+  audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
   circleId?: string | null;
   circle?: { id: string; name: string } | null;
   heroImageUrl?: string | null;

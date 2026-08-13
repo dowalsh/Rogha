@@ -52,7 +52,7 @@ A single weekly submission, scoped to one audience.
 
 - Lifecycle: `DRAFT → SUBMITTED → PUBLISHED`, or `ARCHIVED` / `REMOVED` (moderation).
 - Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` — enforced admin-only server-side (`PUT /api/posts/[id]` rejects a non-admin setting `ALL_USERS`) and hidden from the audience picker for non-admins in the editor.
-- **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. The same rule applies to `CIRCLE`-audience posts against circle-membership `joinedAt`. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
+- **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. The same rule applies to `CIRCLE`-audience posts against circle-membership `joinedAt`. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Its one sanctioned exception is **Republish** (below) — an author-initiated, per-recipient override of the gate, not a bypass of it. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
 - A `SUBMITTED` (not-yet-published) post shows a title/thumbnail-only preview to its eligible audience immediately (no temporal gate — see the spec above), but full content stays author-only until it publishes.
 - A content filter runs once, at the moment a post is submitted (`DRAFT → SUBMITTED`) — not on every autosave keystroke.
 - Only the author can edit or delete their own post, at any status (there's no guard today preventing deletion of an already-published post).
@@ -69,6 +69,17 @@ Admin-authored, first-party content published into the edition — an **Editor's
 - Comments/likes work normally; because the post is `ALL_USERS`, comments are visible to *all* users, same as any other `ALL_USERS` post.
 - Titles follow a manual convention (not enforced by code): `Editor's Note {roman numeral}: {tagline}`, `Community Feature: {post name}`.
 - Full spec: [2026-08-07-official-posts.md](../specs/2026-08-07-official-posts.md).
+
+#### Republish
+Gifting one of your own already-published posts to specific friends who joined after it published, and so can never see it under the temporal gate above.
+
+- Recipients are picked **one at a time** from a reverse-temporal checklist: friends who currently *cannot* see the post (no select-all, no auto-send). `getRepublishEligibleFriends()` (`src/lib/access/postAccess.ts`) computes it by inverting the normal visibility check per friend; an `ALL_USERS` original has no eligible recipients (everyone can already see it).
+- Confirming creates a **fresh `Post` instance** — `audienceType: RECIPIENTS`, scoped to a named `PostRecipient` list, `republishedFromPostId` pointing at the root original (chains flatten if you republish a republish). It copies the original's title/content/hero images, starts `SUBMITTED` (skipping `DRAFT`), and gets its own blank comment thread and likes — the original and its thread are untouched.
+- It rides the next Sunday cron exactly like a normal submitted post — no separate publish path.
+- **One send per weekly cycle**, counted at confirm time and reset on the same week boundary editions use (`getWeekStartUTC`) — a multi-recipient send still spends the whole week's ration. No separate ration table; it's derived from existing `republishedFromPostId`-tagged posts (`src/lib/republish.ts`).
+- Never re-branded — the byline stays the author's real name, with a "Republished · originally from [month year]" marker on the reader page.
+- Surfaced three ways: a one-time dismissible "republish is live" announcement (mirrors the profiles/usernames launch nudge, `localStorage`-dismissed), an optional prompt right after accepting a friend request, and a **Republish** action on any of your own published posts.
+- Full spec: [2026-08-13-republish.md](../specs/2026-08-13-republish.md).
 
 ### Comments & likes
 - Comments nest one level deep (top-level + one reply); the server rejects deeper nesting.

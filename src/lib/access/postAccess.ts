@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { getAcceptedFriendships } from "@/lib/friends";
 
-export type AudienceType = "ALL_USERS" | "FRIENDS" | "CIRCLE";
+export type AudienceType = "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
 
 /**
  * The audience-eligibility half of the visibility rules (self / ALL_USERS /
@@ -25,13 +25,27 @@ export function buildAudienceCandidateWhere(
   userId: string,
   friendIds: string[],
   circleIds: string[],
+  recipientPostIds: string[] = [],
 ): Prisma.PostWhereInput["OR"] {
   return [
     { authorId: userId },
     { audienceType: "ALL_USERS" },
     { AND: [{ audienceType: "FRIENDS" }, { authorId: { in: friendIds } }] },
     { AND: [{ audienceType: "CIRCLE" }, { circleId: { in: circleIds } }] },
+    { AND: [{ audienceType: "RECIPIENTS" }, { id: { in: recipientPostIds } }] },
   ];
+}
+
+/**
+ * postIds of RECIPIENTS-audience posts the given user is a named recipient
+ * of — the visibility boundary for that audience type (see republish spec).
+ */
+export async function getRecipientPostIds(userId: string): Promise<string[]> {
+  const rows = await prisma.postRecipient.findMany({
+    where: { userId },
+    select: { postId: true },
+  });
+  return rows.map((r) => r.postId);
 }
 
 export type MinimalPost = {
@@ -57,6 +71,7 @@ function canViewPostPolicy(args: {
   circleJoinedAt: Date | null; // null = not a joined circle member
   isBlocked: boolean; // viewer<->author block, either direction
   isReported: boolean; // viewer reported this specific post
+  isRecipient: boolean; // viewer is a named PostRecipient of this post
 }) {
   const {
     viewerId,
@@ -65,6 +80,7 @@ function canViewPostPolicy(args: {
     circleJoinedAt,
     isBlocked,
     isReported,
+    isRecipient,
   } = args;
 
   // Blocked/reported wins over everything, including authorship.
@@ -107,6 +123,12 @@ function canViewPostPolicy(args: {
         circleJoinedAt <= (post.publishedAt ?? post.createdAt)
       );
 
+    case "RECIPIENTS":
+      // The named recipient list *is* the visibility boundary — no
+      // temporal recheck needed, it was already the point of eligibility
+      // at send time (see republish spec).
+      return !!viewerId && isRecipient;
+
     default:
       return false;
   }
@@ -136,6 +158,7 @@ export async function resolveVisiblePosts(args: {
         circleJoinedAt: null,
         isBlocked: false,
         isReported: false,
+        isRecipient: false,
       }),
     );
   }
@@ -146,7 +169,7 @@ export async function resolveVisiblePosts(args: {
     new Set(posts.map((p) => p.circleId).filter((id): id is string => !!id)),
   );
 
-  const [friendships, blocks, reports, joinedCircles] = await Promise.all([
+  const [friendships, blocks, reports, joinedCircles, recipientOf] = await Promise.all([
     getAcceptedFriendships(viewerId),
     // One-directional by design (see docs/reference/product-spec.md
     // "Blocking & reporting"): blocking someone filters their content out of
@@ -173,12 +196,17 @@ export async function resolveVisiblePosts(args: {
           select: { circleId: true, joinedAt: true },
         })
       : Promise.resolve([]),
+    prisma.postRecipient.findMany({
+      where: { userId: viewerId, postId: { in: postIds } },
+      select: { postId: true },
+    }),
   ]);
 
   const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
   const blockedAuthorIds = new Set(blocks.map((b) => b.blockedId));
   const reportedPostIds = new Set(reports.map((r) => r.contentId));
   const circleJoinedMap = new Map(joinedCircles.map((c) => [c.circleId, c.joinedAt]));
+  const recipientPostIds = new Set(recipientOf.map((r) => r.postId));
 
   return posts.filter((post) =>
     canViewPostPolicy({
@@ -188,6 +216,7 @@ export async function resolveVisiblePosts(args: {
       circleJoinedAt: post.circleId ? circleJoinedMap.get(post.circleId) ?? null : null,
       isBlocked: blockedAuthorIds.has(post.authorId),
       isReported: reportedPostIds.has(post.id),
+      isRecipient: recipientPostIds.has(post.id),
     }),
   );
 }
@@ -239,4 +268,85 @@ export async function requirePostAccess(
   }
 
   return post;
+}
+
+//
+// --------------------------------------------------
+// 4️⃣ REPUBLISH ELIGIBILITY (inverse of the temporal gate)
+// --------------------------------------------------
+//
+
+export type RepublishEligibleFriend = {
+  id: string;
+  username: string;
+  image: string | null;
+};
+
+/**
+ * Friends of `authorId` who currently CANNOT see `originalPost` — the
+ * reverse-temporal republish checklist (see docs/specs/2026-08-13-republish.md).
+ * Batched like resolveVisiblePosts (one query per input, not per-candidate).
+ */
+export async function getRepublishEligibleFriends(
+  authorId: string,
+  originalPost: MinimalPost,
+): Promise<RepublishEligibleFriend[]> {
+  // Open to everyone already — no one is "missing" it.
+  if (originalPost.audienceType === "ALL_USERS") return [];
+
+  const friendships = await getAcceptedFriendships(authorId);
+  if (!friendships.length) return [];
+  const friendIds = friendships.map((f) => f.friendId);
+
+  const [blocks, circleJoined, users] = await Promise.all([
+    prisma.block.findMany({
+      where: {
+        OR: [
+          { blockerId: authorId, blockedId: { in: friendIds } },
+          { blockerId: { in: friendIds }, blockedId: authorId },
+        ],
+      },
+      select: { blockerId: true, blockedId: true },
+    }),
+    originalPost.audienceType === "CIRCLE" && originalPost.circleId
+      ? prisma.circleMember.findMany({
+          where: {
+            circleId: originalPost.circleId,
+            status: "JOINED",
+            userId: { in: friendIds },
+          },
+          select: { userId: true, joinedAt: true },
+        })
+      : Promise.resolve([]),
+    prisma.user.findMany({
+      where: { id: { in: friendIds } },
+      select: { id: true, username: true, image: true },
+    }),
+  ]);
+
+  const blockedFriendIds = new Set(
+    blocks.flatMap((b) => [b.blockerId, b.blockedId]).filter((id) => id !== authorId),
+  );
+  const circleJoinedMap = new Map(circleJoined.map((c) => [c.userId, c.joinedAt]));
+  const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
+  const userMap = new Map(users.map((u) => [u.id, u]));
+
+  const eligible: RepublishEligibleFriend[] = [];
+  for (const friendId of friendIds) {
+    if (blockedFriendIds.has(friendId)) continue;
+    const canSee = canViewPostPolicy({
+      viewerId: friendId,
+      post: originalPost,
+      friendshipAcceptedAt: friendMap.get(friendId) ?? null,
+      circleJoinedAt: circleJoinedMap.get(friendId) ?? null,
+      isBlocked: false,
+      isReported: false,
+      isRecipient: false,
+    });
+    if (canSee) continue;
+    const user = userMap.get(friendId);
+    if (user) eligible.push(user);
+  }
+
+  return eligible;
 }

@@ -5,8 +5,9 @@ import Link from "next/link";
 import useSWR, { useSWRConfig } from "swr";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, X, Users } from "lucide-react";
+import { Loader2, Check, X, Users, Gift } from "lucide-react";
 import toast from "react-hot-toast";
+import { RepublishModal, type RepublishTarget } from "@/components/RepublishModal";
 
 type PendingItem = {
   state: "PENDING_INCOMING";
@@ -34,9 +35,13 @@ export function PendingRequestsCard() {
   const [acting, setActing] = useState<{ userId: string; action: "accept" | "decline" } | null>(
     null
   );
+  const [republishPrompt, setRepublishPrompt] = useState<{ id: string; username: string } | null>(
+    null,
+  );
+  const [republishTarget, setRepublishTarget] = useState<RepublishTarget | null>(null);
 
   const respond = useCallback(
-    async (userId: string, action: "accept" | "decline") => {
+    async (userId: string, action: "accept" | "decline", username: string) => {
       setActing({ userId, action });
       try {
         const res = await fetch(`/api/friends/${userId}/${action}`, {
@@ -52,6 +57,14 @@ export function PendingRequestsCard() {
           // A newly-accepted friend's submitted-for-next-edition posts need
           // to appear in the home feed's "Coming Sunday" section right away.
           await globalMutate("/api/home");
+          // Gentle, dismissible "share an old favourite" nudge — only if a
+          // republish ration is actually available (see republish spec).
+          fetch("/api/republish/status", { credentials: "include" })
+            .then((r) => r.json())
+            .then((s: { available: boolean }) => {
+              if (s.available) setRepublishPrompt({ id: userId, username });
+            })
+            .catch(() => {});
         }
       } catch (e: any) {
         toast.error(e?.message || `Failed to ${action}`);
@@ -111,7 +124,7 @@ export function PendingRequestsCard() {
                     <Button
                       size="sm"
                       className="h-8 px-3"
-                      onClick={() => respond(user.id, "accept")}
+                      onClick={() => respond(user.id, "accept", user.username ?? "")}
                     >
                       <Check className="h-4 w-4" />
                       Accept
@@ -120,7 +133,7 @@ export function PendingRequestsCard() {
                       size="sm"
                       variant="ghost"
                       className="h-8 px-3"
-                      onClick={() => respond(user.id, "decline")}
+                      onClick={() => respond(user.id, "decline", user.username ?? "")}
                     >
                       <X className="h-4 w-4" />
                       Decline
@@ -132,6 +145,41 @@ export function PendingRequestsCard() {
           );
         })}
       </div>
+
+      {republishPrompt && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-blue-500/40 bg-blue-50 dark:bg-blue-950/20 px-3 py-2 text-sm">
+          <span className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+            <Gift className="h-4 w-4 shrink-0" />
+            Share an old favourite with {republishPrompt.username}?
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              size="sm"
+              className="h-7 px-3 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                setRepublishTarget({
+                  mode: "fromFriend",
+                  friendId: republishPrompt.id,
+                  friendName: republishPrompt.username,
+                });
+                setRepublishPrompt(null);
+              }}
+            >
+              Share
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-blue-700 dark:text-blue-400"
+              onClick={() => setRepublishPrompt(null)}
+            >
+              Not now
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <RepublishModal target={republishTarget} onClose={() => setRepublishTarget(null)} />
     </div>
   );
 }

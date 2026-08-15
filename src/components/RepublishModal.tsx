@@ -16,10 +16,17 @@ import toast from "react-hot-toast";
 
 export type RepublishTarget =
   | { mode: "fromPost"; postId: string }
-  | { mode: "fromFriend"; friendId: string; friendName: string };
+  | { mode: "fromFriend"; friendId: string; friendName: string }
+  | { mode: "browse" };
 
 type Friend = { id: string; username: string; image: string | null };
 type MyPost = { id: string; title: string | null; status: string; heroImageUrl: string | null };
+type Candidate = {
+  id: string;
+  title: string | null;
+  heroThumbUrl: string | null;
+  eligibleCount: number;
+};
 
 function initialsFor(username: string | null) {
   return (username || "?").slice(0, 2).toUpperCase();
@@ -45,6 +52,8 @@ export function RepublishModal({
   );
   const [myPosts, setMyPosts] = useState<MyPost[] | null>(null);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
 
   const [eligibility, setEligibility] = useState<{
     rationAvailable: boolean;
@@ -63,8 +72,10 @@ export function RepublishModal({
     if (target.mode === "fromPost") {
       setPostId(target.postId);
       setMyPosts(null);
-    } else {
+      setCandidates(null);
+    } else if (target.mode === "fromFriend") {
       setPostId(null);
+      setCandidates(null);
       setLoadingPosts(true);
       fetch("/api/posts", { credentials: "include" })
         .then((r) => r.json())
@@ -73,6 +84,16 @@ export function RepublishModal({
         )
         .catch(() => setMyPosts([]))
         .finally(() => setLoadingPosts(false));
+    } else {
+      // browse
+      setPostId(null);
+      setMyPosts(null);
+      setLoadingCandidates(true);
+      fetch("/api/republish/candidates", { credentials: "include" })
+        .then((r) => r.json())
+        .then((body: { posts: Candidate[] }) => setCandidates(body.posts ?? []))
+        .catch(() => setCandidates([]))
+        .finally(() => setLoadingCandidates(false));
     }
   }, [target]);
 
@@ -153,6 +174,40 @@ export function RepublishModal({
             ) : (
               <p className="text-sm text-muted-foreground py-4">
                 You don't have any published posts yet.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Step 1 (browse only): shortlist of posts with someone eligible */}
+        {target?.mode === "browse" && !postId && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Pick one of your posts to give to a friend who hasn't seen it yet.
+            </p>
+            {loadingCandidates ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : candidates && candidates.length > 0 ? (
+              <div className="max-h-72 overflow-y-auto flex flex-col gap-1">
+                {candidates.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setPostId(p.id)}
+                    className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+                  >
+                    <span className="truncate">{p.title ?? "Untitled post"}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {p.eligibleCount} friend{p.eligibleCount === 1 ? "" : "s"} haven't seen it
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">
+                Every friend has already seen everything you've published — nothing to
+                republish right now.
               </p>
             )}
           </div>

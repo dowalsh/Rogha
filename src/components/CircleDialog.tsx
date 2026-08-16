@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,19 +9,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
-import { X, UserPlus, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { X, Search } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import {
   addMemberToCircle,
@@ -50,7 +40,8 @@ export function CircleDialog({
   const [friends, setFriends] = useState<any[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set());
 
   // keep members in sync when a new circle is selected
   useEffect(() => {
@@ -64,6 +55,14 @@ export function CircleDialog({
     getFriends().then(setFriends).finally(() => setLoadingFriends(false));
   }, [open]);
 
+  // reset the picker state whenever the dialog is reopened
+  useEffect(() => {
+    if (open) {
+      setSearch("");
+      setSelectedToAdd(new Set());
+    }
+  }, [open]);
+
   const handleRemove = async (memberId: string) => {
     await removeMemberFromCircle(circle.id, memberId);
     setMembers((prev) => {
@@ -73,17 +72,33 @@ export function CircleDialog({
     });
   };
 
-  const handleAdd = async (friendId: string) => {
+  const toggleSelectedToAdd = (friendId: string) => {
+    setSelectedToAdd((prev) => {
+      const next = new Set(prev);
+      if (next.has(friendId)) next.delete(friendId);
+      else next.add(friendId);
+      return next;
+    });
+  };
+
+  const handleAddSelected = async () => {
+    if (selectedToAdd.size === 0) return;
     setIsAdding(true);
     try {
-      await addMemberToCircle({ circleId: circle.id, friendId });
-      const friend = friends.find((f) => f.id === friendId);
+      const idsToAdd = Array.from(selectedToAdd);
+      await Promise.all(
+        idsToAdd.map((friendId) =>
+          addMemberToCircle({ circleId: circle.id, friendId })
+        )
+      );
+      const addedFriends = friends.filter((f) => idsToAdd.includes(f.id));
       setMembers((prev) => {
-        const next = [...prev, { user: friend }];
+        const next = [...prev, ...addedFriends.map((friend) => ({ user: friend }))];
         onMembersChanged?.(next);
         return next;
       });
-      setIsPopoverOpen(false);
+      setSelectedToAdd(new Set());
+      setSearch("");
     } finally {
       setIsAdding(false);
     }
@@ -97,9 +112,12 @@ export function CircleDialog({
   // };
 
   const currentMemberIds = members.map((m) => m.user.id);
-  const addableFriends = friends.filter(
-    (f) => !currentMemberIds.includes(f.id)
-  );
+  const addableFriends = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return friends
+      .filter((f) => !currentMemberIds.includes(f.id))
+      .filter((f) => !q || f.username?.toLowerCase().includes(q));
+  }, [friends, currentMemberIds, search]);
 
   return (
     <Dialog
@@ -115,48 +133,7 @@ export function CircleDialog({
 
         <div className="space-y-5">
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">Members</h3>
-              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <UserPlus className="w-4 h-4 mr-1" /> Add
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 w-64">
-                  <Command>
-                    <CommandInput placeholder="Search friends..." />
-                    <CommandEmpty>No friends found</CommandEmpty>
-                    <CommandGroup>
-                      {loadingFriends ? (
-                        <div className="flex justify-center p-4">
-                          <Spinner className="h-4 w-4" />
-                        </div>
-                      ) : addableFriends.map((friend) => (
-                        <CommandItem
-                          key={friend.id}
-                          onSelect={() => handleAdd(friend.id)}
-                          disabled={isAdding}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-6 h-6">
-                              <AvatarImage src={friend.image} />
-                              <AvatarFallback>
-                                {friend.username?.[0]?.toUpperCase() ?? "?"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span>{friend.username}</span>
-                          </div>
-                          {isAdding && <Check className="w-4 h-4 ml-auto" />}
-                        </CommandItem>
-                      ))
-                      }
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
+            <h3 className="font-medium mb-2">Members</h3>
             <ul className="space-y-2">
               {members.map((m) => (
                 <li
@@ -180,6 +157,70 @@ export function CircleDialog({
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div>
+            <h3 className="font-medium mb-2">Add friends</h3>
+            <div className="relative mb-2">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search friends..."
+                className="pl-8"
+              />
+            </div>
+
+            {loadingFriends ? (
+              <div className="flex justify-center p-4">
+                <Spinner className="h-4 w-4" />
+              </div>
+            ) : (
+              <div className="max-h-60 overflow-y-auto flex flex-col gap-1 rounded-md border">
+                {addableFriends.length === 0 ? (
+                  <p className="text-sm text-muted-foreground px-2 py-4 text-center">
+                    No friends found
+                  </p>
+                ) : (
+                  addableFriends.map((friend) => {
+                    const checked = selectedToAdd.has(friend.id);
+                    return (
+                      <label
+                        key={friend.id}
+                        className="flex items-center gap-3 px-2 py-2 cursor-pointer hover:bg-muted"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleSelectedToAdd(friend.id)}
+                        />
+                        <Avatar className="w-6 h-6 shrink-0">
+                          <AvatarImage src={friend.image} />
+                          <AvatarFallback>
+                            {friend.username?.[0]?.toUpperCase() ?? "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate text-sm">{friend.username}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-muted-foreground">
+                {selectedToAdd.size} selected
+              </p>
+              <Button
+                size="sm"
+                onClick={handleAddSelected}
+                disabled={selectedToAdd.size === 0 || isAdding}
+              >
+                {isAdding
+                  ? "Adding..."
+                  : `Add${selectedToAdd.size > 0 ? ` (${selectedToAdd.size})` : ""}`}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

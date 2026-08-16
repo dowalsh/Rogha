@@ -39,7 +39,7 @@ export async function createCircle({ name, description }: CreateCircleInput) {
         },
       },
     });
-    revalidatePath("/circles");
+    revalidatePath("/friends");
     return circle;
   } catch (error) {
     console.error("[CREATE_CIRCLE_ERROR]", error);
@@ -138,7 +138,9 @@ export async function addMemberToCircle({
       },
     });
 
-    revalidatePath("/circles");
+    // No revalidatePath here — the caller updates its member list
+    // optimistically, and revalidating this route triggers a Next.js
+    // router refresh that resets the circle dialog's open/selected state.
     return { success: true };
   } catch (error) {
     console.error("[ADD_MEMBER_ERROR]", error);
@@ -164,7 +166,7 @@ export async function removeMemberFromCircle(
       where: { circleId, userId: memberId },
     });
 
-    revalidatePath("/circles");
+    // No revalidatePath here — same reasoning as addMemberToCircle above.
     return { success: true };
   } catch (error) {
     console.error("[REMOVE_MEMBER_ERROR]", error);
@@ -181,7 +183,7 @@ export async function leaveCircle(circleId: string) {
     data: { status: "LEFT" },
   });
 
-  revalidatePath("/circles");
+  revalidatePath("/friends");
   return { success: true };
 }
 

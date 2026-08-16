@@ -38,6 +38,9 @@ export async function GET(
 
         author: { select: { id: true, clerkId: true, username: true, image: true } },
         edition: { select: { publishedAt: true } },
+        republishedFromPostId: true,
+        republishedFrom: { select: { edition: { select: { publishedAt: true } } } },
+        republishMessage: true,
         _count: { select: { likes: true } },
         likes: { select: { id: true, userId: true } },
       },

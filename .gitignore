@@ -45,3 +45,6 @@ analytics/
 
 # ad-hoc debugging captures (HAR/webarchive dumps, etc.) - never committed
 /debug-artifacts/
+
+# local Claude config & skills
+.claude/

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ import {
 import { toast } from "react-hot-toast";
 import { Plus, Loader2, X, UserMinus, Check, Clock, Users } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
+import { RepublishAcceptNudge } from "@/components/RepublishAcceptNudge";
+import { useRepublishAcceptNudge } from "@/hooks/useRepublishAcceptNudge";
 
 type FriendState = "ACCEPTED" | "PENDING_OUTGOING" | "PENDING_INCOMING";
 
@@ -38,6 +41,7 @@ type Props = { refreshKey?: number };
 
 export function FriendsCarousel({ refreshKey = 0 }: Props) {
   const { mutate: globalMutate } = useSWRConfig();
+  const router = useRouter();
   const [items, setItems] = useState<FriendItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,6 +56,10 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
 
   // Accept/Decline button spinners (keyed by user id)
   const [actingId, setActingId] = useState<string | null>(null);
+
+  // "Share an old favourite" nudge, shown right after a successful accept —
+  // shared with PendingRequestsCard's home-page version.
+  const nudge = useRepublishAcceptNudge();
 
   const loadBox = useCallback(
     async (box: "accepted" | "incoming" | "outgoing") => {
@@ -154,7 +162,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
     }
   }
 
-  async function handleAccept(userId: string) {
+  async function handleAccept(userId: string, username: string) {
     setActingId(userId);
     try {
       const res = await fetch(`/api/friends/${userId}/accept`, {
@@ -170,6 +178,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       // A newly-accepted friend's submitted-for-next-edition posts need to
       // appear in the home feed's "Coming Sunday" section right away.
       await globalMutate("/api/home");
+      nudge.checkAfterAccept(userId, username);
     } catch (e: any) {
       console.error("[FriendsCarousel] accept failed:", e);
       toast.error(e?.message || "Failed to accept");
@@ -263,6 +272,19 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
           </Button>
         )}
       </div>
+
+      {nudge.prompt && (
+        <div className="mb-3">
+          <RepublishAcceptNudge
+            prompt={nudge.prompt}
+            onShare={() => {
+              nudge.dismiss();
+              router.push("/posts");
+            }}
+            onDismiss={nudge.dismiss}
+          />
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-6">
@@ -369,7 +391,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
                       size="sm"
                       variant="secondary"
                       className="h-8 px-2"
-                      onClick={() => handleAccept(u.id)}
+                      onClick={() => handleAccept(u.id, name)}
                       disabled={isActing}
                       title="Accept"
                     >

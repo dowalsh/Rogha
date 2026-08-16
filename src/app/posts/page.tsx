@@ -8,6 +8,11 @@ import { PostRow, PostCard } from "@/components/PostRow";
 import { Button } from "@/components/ui/button";
 import { PostsSkeleton } from "@/components/posts/PostsSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import {
+  RepublishModal,
+  type RepublishTarget,
+} from "@/components/RepublishModal";
+import { Gift } from "lucide-react";
 
 // ✅ rename to avoid shadowing the component & match API shape
 type PostRowData = {
@@ -17,6 +22,7 @@ type PostRowData = {
   updatedAt: string; // from JSON
   heroImageUrl?: string | null;
   edition?: { id: string; title: string | null } | null; // ✅ now has id + title
+  republishedFromPostId?: string | null;
 };
 
 export default function PostsPage() {
@@ -25,6 +31,8 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [republishTarget, setRepublishTarget] =
+    useState<RepublishTarget | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,6 +111,20 @@ export default function PostsPage() {
             </Button>
           </div>
 
+          <div className="flex items-start gap-3 rounded-md border border-blue-500/30 bg-blue-50 dark:bg-blue-950/20 p-4">
+            <Gift className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-500" />
+            <div className="text-sm">
+              <p className="font-medium text-blue-900 dark:text-blue-200">
+                Share an old post with new friends!
+              </p>
+              <p className="text-blue-900/80 dark:text-blue-200/80">
+                Once a week, you can republish one of your published posts to a
+                new friend/friends who missed the original. It will show up in
+                their edition at the end of the week.
+              </p>
+            </div>
+          </div>
+
           {posts && posts.length === 0 ? (
             <div className="rounded-md border p-6 text-sm text-muted-foreground">
               No posts yet. Create your first one!
@@ -121,6 +143,10 @@ export default function PostsPage() {
                     heroImageUrl={p.heroImageUrl ?? undefined}
                     onDelete={() => handleDeletePost(p.id)}
                     isDeleting={deletingId === p.id}
+                    onRepublish={() =>
+                      setRepublishTarget({ postId: p.id })
+                    }
+                    isRepublish={!!p.republishedFromPostId}
                   />
                 ))}
               </div>
@@ -147,6 +173,10 @@ export default function PostsPage() {
                         heroImageUrl={p.heroImageUrl ?? undefined}
                         onDelete={() => handleDeletePost(p.id)}
                         isDeleting={deletingId === p.id}
+                        onRepublish={() =>
+                          setRepublishTarget({ postId: p.id })
+                        }
+                        isRepublish={!!p.republishedFromPostId}
                       />
                     ))}
                   </tbody>
@@ -154,9 +184,13 @@ export default function PostsPage() {
               </div>
             </>
           )}
+
+          <RepublishModal
+            target={republishTarget}
+            onClose={() => setRepublishTarget(null)}
+          />
         </div>
       </SignedIn>
     </>
   );
 }
-

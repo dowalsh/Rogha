@@ -5,7 +5,7 @@ import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
 import { getReadMapForPosts } from "@/lib/postReads";
-import { buildAudienceCandidateWhere } from "@/lib/access/postAccess";
+import { buildAudienceCandidateWhere, getRecipientPostIds } from "@/lib/access/postAccess";
 import { getWeeklyJamForEdition } from "@/lib/jam";
 
 type DbUser = { id: string };
@@ -159,6 +159,8 @@ export async function getPublishedEditions(user: DbUser) {
   const blockedAuthorIds = new Set(blocks.map((b) => b.blockedId));
   const reportedPostIds = new Set(reports.map((r) => r.contentId));
   const jamCandidateIds = [user.id, ...friendIds].filter((id) => !blockedAuthorIds.has(id));
+  const recipientPostIds = await getRecipientPostIds(user.id);
+  const recipientPostIdSet = new Set(recipientPostIds);
 
   const editions = await prisma.edition.findMany({
     where: { NOT: { publishedAt: null } },
@@ -172,7 +174,7 @@ export async function getPublishedEditions(user: DbUser) {
         where: {
           editionId: ed.id,
           status: "PUBLISHED",
-          OR: buildAudienceCandidateWhere(user.id, friendIds, myCircleIds),
+          OR: buildAudienceCandidateWhere(user.id, friendIds, myCircleIds, recipientPostIds),
         },
         orderBy: { updatedAt: "desc" },
         select: {
@@ -202,6 +204,9 @@ export async function getPublishedEditions(user: DbUser) {
         if (p.audienceType === "CIRCLE") {
           const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
           return joinedAt !== undefined && joinedAt <= (ed.publishedAt ?? p.createdAt);
+        }
+        if (p.audienceType === "RECIPIENTS") {
+          return recipientPostIdSet.has(p.id);
         }
         // FRIENDS
         const friendshipDate = friendMap.get(p.authorId);
@@ -257,18 +262,21 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
   });
   const circleJoinedMap = new Map(circleMemberships.map((c) => [c.circleId, c.joinedAt]));
   const myCircleIds = Array.from(circleJoinedMap.keys());
+  const recipientPostIds = await getRecipientPostIds(user.id);
+  const recipientPostIdSet = new Set(recipientPostIds);
 
   // 4) Audience filter
   // - Author can see their own posts
   // - ALL_USERS is open to everyone
   // - FRIENDS requires accepted friendship with author
   // - CIRCLE requires viewer to be JOINED in that circle
+  // - RECIPIENTS requires viewer to be a named PostRecipient (republish)
 
   const posts = await prisma.post.findMany({
     where: {
       editionId: edition.id,
       status: "PUBLISHED",
-      OR: buildAudienceCandidateWhere(user.id, validFriendIds, myCircleIds),
+      OR: buildAudienceCandidateWhere(user.id, validFriendIds, myCircleIds, recipientPostIds),
     },
     orderBy: { updatedAt: "desc" },
     select: {
@@ -287,6 +295,8 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       heroThumbUrl: true,
       heroThumbBlurUrl: true,
       content: true,
+      republishedFromPostId: true,
+      republishedFrom: { select: { edition: { select: { publishedAt: true } } } },
       _count: { select: { likes: true } },
       likes: { where: { userId: user.id }, select: { id: true } },
     },
@@ -318,6 +328,9 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
         // circle doesn't grant retroactive access to its whole history.
         const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
         return joinedAt !== undefined && joinedAt <= (edition.publishedAt ?? p.createdAt);
+      }
+      if (p.audienceType === "RECIPIENTS") {
+        return recipientPostIdSet.has(p.id);
       }
       // FRIENDS: check friendship date against when the edition was published,
       // not when the post was drafted
@@ -376,7 +389,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     }),
   ]);
 
-  const weeklyJam = await getWeeklyJamForEdition(user.id, edition.id);
+  const weeklyJam = await getWeeklyJamForEdition(user.id, edition.id, edition.publishedAt);
 
   console.debug(
     "[getPublishedEditionById] edition:",

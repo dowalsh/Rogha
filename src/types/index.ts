@@ -1,1 +1,1 @@
-export type AudienceType = "CIRCLE" | "FRIENDS" | "ALL_USERS";
+export type AudienceType = "CIRCLE" | "FRIENDS" | "ALL_USERS" | "RECIPIENTS";

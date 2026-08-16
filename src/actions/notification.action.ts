@@ -377,7 +377,7 @@ export async function createFriendRequestAcceptedNotification({
     await sendPushToUser(requesterId, {
       title: "Friend request accepted",
       body: `${accepter?.username ?? "Someone"} accepted your friend request`,
-      url: accepter?.username ? `/profile/${accepter.username}` : "/circles",
+      url: accepter?.username ? `/profile/${accepter.username}` : "/friends",
     });
   }
 

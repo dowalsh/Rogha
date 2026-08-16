@@ -105,9 +105,9 @@ function MobileNavbar({ isLoaded, isSignedIn, user, isAdmin }: MobileNavbarProps
                   onClick={handleNavClick}
                   asChild
                 >
-                  <Link href="/circles">
+                  <Link href="/friends">
                     <Blend className="w-4 h-4" />
-                    Circles
+                    Friends
                     <FriendsNavBadge />
                   </Link>
                 </Button>

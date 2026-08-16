@@ -8,7 +8,7 @@
 import { prisma } from "@/lib/prisma";
 import { getTopTrackLastWeek } from "@/lib/lastfm";
 import { resolveSpotifyAlbumImage } from "@/lib/spotify";
-import { getAcceptedFriendIds } from "@/lib/friends";
+import { getAcceptedFriendships } from "@/lib/friends";
 import type { WeeklyJamData, WeeklyJamRow } from "@/lib/jam-preview";
 
 export type { WeeklyJamRow, WeeklyJamData } from "@/lib/jam-preview";
@@ -70,13 +70,17 @@ export async function captureWeeklyJamTracks(editionId: string): Promise<void> {
  * The Jam rows a viewer should see for an edition: their own row (if any)
  * plus their accepted friends', minus anyone the viewer has blocked
  * (one-directional, matching docs/specs/2026-08-02-post-visibility-rules.md).
+ * Friends are temporally gated the same way FRIENDS-audience posts are —
+ * the friendship must predate the edition going live, so accepting a friend
+ * doesn't retroactively surface their Jam history from before you knew them.
  */
 export async function getWeeklyJamForEdition(
   viewerId: string,
   editionId: string,
+  editionPublishedAt: Date | null,
 ): Promise<WeeklyJamData> {
-  const [friendIds, blocks, viewer] = await Promise.all([
-    getAcceptedFriendIds(viewerId),
+  const [friendships, blocks, viewer] = await Promise.all([
+    getAcceptedFriendships(viewerId),
     prisma.block.findMany({
       where: { blockerId: viewerId },
       select: { blockedId: true },
@@ -88,6 +92,11 @@ export async function getWeeklyJamForEdition(
   ]);
 
   const blockedIds = new Set(blocks.map((b) => b.blockedId));
+  const friendIds = editionPublishedAt
+    ? friendships
+        .filter((f) => f.acceptedAt <= editionPublishedAt)
+        .map((f) => f.friendId)
+    : friendships.map((f) => f.friendId);
   const candidateIds = [viewerId, ...friendIds].filter((id) => !blockedIds.has(id));
 
   const tracks = await prisma.weeklyTrack.findMany({

@@ -89,11 +89,11 @@ export function getNotificationLink(
   }
 
   if (n.type === "FRIEND_REQUEST") {
-    return "/circles";
+    return "/friends";
   }
 
   if (n.type === "FRIEND_REQUEST_ACCEPTED") {
-    return n.creator?.username ? `/profile/${n.creator.username}` : "/circles";
+    return n.creator?.username ? `/profile/${n.creator.username}` : "/friends";
   }
 
   console.warn(

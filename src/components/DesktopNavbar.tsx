@@ -73,9 +73,9 @@ function DesktopNavbar({ isLoaded, isSignedIn, user, isAdmin }: DesktopNavbarPro
             </Link>
           </Button>
           <Button variant="ghost" className="flex items-center gap-2" asChild>
-            <Link href="/circles">
+            <Link href="/friends">
               <Blend className="w-4 h-4" />
-              <span className="hidden lg:inline">Circles</span>
+              <span className="hidden lg:inline">Friends</span>
               <FriendsNavBadge />
             </Link>
           </Button>

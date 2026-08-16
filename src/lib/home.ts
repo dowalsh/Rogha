@@ -5,7 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendIds, getAcceptedFriendships } from "@/lib/friends";
-import { resolveVisiblePosts } from "@/lib/access/postAccess";
+import { resolveVisiblePosts, getRecipientPostIds } from "@/lib/access/postAccess";
 import { getReadMapForPosts } from "@/lib/postReads";
 import {
   getMostRecentPublishedEditionForUser,
@@ -91,6 +91,8 @@ export type ComingNextPost = {
   heroThumbBlurUrl: string | null;
   submittedAt: string;
   isOwn: boolean;
+  isRepublish: boolean;
+  recipientCount: number | null; // set only for isOwn && isRepublish rows
 };
 
 export type ComingNextData =
@@ -123,7 +125,7 @@ function computeDaysLeft(now: Date): number {
 export async function getComingNext(userId: string): Promise<ComingNextData> {
   const friendIds = await getAcceptedFriendIds(userId);
 
-  const submitted = await prisma.post.findMany({
+  const submittedRaw = await prisma.post.findMany({
     where: {
       status: "SUBMITTED",
       OR: [
@@ -141,8 +143,19 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       heroThumbUrl: true,
       heroThumbBlurUrl: true,
       officialKind: true,
+      audienceType: true,
+      republishedFromPostId: true,
       author: { select: { id: true, username: true } },
     },
+  });
+
+  // RECIPIENTS-audience (republish) posts don't get the blanket "any friend
+  // sees the submitted preview" treatment the other audiences do here — only
+  // named recipients (and the author) get the Coming Sunday teaser.
+  const recipientPostIds = new Set(await getRecipientPostIds(userId));
+  const submitted = submittedRaw.filter((p) => {
+    if (p.audienceType !== "RECIPIENTS") return true;
+    return p.authorId === userId || recipientPostIds.has(p.id);
   });
 
   if (friendIds.length === 0 && submitted.length === 0) {
@@ -172,6 +185,20 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
   const others = submitted.filter((p) => p.authorId !== userId);
   const ordered = [...own, ...others];
 
+  const ownRepublishIds = own
+    .filter((p) => p.republishedFromPostId != null)
+    .map((p) => p.id);
+  const recipientCounts = ownRepublishIds.length
+    ? await prisma.postRecipient.groupBy({
+        by: ["postId"],
+        where: { postId: { in: ownRepublishIds } },
+        _count: { userId: true },
+      })
+    : [];
+  const recipientCountMap = new Map(
+    recipientCounts.map((r) => [r.postId, r._count.userId]),
+  );
+
   return {
     visible: true,
     state: "posts",
@@ -183,6 +210,11 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       heroThumbBlurUrl: p.heroThumbBlurUrl,
       submittedAt: p.createdAt.toISOString(),
       isOwn: p.authorId === userId,
+      isRepublish: p.republishedFromPostId != null,
+      recipientCount:
+        p.authorId === userId && p.republishedFromPostId != null
+          ? recipientCountMap.get(p.id) ?? 0
+          : null,
     })),
     hasSubmitted: own.length > 0,
     friendsSubmittedCount: others.length,

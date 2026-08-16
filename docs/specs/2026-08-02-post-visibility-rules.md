@@ -27,7 +27,7 @@ paths but not others. The fix consolidates all of it into one place.
 
 - `viewerId` (nullable — null means anonymous)
 - `post.status`: `DRAFT | SUBMITTED | PUBLISHED | ARCHIVED | REMOVED`
-- `post.audienceType`: `ALL_USERS | FRIENDS | CIRCLE`
+- `post.audienceType`: `ALL_USERS | FRIENDS | CIRCLE | RECIPIENTS`
 - `post.circleId` (when `CIRCLE`)
 - `post.authorId`
 - `post.edition.publishedAt` (null until the post's edition has published)
@@ -35,6 +35,8 @@ paths but not others. The fix consolidates all of it into one place.
 - viewer's `CircleMember` row for `post.circleId` (status, `joinedAt`)
 - a `Block` row from the viewer against the author (one-directional)
 - a `Report` row from the viewer against this specific post
+- viewer's `PostRecipient` row for the post (when `RECIPIENTS` — see
+  "Republish" below)
 
 ## Rules, evaluated in this order (first match wins)
 
@@ -76,6 +78,10 @@ paths but not others. The fix consolidates all of it into one place.
      `friendship.acceptedAt <= post.edition.publishedAt`.
    - `CIRCLE` → viewer has a `JOINED` `CircleMember` row for `post.circleId`
      **and** `circleMember.joinedAt <= post.edition.publishedAt`.
+   - `RECIPIENTS` → viewer has a `PostRecipient` row for this post. **No
+     temporal comparison** — unlike `FRIENDS`/`CIRCLE`, the named recipient
+     list *is* the visibility boundary; it was already the point of a
+     Republish send (see below), so there's nothing further to gate on.
    - The date comparison guards against a newly added friend/circle-member
      seeing the group's entire back-catalog, without hiding content that was
      already visible to them continuously since before it published. It's
@@ -90,6 +96,28 @@ paths but not others. The fix consolidates all of it into one place.
 9. **Admin bypass** — admin-only routes (gated by `requireAdmin()`) may see
    any post in any state, but only through dedicated `/api/admin/*` routes,
    never through general viewer-facing routes/actions.
+
+## Republish — the gate's one sanctioned exception
+
+Republish ([2026-08-13-republish.md](./2026-08-13-republish.md)) lets an
+author manually grant access to friends rule 7's `FRIENDS`/`CIRCLE` temporal
+check would otherwise exclude — but it does this by creating a **new post**
+scoped to `audienceType: RECIPIENTS`, not by punching a hole in the gate
+itself. The original post's visibility is completely unaffected.
+
+- **Eligibility** (who can be picked as a recipient) is the *inverse* of this
+  spec's own rules: `getRepublishEligibleFriends()`
+  (`src/lib/access/postAccess.ts`) runs each of the author's accepted friends
+  through `canViewPostPolicy` against the original post and keeps only the
+  ones it returns `false` for — i.e. friends the gate is currently hiding it
+  from. An `ALL_USERS` original has no eligible recipients (rule 7 already
+  shows it to everyone); blocked pairs (either direction) are excluded
+  regardless of what the gate would otherwise say.
+- **Scoping the new instance** uses the same `buildAudienceCandidateWhere`
+  DB-level builder as the other audiences, extended with a
+  `recipientPostIds` branch (postIds the viewer has a `PostRecipient` row
+  for, fetched via `getRecipientPostIds(userId)`), and the same
+  `canViewPostPolicy` function for the exact per-post check.
 
 ## Implementation
 

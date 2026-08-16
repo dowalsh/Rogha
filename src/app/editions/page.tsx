@@ -46,7 +46,7 @@ type FullEdition = {
   posts: Array<{
     id: string;
     title?: string | null;
-    audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE";
+    audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
     circleId?: string | null;
     officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
     circle?: { id: string; name: string } | null;

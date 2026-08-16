@@ -36,20 +36,22 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
   if (hero.kind === "empty") {
     return (
       <section className={cardBase}>
-        <p className="font-serif text-xl">No editions yet</p>
+        <p className="font-serif text-xl">No posts last week</p>
         <p className="text-sm text-muted-foreground">
-          Once your friends start submitting posts, they'll come together into
-          your first weekly edition. In the meantime, explore what's already
-          here or write the first post yourself.
+          Once your friends submit some posts, they'll come together into
+          your next weekly edition. In the meantime, explore previous
+          editions or write a post yourself!
         </p>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="/editions">Explore editions</Link>
+            <Link href="/editions">Explore previous editions</Link>
           </Button>
           <Button asChild size="sm">
             <Link href="/posts">Write a post</Link>
           </Button>
         </div>
+
+        <ComingSundaySlot comingNext={comingNext} collapsed={false} />
       </section>
     );
   }

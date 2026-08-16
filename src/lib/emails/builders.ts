@@ -47,9 +47,9 @@ export function buildPostPublishedEmail(
   const emojiPrefix = signoffEmoji?.trim() ? `${signoffEmoji.trim()} ` : "";
 
   return {
-    subject: `${emojiPrefix}${safeAuthor} just went live in today's edition!`,
+    subject: `${emojiPrefix}${safeAuthor} just published live to today's edition!`,
     html: `
-      <h1>${emojiPrefix}${safeAuthor} is live right now ⚡</h1>
+      <h1>Fresh off the press from ${emojiPrefix}${safeAuthor}⚡</h1>
       <p>They just published: <strong>${safeTitle}</strong></p>
       <p>It's in today's edition already — go read it.</p>
       <p>

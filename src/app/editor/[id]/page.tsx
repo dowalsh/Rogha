@@ -35,7 +35,11 @@ type PostData = {
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
 type PublishTarget = "next-week" | "now";
 
-function HeroImageUploadButton({ onComplete }: { onComplete: (url: string) => void }) {
+function HeroImageUploadButton({
+  onComplete,
+}: {
+  onComplete: (url: string) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { startUpload, isUploading } = useUploadThing("imageUploader", {
     onClientUploadComplete: (res) => {
@@ -67,7 +71,11 @@ function HeroImageUploadButton({ onComplete }: { onComplete: (url: string) => vo
         disabled={isUploading}
         className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {isUploading ? <Spinner className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+        {isUploading ? (
+          <Spinner className="h-4 w-4" />
+        ) : (
+          <ImageIcon className="h-4 w-4" />
+        )}
         {isUploading ? "Uploading…" : "Choose image"}
       </button>
     </>
@@ -86,7 +94,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [officialKind, setOfficialKind] = useState<OfficialKind>(null);
   const [notifyAllUsers, setNotifyAllUsers] = useState(false);
   const [sundayLiveJoinAvailable, setSundayLiveJoinAvailable] = useState(false);
-  const [publishTarget, setPublishTarget] = useState<PublishTarget>("next-week");
+  const [publishTarget, setPublishTarget] =
+    useState<PublishTarget>("next-week");
 
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
@@ -149,11 +158,13 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
   // Load my circles — shared SWR cache means this is instant if the user
   // already visited another page that fetched the same list.
-  const { data: myCircles = [] } = useSWR<Array<{ id: string; name: string }>>(
-    "/api/circles",
-  );
+  const { data: myCircles = [] } =
+    useSWR<Array<{ id: string; name: string }>>("/api/circles");
 
-  const { data: me } = useSWR<{ signoffEmoji?: string | null; isAdmin?: boolean }>("/api/me");
+  const { data: me } = useSWR<{
+    signoffEmoji?: string | null;
+    isAdmin?: boolean;
+  }>("/api/me");
   const isAdmin = me?.isAdmin ?? false;
 
   const isShareable = status === "PUBLISHED";
@@ -573,7 +584,9 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           posts, per docs/specs/2026-08-13-sunday-live-join.md). */}
       {sundayLiveJoinAvailable && status === "DRAFT" && (
         <div className="space-y-2 rounded-md border p-3 bg-muted/20">
-          <label className="text-sm font-medium">Today's edition is live</label>
+          <label className="text-sm font-medium">
+            Today's edition is live!
+          </label>
           <div className="flex flex-col gap-2">
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -597,8 +610,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
                 className="mt-1"
               />
               <span>
-                <span className="font-medium">Publish to today's edition</span> —
-                goes live now, in today's edition.
+                <span className="font-medium">Publish to today's edition</span>{" "}
+                — goes live now, in today's edition.
               </span>
             </label>
           </div>

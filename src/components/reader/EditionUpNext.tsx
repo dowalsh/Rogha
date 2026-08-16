@@ -58,38 +58,36 @@ export function EditionUpNext({
   const unread = siblings.filter((p) => !p.readByMe);
   const read = siblings.filter((p) => p.readByMe);
 
-  if (unread.length === 0) {
-    return (
-      <section className="space-y-3 rounded-xl border bg-background/60 p-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          You're all caught up this week.
-        </p>
-        <Button asChild variant="outline" size="sm">
-          <Link href={backHref}>Back to edition</Link>
-        </Button>
-      </section>
-    );
-  }
-
   return (
     <section className="space-y-4">
-      <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Keep reading</h2>
-        <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
-          {unread.map((p) => (
-            <PostPreviewRow
-              key={p.id}
-              variant="new"
-              postId={p.id}
-              title={p.title ?? "Untitled"}
-              authorName={p.author?.username ?? "Unknown author"}
-              metaText={`${formatDistanceToNow(new Date(p.updatedAt))} ago`}
-              thumbUrl={p.heroThumbUrl}
-              href={`/reader/${p.id}/edition`}
-            />
-          ))}
+      {unread.length === 0 ? (
+        <div className="space-y-3 rounded-xl border bg-background/60 p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            You're all caught up this week.
+          </p>
+          <Button asChild variant="outline" size="sm">
+            <Link href={backHref}>Back to edition</Link>
+          </Button>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">Keep reading</h2>
+          <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
+            {unread.map((p) => (
+              <PostPreviewRow
+                key={p.id}
+                variant="new"
+                postId={p.id}
+                title={p.title ?? "Untitled"}
+                authorName={p.author?.username ?? "Unknown author"}
+                metaText={`${formatDistanceToNow(new Date(p.updatedAt))} ago`}
+                thumbUrl={p.heroThumbUrl}
+                href={`/reader/${p.id}/edition`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {read.length > 0 && (
         <details>

@@ -14,7 +14,6 @@ import { useCanGoBack } from "@/hooks/useCanGoBack";
 const TOP_LEVEL_ROUTES = new Set([
   "/",
   "/editions",
-  "/friends",
   "/posts",
   "/about",
   "/profile",

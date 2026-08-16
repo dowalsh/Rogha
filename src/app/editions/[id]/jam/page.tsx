@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
+import { markWeeklyJamViewed } from "@/lib/jam";
 import { WeeklyJamRows } from "@/components/jam/WeeklyJamRows";
 import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 
@@ -19,6 +20,8 @@ export default async function WeeklyJamPage({
 
   const edition = await getPublishedEditionById({ id: user.id }, params.id);
   if (!edition) notFound();
+
+  await markWeeklyJamViewed(user.id, edition.id);
 
   const editionLabel =
     edition.title ?? `Week of ${edition.weekStart.toISOString().slice(0, 10)}`;

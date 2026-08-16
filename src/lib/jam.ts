@@ -135,6 +135,33 @@ export async function getWeeklyJamForEdition(
 }
 
 /**
+ * Whether the viewer has opened the Jam page for this edition — mirrors
+ * EditionView's "hasOpened" tracking (src/app/api/editions/[id]/open/route.ts)
+ * but scoped to the Jam specifically, so it can participate in the edition's
+ * "Keep reading" / "Already read" up-next list.
+ */
+export async function hasViewedWeeklyJam(userId: string, editionId: string): Promise<boolean> {
+  const view = await prisma.weeklyJamView.findUnique({
+    where: { editionId_userId: { editionId, userId } },
+    select: { editionId: true },
+  });
+  return Boolean(view);
+}
+
+/**
+ * Marks the Jam as opened for this viewer/edition. Called from the Jam page
+ * itself on render (server-side), same "visiting counts as reading" model
+ * PostRead/EditionView use elsewhere.
+ */
+export async function markWeeklyJamViewed(userId: string, editionId: string): Promise<void> {
+  await prisma.weeklyJamView.upsert({
+    where: { editionId_userId: { editionId, userId } },
+    create: { editionId, userId },
+    update: {},
+  });
+}
+
+/**
  * Cheap count of how many of the given (accepted-friend) ids have opted
  * into Jam — powers the static "N friends have connected their Jam" teaser
  * in Coming Sunday. No Last.fm/Spotify calls; that data doesn't exist yet

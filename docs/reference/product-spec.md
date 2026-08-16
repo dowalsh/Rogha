@@ -78,7 +78,7 @@ Gifting one of your own already-published posts to specific friends who joined a
 - It rides the next Sunday cron exactly like a normal submitted post — no separate publish path.
 - **One send per weekly cycle**, counted at confirm time and reset on the same week boundary editions use (`getWeekStartUTC`) — a multi-recipient send still spends the whole week's ration. No separate ration table; it's derived from existing `republishedFromPostId`-tagged posts (`src/lib/republish.ts`).
 - Never re-branded — the byline stays the author's real name, with a "Republished · originally from [month year]" marker on the reader page.
-- Surfaced three ways: a one-time dismissible "republish is live" announcement (mirrors the profiles/usernames launch nudge, `localStorage`-dismissed), an optional prompt right after accepting a friend request, and a **Republish** action on any of your own published posts.
+- Surfaced three ways, converging on one single-step friend-picker dialog for a specific post (sorted most-recently-accepted friend first, so a nudge-triggered accept surfaces at the top without a separate pre-contexted flow): a one-time dismissible "republish is live" announcement (mirrors the profiles/usernames launch nudge, `localStorage`-dismissed); an optional prompt right after accepting a friend request (home page or `/circles`) that routes to the My Posts page (a permanent explainer card there describes the feature, no dedicated button); and a **Republish** action on any of your own published posts (reader page or each My Posts row) that opens the friend picker directly.
 - Full spec: [2026-08-13-republish.md](../specs/2026-08-13-republish.md).
 
 ### Comments & likes

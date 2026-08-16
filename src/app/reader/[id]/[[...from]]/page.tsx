@@ -402,7 +402,7 @@ function ReadPostPageInner({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setRepublishTarget({ mode: "fromPost", postId: post.id })}
+              onClick={() => setRepublishTarget({ postId: post.id })}
             >
               Republish
             </Button>

@@ -120,7 +120,7 @@ export async function POST(
       return NextResponse.json(
         {
           code: "republish.RATION_SPENT",
-          message: "You've already republished this week — your next one unlocks Sunday.",
+          message: "You've already republished this week (you only get one Republish per week!).",
         },
         { status: 409 },
       );

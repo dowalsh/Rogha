@@ -31,22 +31,29 @@ anyone onto the platform, and this spec does not try to make it.
 
 ## In scope
 
-**One announcement, two ways in.** Users first hear about the feature through a single
-dismissible "republish is live" announcement — the same one-time announcement pattern as the
-existing profiles/usernames launch nudge, shown once per user on sign-in purely to put it on
-their radar. It is awareness, not a call to action: dismissed once, gone for good. From there,
-two real entry points open the flow. The first is a nudge at the moment of most pride: when you
-accept a new friend, a gentle, dismissible prompt offers to share an old favourite with them by
-name. The second is always available: on any of your own published posts there's a **Republish**
-action that opens the same flow later, when you think "oh — *this* one, for them." That is the
-whole of v1's surfacing — anything that *recurs* or *chases* the user is deliberately held for
-later (see "Later, not now").
+**One announcement, one dialog, no friend-first or post-first flow.** Users first hear about the
+feature through a single dismissible "republish is live" announcement — the same one-time
+announcement pattern as the existing profiles/usernames launch nudge, shown once per user on
+sign-in purely to put it on their radar. It is awareness, not a call to action: dismissed once,
+gone for good. From there, every real entry point opens the *same* single-step friend-picker
+dialog for a specific, already-known post — there is no "pick a post first" or "pick a friend
+first" mode to keep in sync. The **Republish** action lives on any of your own published posts —
+the reader page and each row on the My Posts page — and opens the dialog directly. The friend-
+accept nudge (a gentle, dismissible prompt right after accepting a new friend, on the home page or
+`/circles`: "Share one of your old posts with [name] to kickstart your rogha friendship?") doesn't
+open a dialog at all — taking it just routes to the My Posts page, where a permanent explainer
+card describes the feature and the per-post Republish action is what you'd click next. The friend
+picker sorts eligible friends by most-recently-accepted first, so a friend you just added surfaces
+at the top on its own — no separate pre-highlighting logic needed anywhere. That is the whole of
+v1's surfacing — anything that *recurs* or *chases* the user is deliberately held for later (see
+"Later, not now").
 
 **The recipient checklist is the flow, and the friction is the feature.** Choosing Republish
 opens a list of friends who have *not* seen this post — precisely the reverse of the temporal
-gate: friends whose friendship postdates the post's publication. You select recipients **one
-at a time**. There is no "select all," no pre-checked default. The deliberate act of naming
-each person is what keeps this a gift rather than a blast.
+gate: friends whose friendship postdates the post's publication, **ordered most-recently-accepted
+first** so a friend you just added is easy to find without any special pre-selected treatment.
+You select recipients **one at a time**. There is no "select all," no pre-checked default. The
+deliberate act of naming each person is what keeps this a gift rather than a blast.
 
 **It rides Sunday.** A republish does not appear the instant you send it. It joins the chosen
 recipients' next weekly edition: it shows in their Coming Sunday queue (title visible,
@@ -91,30 +98,41 @@ group is the gift, the ration is the discipline.
 ## States & behaviour
 
 **Feature-live announcement.** On sign-in, a one-time dismissible banner tells the user
-republishing exists ("You can now give an old post to a new friend"). It follows the existing
-announcement-nudge behaviour exactly — shown until dismissed, dismissal tracked per-user (so it
-doesn't reappear on another device), never shown again after. It's the same low-stakes,
-one-at-a-time surface the profiles launch used; it does not nag and carries no ongoing state.
+republishing exists ("You can now share old posts with new friends! Just hit Republish on any of
+your posts"). It follows the existing announcement-nudge behaviour exactly — shown until dismissed,
+never shown again after. Dismissal is `localStorage`-based, same as the profiles/usernames launch
+nudge it mirrors — a deliberate v1 scope call to reuse that stopgap rather than build the
+not-yet-implemented cross-device `NudgeDismissal` framework (see
+[2026-07-28-nudges-framework.md](./2026-07-28-nudges-framework.md)) just for this one banner; it
+reappears on a new device/browser until dismissed there too, same known gap as today's
+profiles/usernames nudge. It's the same low-stakes, one-at-a-time surface the profiles launch
+used; it does not nag and carries no ongoing state.
 
 **Friend-accept nudge.** Right after you accept a new friend, an optional, dismissible prompt:
-"Share an old favourite with [name]?" Dismissing it costs nothing and it never nags. Taking it
-drops you into the recipient flow with that friend pre-context (but still requiring an explicit
-pick — see below).
+"Share one of your old posts with [name] to kickstart your rogha friendship?" Dismissing it costs
+nothing and it never nags. Taking it routes to the My Posts page — no friend-pre-contexted modal;
+the friend picker's most-recently-accepted-first ordering (see above) is what actually surfaces
+that friend, not a special flow. Fires from both places a friend request can be accepted: the
+home page and `/circles`.
 
-**Recipient checklist — populated.** A list of friends who haven't seen this post. You tap to
-add each one. A running sense of who's included; a clear confirm.
+**Recipient checklist — populated.** A list of friends who haven't seen this post, ordered
+most-recently-accepted first. You tap to add each one. A running sense of who's included; a
+clear confirm. Intro copy: "Who should this post be republished to? Choose from the friends
+below who haven't seen this one yet."
 
 **Recipient checklist — nobody eligible.** If every friend has already seen this post (or you
-have no friends who joined after it), the Republish action is unavailable, with a plain
-explanation: "Everyone you're friends with has already seen this one." No dead-end empty list.
+have no friends who joined after it), the Republish dialog says so plainly instead of showing an
+empty picker: "Everyone you're friends with has already seen this post!"
 
-**Ration already spent.** If you've used your republish this cycle, the action is disabled
-wherever it appears, with honest copy: "You've already republished this week — your next one
-unlocks Sunday." Never a silent no-op.
+**Ration already spent.** If you've used your republish this cycle, the dialog says so plainly
+instead of showing an empty picker: "You've already republished this week! (you only get one per
+week)" — and the same check re-runs server-side at confirm time with equivalent copy, in case the
+client's view was stale. Never a silent no-op.
 
-**Success / confirmation.** After sending: "Queued for Sunday — [names] will see it in this
-week's edition." Your own Coming Sunday reflects it back to you so the gift feels sent, not
-swallowed ("You republished '[title]' to N friends").
+**Success / confirmation.** After sending, the same toast as a normal post submit — "Submitted"
+(or "Submitted [signoff emoji]" if the author has one set) — since a republish is a submit under
+the hood. Your own Coming Sunday reflects it back to you so the gift feels sent, not swallowed
+("You republished '[title]' to N friends").
 
 **Recipient's experience.** The republish appears in their Coming Sunday (title visible,
 thumbnail blurred, a small "Republished" hint), then unlocks at the reveal as a normal,

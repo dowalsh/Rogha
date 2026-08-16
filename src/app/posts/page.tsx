@@ -8,7 +8,10 @@ import { PostRow, PostCard } from "@/components/PostRow";
 import { Button } from "@/components/ui/button";
 import { PostsSkeleton } from "@/components/posts/PostsSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
-import { RepublishModal, type RepublishTarget } from "@/components/RepublishModal";
+import {
+  RepublishModal,
+  type RepublishTarget,
+} from "@/components/RepublishModal";
 import { Gift } from "lucide-react";
 
 // ✅ rename to avoid shadowing the component & match API shape
@@ -27,19 +30,8 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [republishTarget, setRepublishTarget] = useState<RepublishTarget | null>(null);
-  const [rationAvailable, setRationAvailable] = useState<boolean | null>(null);
-
-  const refreshRationStatus = () => {
-    fetch("/api/republish/status", { credentials: "include" })
-      .then((r) => r.json())
-      .then((s: { available: boolean }) => setRationAvailable(s.available))
-      .catch(() => setRationAvailable(null));
-  };
-
-  useEffect(() => {
-    refreshRationStatus();
-  }, []);
+  const [republishTarget, setRepublishTarget] =
+    useState<RepublishTarget | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,35 +105,21 @@ export default function PostsPage() {
             <h1 className="font-serif text-3xl font-medium tracking-tight">
               My Posts
             </h1>{" "}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setRepublishTarget({ mode: "browse" })}
-                disabled={rationAvailable === false}
-                title={
-                  rationAvailable === false
-                    ? "You've already republished this week — your next one unlocks Sunday."
-                    : undefined
-                }
-              >
-                Republish
-              </Button>
-              <Button onClick={handleCreate} disabled={creating}>
-                {creating ? "Creating..." : "New Post"}
-              </Button>
-            </div>
+            <Button onClick={handleCreate} disabled={creating}>
+              {creating ? "Creating..." : "New Post"}
+            </Button>
           </div>
 
           <div className="flex items-start gap-3 rounded-md border border-blue-500/30 bg-blue-50 dark:bg-blue-950/20 p-4">
             <Gift className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-500" />
             <div className="text-sm">
               <p className="font-medium text-blue-900 dark:text-blue-200">
-                Give an old post to a new friend
+                Share an old post with new friends!
               </p>
               <p className="text-blue-900/80 dark:text-blue-200/80">
-                Once a week, you can gift one of your published posts to a friend who joined
-                after it came out and never got to see it. It lands in their next Sunday
-                edition, under your name.
+                Once a week, you can republish one of your published posts to a
+                new friend/friends who missed the original. It will show up in
+                their edition at the end of the week.
               </p>
             </div>
           </div>
@@ -164,7 +142,9 @@ export default function PostsPage() {
                     heroImageUrl={p.heroImageUrl ?? undefined}
                     onDelete={() => handleDeletePost(p.id)}
                     isDeleting={deletingId === p.id}
-                    onRepublish={() => setRepublishTarget({ mode: "fromPost", postId: p.id })}
+                    onRepublish={() =>
+                      setRepublishTarget({ postId: p.id })
+                    }
                   />
                 ))}
               </div>
@@ -191,7 +171,9 @@ export default function PostsPage() {
                         heroImageUrl={p.heroImageUrl ?? undefined}
                         onDelete={() => handleDeletePost(p.id)}
                         isDeleting={deletingId === p.id}
-                        onRepublish={() => setRepublishTarget({ mode: "fromPost", postId: p.id })}
+                        onRepublish={() =>
+                          setRepublishTarget({ postId: p.id })
+                        }
                       />
                     ))}
                   </tbody>
@@ -203,11 +185,9 @@ export default function PostsPage() {
           <RepublishModal
             target={republishTarget}
             onClose={() => setRepublishTarget(null)}
-            onSent={refreshRationStatus}
           />
         </div>
       </SignedIn>
     </>
   );
 }
-

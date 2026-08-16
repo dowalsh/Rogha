@@ -26,7 +26,7 @@ export default function RepublishAnnouncementNudge() {
 
   return (
     <Nudge
-      message="You can now give an old post to a new friend — see Republish on any of your posts."
+      message="You can now share old posts with new friends! Just hit Republish on any of your posts."
       ctaLabel="View your posts"
       href="/posts"
       onDismiss={() => {

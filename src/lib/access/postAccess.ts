@@ -331,22 +331,30 @@ export async function getRepublishEligibleFriends(
   const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
   const userMap = new Map(users.map((u) => [u.id, u]));
 
-  const eligible: RepublishEligibleFriend[] = [];
-  for (const friendId of friendIds) {
-    if (blockedFriendIds.has(friendId)) continue;
-    const canSee = canViewPostPolicy({
-      viewerId: friendId,
-      post: originalPost,
-      friendshipAcceptedAt: friendMap.get(friendId) ?? null,
-      circleJoinedAt: circleJoinedMap.get(friendId) ?? null,
-      isBlocked: false,
-      isReported: false,
-      isRecipient: false,
+  // Most-recently-accepted friend first — the friend you just added (the
+  // friend-accept nudge's whole reason for existing) naturally floats to
+  // the top of the checklist without any separate "pre-highlighted" mode.
+  const eligibleFriendIds = friendIds
+    .filter((friendId) => !blockedFriendIds.has(friendId))
+    .filter((friendId) => {
+      const canSee = canViewPostPolicy({
+        viewerId: friendId,
+        post: originalPost,
+        friendshipAcceptedAt: friendMap.get(friendId) ?? null,
+        circleJoinedAt: circleJoinedMap.get(friendId) ?? null,
+        isBlocked: false,
+        isReported: false,
+        isRecipient: false,
+      });
+      return !canSee;
+    })
+    .sort((a, b) => {
+      const aAt = friendMap.get(a)?.getTime() ?? 0;
+      const bAt = friendMap.get(b)?.getTime() ?? 0;
+      return bAt - aAt;
     });
-    if (canSee) continue;
-    const user = userMap.get(friendId);
-    if (user) eligible.push(user);
-  }
 
-  return eligible;
+  return eligibleFriendIds
+    .map((id) => userMap.get(id))
+    .filter((u): u is RepublishEligibleFriend => !!u);
 }

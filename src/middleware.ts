@@ -4,7 +4,7 @@ import { newRequestId, timingEnabled, logTiming, TIMING_RID_HEADER } from "@/lib
 
 const isProtectedRoute = createRouteMatcher([
   "/editions(.*)",
-  "/circles(.*)",
+  "/friends(.*)",
   "/posts(.*)",
   "/reader(.*)",
   "/settings(.*)",

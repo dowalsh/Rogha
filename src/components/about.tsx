@@ -79,9 +79,9 @@ export function About() {
               className="flex items-center gap-2 w-full sm:w-auto"
               asChild
             >
-              <Link href="/circles">
+              <Link href="/friends">
                 <Blend className="w-4 h-4" />
-                <span>Circles</span>
+                <span>Friends</span>
               </Link>
             </Button>
 

@@ -57,7 +57,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
         });
         if (!blockRes.ok) throw new Error(`HTTP ${blockRes.status}`);
         toast.success(`Reported. ${username} has been blocked.`);
-        router.push("/circles");
+        router.push("/friends");
       } else {
         setDialog(null);
         toast.success("Thanks — we've received your report.");
@@ -79,7 +79,7 @@ export function ProfileOverflowMenu({ userId, username, showBlock = true }: Prop
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       toast.success(`${username} has been blocked.`);
-      router.push("/circles");
+      router.push("/friends");
     } catch {
       toast.error("Failed to block this user. Please try again.");
     } finally {

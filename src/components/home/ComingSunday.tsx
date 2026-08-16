@@ -89,7 +89,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
             Add some friends to start seeing what they're writing.
           </span>
           <Button asChild size="sm">
-            <Link href="/circles">Find friends</Link>
+            <Link href="/friends">Find friends</Link>
           </Button>
         </div>
       </div>

@@ -72,6 +72,14 @@ people they've never met. They can like and comment on it, and that engagement l
 on the republish, scoped to its audience (you and the recipients). The original post and its
 thread, over in their old edition, are untouched.
 
+**An optional note travels with it.** At send time, the friend-picker dialog offers an optional
+free-text field — "Optional republish message to accompany your post" (500 characters, plain
+text) — for a short line of context on *why* you're sending this one to them now. If set, it
+renders as its own small callout ("A note from [you]") above the post body when the recipient
+opens it at the reveal, distinct from the post content itself. It's stored on the republish
+instance (`Post.republishMessage`), not the original, so it's naturally scoped per-send the same
+way everything else about a republish instance is.
+
 **One per week, full stop.** You get a single republish per weekly cycle. Sending one post to
 five newly-joined friends is one considered act that spends your whole week's ration — the
 group is the gift, the ration is the discipline.

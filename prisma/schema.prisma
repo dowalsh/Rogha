@@ -208,6 +208,9 @@ model Post {
   republishedFrom       Post?           @relation("PostRepublish", fields: [republishedFromPostId], references: [id], onDelete: SetNull)
   republishInstances    Post[]          @relation("PostRepublish")
   recipients            PostRecipient[]
+  // Optional note from the author, shown as its own callout above the post
+  // body — only meaningful when republishedFromPostId is set.
+  republishMessage      String?
 }
 
 model PostRecipient {

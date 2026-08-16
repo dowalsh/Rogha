@@ -40,6 +40,7 @@ export async function GET(
         edition: { select: { publishedAt: true } },
         republishedFromPostId: true,
         republishedFrom: { select: { edition: { select: { publishedAt: true } } } },
+        republishMessage: true,
         _count: { select: { likes: true } },
         likes: { select: { id: true, userId: true } },
       },

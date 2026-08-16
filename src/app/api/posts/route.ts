@@ -24,6 +24,7 @@ export async function GET(_req: NextRequest) {
         updatedAt: true,
         heroImageUrl: true,
         edition: { select: { id: true, title: true } },
+        republishedFromPostId: true,
       },
     });
 

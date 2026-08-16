@@ -12,6 +12,47 @@ const statusStyles = {
   ARCHIVED: "bg-slate-50 text-slate-500 border-slate-200",
 };
 
+// Title + thumbnail block shared by PostRow/PostCard. `href: null` renders
+// plain (non-clickable) text — used for republish instances awaiting Sunday,
+// which have nowhere sensible to link to yet.
+function PostTitleLink({
+  href,
+  heroImageUrl,
+  title,
+  className = "flex items-center gap-3",
+}: {
+  href: string | null;
+  heroImageUrl?: string;
+  title: string;
+  className?: string;
+}) {
+  const content = (
+    <>
+      {heroImageUrl && (
+        <div className="relative h-14 w-20 shrink-0 overflow-hidden">
+          <Image src={heroImageUrl} alt="" fill sizes="80px" className="object-cover" />
+        </div>
+      )}
+      <div className="min-w-0">
+        <div
+          className={`font-serif text-base leading-snug truncate ${href ? "underline-offset-4 hover:underline" : ""}`}
+        >
+          {title}
+        </div>
+      </div>
+    </>
+  );
+
+  if (!href) {
+    return <div className={className}>{content}</div>;
+  }
+  return (
+    <Link href={href} className={className}>
+      {content}
+    </Link>
+  );
+}
+
 type PostRowProps = {
   title: string;
   id: string;
@@ -22,6 +63,7 @@ type PostRowProps = {
   onDelete?: () => void;
   isDeleting?: boolean;
   onRepublish?: () => void;
+  isRepublish?: boolean;
 };
 
 export function PostRow({
@@ -33,30 +75,22 @@ export function PostRow({
   onDelete,
   isDeleting,
   onRepublish,
+  isRepublish,
 }: PostRowProps) {
+  // A republish instance is created directly (skips DRAFT) and isn't meant
+  // to be edited — /editor expects a normal draft-authored post, so opening
+  // it for a republish instance shows a blank/broken editor state.
+  const titleHref = isRepublish
+    ? status === "PUBLISHED"
+      ? `/reader/${id}`
+      : null
+    : `/editor/${id}`;
+
   return (
     <tr className="border-t align-middle">
       {/* POST COLUMN */}
       <td className="p-3">
-        <Link href={`/editor/${id}`} className="flex items-center gap-3">
-          {heroImageUrl && (
-            <div className="relative h-14 w-20 overflow-hidden ">
-              <Image
-                src={heroImageUrl}
-                alt=""
-                fill
-                sizes="80px"
-                className="object-cover"
-              />
-            </div>
-          )}
-
-          <div>
-            <div className="font-serif text-base leading-snug underline-offset-4 hover:underline">
-              {title}
-            </div>
-          </div>
-        </Link>
+        <PostTitleLink href={titleHref} heroImageUrl={heroImageUrl} title={title} />
       </td>
 
       {/* STATUS COLUMN */}
@@ -67,6 +101,11 @@ export function PostRow({
           >
             {status.toLowerCase()}
           </span>
+          {isRepublish && (
+            <span className="inline-flex items-center rounded-full border border-blue-500/40 bg-blue-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-blue-700 dark:bg-blue-950/20 dark:text-blue-400">
+              Republish
+            </span>
+          )}
 
           {/* 👇 edition BELOW status badge (only when published) */}
           {/* {status === "PUBLISHED" && edition && (
@@ -91,17 +130,21 @@ export function PostRow({
       {/* ACTIONS COLUMN */}
       <td className="p-3 align-middle">
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link
-              href={
-                status === "PUBLISHED"
-                  ? `/reader/${id}` // 👈 VIEW MODE
-                  : `/editor/${id}` // 👈 EDIT MODE
-              }
-            >
-              {status === "PUBLISHED" ? "View" : "Edit"}
-            </Link>
-          </Button>
+          {isRepublish && status !== "PUBLISHED" ? (
+            <span className="px-2 text-xs text-muted-foreground">Awaiting Sunday</span>
+          ) : (
+            <Button variant="outline" size="sm" asChild>
+              <Link
+                href={
+                  status === "PUBLISHED"
+                    ? `/reader/${id}` // 👈 VIEW MODE
+                    : `/editor/${id}` // 👈 EDIT MODE
+                }
+              >
+                {status === "PUBLISHED" ? "View" : "Edit"}
+              </Link>
+            </Button>
+          )}
 
           {status === "PUBLISHED" && onRepublish && (
             <Button variant="outline" size="sm" onClick={onRepublish}>
@@ -138,34 +181,31 @@ export function PostCard({
   onDelete,
   isDeleting,
   onRepublish,
+  isRepublish,
 }: PostRowProps) {
+  const titleHref = isRepublish
+    ? status === "PUBLISHED"
+      ? `/reader/${id}`
+      : null
+    : `/editor/${id}`;
+
   return (
     <div className="rounded-md border p-3 space-y-3">
-      <Link href={`/editor/${id}`} className="flex items-center gap-3">
-        {heroImageUrl && (
-          <div className="relative h-14 w-20 shrink-0 overflow-hidden">
-            <Image
-              src={heroImageUrl}
-              alt=""
-              fill
-              sizes="80px"
-              className="object-cover"
-            />
-          </div>
-        )}
-        <div className="min-w-0">
-          <div className="font-serif text-base leading-snug underline-offset-4 hover:underline truncate">
-            {title}
-          </div>
-        </div>
-      </Link>
+      <PostTitleLink href={titleHref} heroImageUrl={heroImageUrl} title={title} />
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span
-          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] ${statusStyles[status]}`}
-        >
-          {status.toLowerCase()}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] ${statusStyles[status]}`}
+          >
+            {status.toLowerCase()}
+          </span>
+          {isRepublish && (
+            <span className="inline-flex items-center rounded-full border border-blue-500/40 bg-blue-50 px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] text-blue-700 dark:bg-blue-950/20 dark:text-blue-400">
+              Republish
+            </span>
+          )}
+        </div>
         <span>
           {updatedAt.toLocaleString(undefined, {
             year: "numeric",
@@ -178,11 +218,17 @@ export function PostCard({
       </div>
 
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" asChild className="flex-1">
-          <Link href={status === "PUBLISHED" ? `/reader/${id}` : `/editor/${id}`}>
-            {status === "PUBLISHED" ? "View" : "Edit"}
-          </Link>
-        </Button>
+        {isRepublish && status !== "PUBLISHED" ? (
+          <span className="flex-1 px-2 py-1.5 text-xs text-muted-foreground">
+            Awaiting Sunday
+          </span>
+        ) : (
+          <Button variant="outline" size="sm" asChild className="flex-1">
+            <Link href={status === "PUBLISHED" ? `/reader/${id}` : `/editor/${id}`}>
+              {status === "PUBLISHED" ? "View" : "Edit"}
+            </Link>
+          </Button>
+        )}
 
         {status === "PUBLISHED" && onRepublish && (
           <Button variant="outline" size="sm" onClick={onRepublish}>

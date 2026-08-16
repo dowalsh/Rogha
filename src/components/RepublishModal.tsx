@@ -12,8 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+
+const MAX_MESSAGE_LENGTH = 500;
 
 export type RepublishTarget = { postId: string };
 
@@ -53,12 +56,14 @@ export function RepublishModal({
   } | null>(null);
   const [loadingEligibility, setLoadingEligibility] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
   // Reset + fetch eligibility on every open.
   useEffect(() => {
     if (!postId) return;
     setSelected(new Set());
+    setMessage("");
     setEligibility(null);
     setLoadingEligibility(true);
     fetch(`/api/posts/${postId}/republish`, { credentials: "include" })
@@ -85,7 +90,10 @@ export function RepublishModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ recipientIds: Array.from(selected) }),
+        body: JSON.stringify({
+          recipientIds: Array.from(selected),
+          message: message.trim() || undefined,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.message || body?.error || res.statusText);
@@ -147,6 +155,18 @@ export function RepublishModal({
               <p className="text-xs text-muted-foreground">
                 {selected.size} selected
               </p>
+              <div className="space-y-1">
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                  placeholder="Optional republish message to accompany your post"
+                  className="min-h-20 resize-none"
+                  maxLength={MAX_MESSAGE_LENGTH}
+                />
+                <p className="text-right text-xs text-muted-foreground">
+                  {message.length}/{MAX_MESSAGE_LENGTH}
+                </p>
+              </div>
             </>
           )}
         </div>

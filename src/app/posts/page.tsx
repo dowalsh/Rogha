@@ -22,6 +22,7 @@ type PostRowData = {
   updatedAt: string; // from JSON
   heroImageUrl?: string | null;
   edition?: { id: string; title: string | null } | null; // ✅ now has id + title
+  republishedFromPostId?: string | null;
 };
 
 export default function PostsPage() {
@@ -145,6 +146,7 @@ export default function PostsPage() {
                     onRepublish={() =>
                       setRepublishTarget({ postId: p.id })
                     }
+                    isRepublish={!!p.republishedFromPostId}
                   />
                 ))}
               </div>
@@ -174,6 +176,7 @@ export default function PostsPage() {
                         onRepublish={() =>
                           setRepublishTarget({ postId: p.id })
                         }
+                        isRepublish={!!p.republishedFromPostId}
                       />
                     ))}
                   </tbody>

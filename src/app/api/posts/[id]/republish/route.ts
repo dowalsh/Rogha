@@ -8,6 +8,8 @@ import { getRepublishEligibleFriends } from "@/lib/access/postAccess";
 import { hasRepublishRationAvailable } from "@/lib/republish";
 import { getAcceptedFriendIds } from "@/lib/friends";
 
+const MAX_REPUBLISH_MESSAGE_LENGTH = 500;
+
 async function loadOwnedPublishedPost(id: string, authorId: string) {
   const post = await prisma.post.findUnique({
     where: { id },
@@ -115,6 +117,18 @@ export async function POST(
       );
     }
 
+    const rawMessage = typeof body.message === "string" ? body.message.trim() : "";
+    if (rawMessage.length > MAX_REPUBLISH_MESSAGE_LENGTH) {
+      return NextResponse.json(
+        {
+          code: "republish.MESSAGE_TOO_LONG",
+          message: `Keep your note under ${MAX_REPUBLISH_MESSAGE_LENGTH} characters.`,
+        },
+        { status: 400 },
+      );
+    }
+    const republishMessage = rawMessage.length > 0 ? rawMessage : null;
+
     const rationAvailable = await hasRepublishRationAvailable(user.id);
     if (!rationAvailable) {
       return NextResponse.json(
@@ -162,6 +176,7 @@ export async function POST(
           status: "SUBMITTED",
           audienceType: "RECIPIENTS",
           republishedFromPostId: rootOriginalId,
+          republishMessage,
         },
         select: { id: true },
       });

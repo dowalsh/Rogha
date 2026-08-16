@@ -75,7 +75,7 @@ thread, over in their old edition, are untouched.
 **An optional note travels with it.** At send time, the friend-picker dialog offers an optional
 free-text field — "Optional republish message to accompany your post" (500 characters, plain
 text) — for a short line of context on *why* you're sending this one to them now. If set, it
-renders as its own small callout ("A note from [you]") above the post body when the recipient
+renders as its own small callout ("Republish note") above the post body when the recipient
 opens it at the reveal, distinct from the post content itself. It's stored on the republish
 instance (`Post.republishMessage`), not the original, so it's naturally scoped per-send the same
 way everything else about a republish instance is.
@@ -178,9 +178,13 @@ posting doesn't already grant, on a tighter leash.
   original, and it does not appear to the recipients' *other* friends — it composes with Rogha's
   existing per-post audience scoping (an edition already holds posts visible to different subsets;
   this is just an instance with a bespoke recipient list).
-- **The ration is one send per weekly cycle**, counted at the moment you confirm, reset on the
-  same Sunday boundary the edition runs on — so it lives in the weekly rhythm rather than a
-  free-floating 7-day timer.
+- **The ration is one send per weekly cycle**, but tracked as a queue-occupancy check rather than
+  a calendar-week computation: unavailable iff you already have a republish instance sitting
+  `SUBMITTED`, available again the instant the weekly cron promotes it to `PUBLISHED` (see
+  `hasRepublishRationAvailable`, `src/lib/republish.ts`). No week-boundary math, no timezone
+  dependency, no free-floating 7-day timer — since a submitted post only ever clears via that same
+  weekly cron, this lands in exactly the same weekly rhythm without needing to reason about it
+  explicitly.
 
 ## Open questions
 

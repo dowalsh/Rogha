@@ -416,7 +416,7 @@ function ReadPostPageInner({
       {post.republishedFromPostId && post.republishMessage && (
         <div className="rounded-lg border border-blue-500/30 bg-blue-50 dark:bg-blue-950/20 p-4">
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-blue-700 dark:text-blue-400">
-            A note from {authorName}
+            Republish note
           </p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-blue-900 dark:text-blue-200">
             {post.republishMessage}

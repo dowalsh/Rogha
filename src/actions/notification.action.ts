@@ -5,6 +5,7 @@ import { getDbUserId } from "./user.action";
 import {
   triggerCommentNotificationEmail,
   triggerPostSubmittedEmails,
+  triggerPostPublishedEmails,
 } from "@/lib/emails/triggers";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
@@ -384,39 +385,34 @@ export async function createFriendRequestAcceptedNotification({
   return notif;
 }
 
-export async function createSubmitNotifications({
-  userId,
-  postId,
-}: {
-  userId: string;
-  postId: string;
-}) {
-  // 1. Load post audience info
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    select: {
-      audienceType: true, // "ALL_USERS" | "FRIENDS" | "CIRCLE"
-      circleId: true,
-      officialKind: true,
-      notifyAllUsers: true,
-    },
-  });
+type AudiencePost = {
+  audienceType: string; // "ALL_USERS" | "FRIENDS" | "CIRCLE"
+  circleId: string | null;
+  officialKind: string | null;
+  notifyAllUsers: boolean;
+};
 
-  if (!post) return;
-
+// Shared by createSubmitNotifications and createPublishNotifications — both
+// fan out to the same "eligible audience" (see
+// docs/specs/2026-08-13-sunday-live-join.md: PUBLISH "is the same low-volume,
+// friends-only fan-out SUBMIT already does").
+async function resolveAudienceRecipientIds(
+  userId: string,
+  post: AudiencePost
+): Promise<string[]> {
   let recipientIds: string[] = [];
 
-  // 2. ALL ROGHA USERS => silent by default, unless this is an official post
+  // ALL ROGHA USERS => silent by default, unless this is an official post
   // with the admin's "notify all users" toggle on (launch-style announcement).
   if (post.audienceType === "ALL_USERS") {
     if (post.officialKind == null || !post.notifyAllUsers) {
-      return;
+      return [];
     }
     const allUsers = await prisma.user.findMany({ select: { id: true } });
     recipientIds = allUsers.map((u) => u.id);
   }
 
-  // 3. FRIENDS => all accepted friends
+  // FRIENDS => all accepted friends
   if (post.audienceType === "FRIENDS") {
     const friendships = await prisma.friendship.findMany({
       where: {
@@ -429,7 +425,7 @@ export async function createSubmitNotifications({
     recipientIds = friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
   }
 
-  // 4. CIRCLE => only circle members
+  // CIRCLE => only circle members
   if (post.audienceType === "CIRCLE" && post.circleId) {
     const members = await prisma.circleMember.findMany({
       where: {
@@ -443,9 +439,30 @@ export async function createSubmitNotifications({
   }
 
   // Remove self + dedupe
-  const uniqueRecipientIds = Array.from(
-    new Set(recipientIds.filter((id) => id !== userId))
-  );
+  return Array.from(new Set(recipientIds.filter((id) => id !== userId)));
+}
+
+export async function createSubmitNotifications({
+  userId,
+  postId,
+}: {
+  userId: string;
+  postId: string;
+}) {
+  // 1. Load post audience info
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      audienceType: true,
+      circleId: true,
+      officialKind: true,
+      notifyAllUsers: true,
+    },
+  });
+
+  if (!post) return;
+
+  const uniqueRecipientIds = await resolveAudienceRecipientIds(userId, post);
 
   if (uniqueRecipientIds.length === 0) return;
 
@@ -534,6 +551,113 @@ export async function createSubmitNotifications({
     await sendPushToUser(uid, {
       title: "New post",
       body: `${authorName} submitted a new post${authorSignoff ? ` ${authorSignoff}` : ""}`,
+      url: `/reader/${postId}`,
+    });
+  }
+}
+
+// Fired when a post live-joins today's Sunday edition instead of waiting for
+// next week — see docs/specs/2026-08-13-sunday-live-join.md. Distinct from
+// SUBMIT: this is clickable and routes straight to the readable post, since
+// it's live right now rather than queued behind Coming Sunday.
+export async function createPublishNotifications({
+  userId,
+  postId,
+}: {
+  userId: string;
+  postId: string;
+}) {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      audienceType: true,
+      circleId: true,
+      officialKind: true,
+      notifyAllUsers: true,
+    },
+  });
+
+  if (!post) return;
+
+  const uniqueRecipientIds = await resolveAudienceRecipientIds(userId, post);
+
+  if (uniqueRecipientIds.length === 0) return;
+
+  // Check who already has a PUBLISH notification for this post+creator
+  const existing = await prisma.notification.findMany({
+    where: {
+      type: "PUBLISH",
+      creatorId: userId,
+      postId,
+      userId: { in: uniqueRecipientIds },
+    },
+    select: { userId: true },
+  });
+
+  const existingUserIds = new Set(existing.map((n) => n.userId));
+  const newRecipientIds = uniqueRecipientIds.filter(
+    (id) => !existingUserIds.has(id)
+  );
+
+  if (newRecipientIds.length === 0) {
+    console.log(
+      "[NOTIFICATIONS] All publish notifications already exist — skipping.",
+      { postId, creatorId: userId }
+    );
+    return;
+  }
+
+  await prisma.notification.createMany({
+    data: newRecipientIds.map((rid) => ({
+      userId: rid,
+      creatorId: userId,
+      type: "PUBLISH",
+      postId,
+    })),
+    skipDuplicates: true,
+  });
+
+  // Same preference controls as SUBMIT — the spec is explicit that PUBLISH
+  // isn't a new notification category, just a livelier version of SUBMIT.
+  const publishPrefRows = await prisma.notificationPreference.findMany({
+    where: { userId: { in: newRecipientIds } },
+    select: {
+      userId: true,
+      emailEnabled: true,
+      emailSubmissions: true,
+      pushEnabled: true,
+      pushSubmissions: true,
+    },
+  });
+  const publishPrefsMap = new Map(publishPrefRows.map((p) => [p.userId, p]));
+
+  const emailRecipientIds = newRecipientIds.filter((id) => {
+    const p = publishPrefsMap.get(id);
+    return !p || (p.emailEnabled && p.emailSubmissions);
+  });
+
+  const pushRecipientIds = newRecipientIds.filter((id) => {
+    const p = publishPrefsMap.get(id);
+    return !p || (p.pushEnabled && p.pushSubmissions);
+  });
+
+  const author = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { username: true, signoffEmoji: true },
+  });
+  const authorName = post.officialKind != null ? "Rogha" : (author?.username ?? "Someone");
+  const authorSignoff = post.officialKind != null ? "" : (author?.signoffEmoji ?? "");
+
+  try {
+    await triggerPostPublishedEmails(postId, emailRecipientIds);
+  } catch (err) {
+    console.error("[NOTIFICATION_PUBLISH_EMAIL_ERROR]", err);
+  }
+
+  for (const uid of pushRecipientIds) {
+    await sendPushToUser(uid, {
+      title: "Live now",
+      body: `${authorName} published a new post — go read it${authorSignoff ? ` ${authorSignoff}` : ""}`,
       url: `/reader/${postId}`,
     });
   }

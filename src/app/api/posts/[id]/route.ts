@@ -4,11 +4,14 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
-import { createSubmitNotifications } from "@/actions/notification.action";
+import { createSubmitNotifications, createPublishNotifications } from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { canViewPost } from "@/lib/access/postAccess";
 import { isContentBlocked, extractTextFromDoc } from "@/lib/contentFilter";
 import { generateHeroThumbnails } from "@/lib/heroThumbnails";
+import { getSundayLiveJoinWindow, getOpenLiveJoinEdition } from "@/lib/editions";
+import { recordActivityEvent } from "@/actions/activityEvent.action";
+import { ActivityEventType } from "@/generated/prisma/enums";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -53,6 +56,10 @@ export async function GET(
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
     }
 
+    // Sunday live-join: only matters pre-submit, but cheap enough to always
+    // compute — see docs/specs/2026-08-13-sunday-live-join.md.
+    const openLiveJoinEdition = await getOpenLiveJoinEdition();
+
     // Base response with counts
     let baseResponse: any = {
       ...post,
@@ -60,6 +67,7 @@ export async function GET(
       likedByMe: false,
       readByMe: false,
       newCommentCount: null as number | null,
+      sundayLiveJoin: { available: !!openLiveJoinEdition },
     };
     console.log("[GET] Initial baseResponse:", baseResponse);
 
@@ -185,8 +193,10 @@ export async function PUT(
       );
     }
 
-    // Content filter — only on submission (not every autosave keystroke)
-    if (body.status === "SUBMITTED") {
+    const isPublishNow = body.status === "PUBLISHED";
+
+    // Content filter — only on submission / live-publish (not every autosave keystroke)
+    if (body.status === "SUBMITTED" || isPublishNow) {
       const bodyText = extractTextFromDoc(body.content);
       if (isContentBlocked(body.title, bodyText)) {
         return NextResponse.json(
@@ -227,7 +237,7 @@ export async function PUT(
       notifyAllUsers: incomingOfficialKind != null ? incomingNotifyAllUsers : false,
     };
 
-    const { previousPost, updatedPost, firstTimeSubmitFromDraft } =
+    const { previousPost, updatedPost, firstTimeSubmitFromDraft, livePublished } =
       await prisma.$transaction(async (tx) => {
         const post = await tx.post.findUnique({ where: { id } });
         if (!post || post.authorId !== user.id) {
@@ -235,17 +245,50 @@ export async function PUT(
         }
 
         let updateData = { ...baseUpdate };
+        let livePublished = false;
+
+        // Sunday live-join: publish straight into today's open edition.
+        // Server re-validates independently of whatever the client showed —
+        // see docs/specs/2026-08-13-sunday-live-join.md.
+        if (isPublishNow) {
+          if (post.status !== "DRAFT") {
+            throw new Error("LIVE_JOIN_INVALID_STATUS");
+          }
+          const { windowStart, windowEnd, isOpen } = getSundayLiveJoinWindow();
+          if (!isOpen) {
+            throw new Error("LIVE_JOIN_WINDOW_CLOSED");
+          }
+          const openEdition = await tx.edition.findFirst({
+            where: { publishedAt: { gte: windowStart, lt: windowEnd } },
+            orderBy: { publishedAt: "desc" },
+            select: { id: true },
+          });
+          if (!openEdition) {
+            throw new Error("LIVE_JOIN_NO_OPEN_EDITION");
+          }
+          updateData = { ...updateData, editionId: openEdition.id };
+          livePublished = true;
+        }
 
         const updated = await tx.post.update({
           where: { id },
           data: updateData,
         });
 
+        if (livePublished) {
+          await recordActivityEvent({
+            actorId: updated.authorId,
+            eventType: ActivityEventType.POST_PUBLISHED,
+            postId: updated.id,
+          });
+        }
+
         return {
           previousPost: post,
           updatedPost: updated,
           firstTimeSubmitFromDraft:
             updated.status === "SUBMITTED" && post.status === "DRAFT",
+          livePublished,
         };
       });
 
@@ -256,11 +299,25 @@ export async function PUT(
         postId: updatedPost.id,
       });
     }
+    if (livePublished) {
+      await createPublishNotifications({
+        userId: user.id,
+        postId: updatedPost.id,
+      });
+    }
 
     return NextResponse.json(updatedPost, { status: 200 });
   } catch (err: any) {
     if (err instanceof Error && err.message === "NOT_FOUND_OR_NOT_OWNER") {
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
+    }
+    if (
+      err instanceof Error &&
+      (err.message === "LIVE_JOIN_INVALID_STATUS" ||
+        err.message === "LIVE_JOIN_WINDOW_CLOSED" ||
+        err.message === "LIVE_JOIN_NO_OPEN_EDITION")
+    ) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
     }
     console.error("[POST_UPDATE_ERROR]", err);
     return NextResponse.json(

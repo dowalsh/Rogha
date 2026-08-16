@@ -6,7 +6,7 @@ import useSWR from "swr";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
-import { Send, Undo, Trash2, ImageIcon } from "lucide-react";
+import { Send, Undo, Trash2, ImageIcon, Zap } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
 import { AudienceType } from "@/types";
@@ -29,9 +29,11 @@ type PostData = {
   circleId?: string | null;
   officialKind?: OfficialKind;
   notifyAllUsers?: boolean;
+  sundayLiveJoin?: { available: boolean };
 };
 
 type PostStatus = "DRAFT" | "SUBMITTED" | "PUBLISHED" | "ARCHIVED";
+type PublishTarget = "next-week" | "now";
 
 function HeroImageUploadButton({ onComplete }: { onComplete: (url: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,6 +85,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [circleId, setCircleId] = useState<string | null>(null);
   const [officialKind, setOfficialKind] = useState<OfficialKind>(null);
   const [notifyAllUsers, setNotifyAllUsers] = useState(false);
+  const [sundayLiveJoinAvailable, setSundayLiveJoinAvailable] = useState(false);
+  const [publishTarget, setPublishTarget] = useState<PublishTarget>("next-week");
 
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
@@ -138,6 +142,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     setCircleId(postData.circleId ?? null);
     setOfficialKind(postData.officialKind ?? null);
     setNotifyAllUsers(postData.notifyAllUsers ?? false);
+    setSundayLiveJoinAvailable(postData.sundayLiveJoin?.available ?? false);
 
     setSaved(true);
   }, [postData, params.id]);
@@ -194,12 +199,20 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // Toggle DRAFT ⇄ SUBMITTED
+  // Toggle DRAFT ⇄ SUBMITTED, or DRAFT → PUBLISHED for a Sunday live join
+  // (see docs/specs/2026-08-13-sunday-live-join.md).
   // Note: allow Unsubmit even when editorLocked (because SUBMITTED locks the editor)
   const handleToggleSubmit = async () => {
     if (status === "PUBLISHED" || status === "ARCHIVED") return;
 
-    const next: PostStatus = status === "SUBMITTED" ? "DRAFT" : "SUBMITTED";
+    const isUnsubmit = status === "SUBMITTED";
+    const publishingNow =
+      !isUnsubmit && sundayLiveJoinAvailable && publishTarget === "now";
+    const next: PostStatus = isUnsubmit
+      ? "DRAFT"
+      : publishingNow
+        ? "PUBLISHED"
+        : "SUBMITTED";
 
     // guard: if circle is selected audience, require a circleId
     if (audienceType === "CIRCLE" && !circleId) {
@@ -241,9 +254,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       }
       setStatus(next);
       setSaved(true);
+      const emoji = me?.signoffEmoji;
       if (next === "SUBMITTED") {
-        const emoji = me?.signoffEmoji;
         toast.success(emoji ? `Submitted ${emoji}` : "Submitted");
+      } else if (next === "PUBLISHED") {
+        toast.success(emoji ? `Published live! ${emoji}` : "Published live!");
       }
     } catch (err) {
       console.error("Failed to toggle submit:", err);
@@ -553,6 +568,43 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
+      {/* Sunday live join fork — only while the window is open and the post
+          hasn't been submitted yet (no pull-forward for already-SUBMITTED
+          posts, per docs/specs/2026-08-13-sunday-live-join.md). */}
+      {sundayLiveJoinAvailable && status === "DRAFT" && (
+        <div className="space-y-2 rounded-md border p-3 bg-muted/20">
+          <label className="text-sm font-medium">Today's edition is live</label>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="publishTarget"
+                checked={publishTarget === "next-week"}
+                onChange={() => setPublishTarget("next-week")}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">Submit for next week</span> —
+                joins next Sunday's reveal, like usual.
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="publishTarget"
+                checked={publishTarget === "now"}
+                onChange={() => setPublishTarget("now")}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">Publish to today's edition</span> —
+                goes live now, in today's edition.
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1" />
@@ -577,7 +629,13 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
             type="button"
             variant="secondary"
             onClick={handleToggleSubmit}
-            title={status === "SUBMITTED" ? "Unsubmit" : "Submit"}
+            title={
+              status === "SUBMITTED"
+                ? "Unsubmit"
+                : sundayLiveJoinAvailable && publishTarget === "now"
+                  ? "Publish now"
+                  : "Submit"
+            }
             className="flex items-center gap-2"
             // keep enabled for SUBMITTED so Unsubmit works even when editorLocked
           >
@@ -585,6 +643,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
               <>
                 <Undo className="h-4 w-4" />
                 Unsubmit
+              </>
+            ) : sundayLiveJoinAvailable && publishTarget === "now" ? (
+              <>
+                <Zap className="h-4 w-4" />
+                Publish now
               </>
             ) : (
               <>

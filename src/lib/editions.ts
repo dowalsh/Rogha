@@ -389,7 +389,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     }),
   ]);
 
-  const weeklyJam = await getWeeklyJamForEdition(user.id, edition.id);
+  const weeklyJam = await getWeeklyJamForEdition(user.id, edition.id, edition.publishedAt);
 
   console.debug(
     "[getPublishedEditionById] edition:",

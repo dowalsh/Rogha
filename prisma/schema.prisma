@@ -99,9 +99,37 @@ model Edition {
   views          EditionView[]
   weeklyTracks   WeeklyTrack[]
   weeklyJamViews WeeklyJamView[]
+  summary        EditionSummary?
 
   @@unique([weekStart])
   @@index([publishedAt])
+}
+
+// A per-edition analytics snapshot, computed once when the *next* edition
+// publishes (i.e. once this edition's reading week has fully elapsed) and
+// stored so the admin Topline/Funnel can read pre-aggregated rows instead of
+// rescanning full event history on every load. See
+// docs/specs/2026-08-17-admin-insights-dashboard.md ("Performance & freshness").
+model EditionSummary {
+  editionId  String   @id
+  computedAt DateTime @default(now())
+
+  totalUsers   Int
+  newSignups   Int
+  activeUsers  Int
+  postsCount   Int
+  wordsWritten Int
+  wordsRead    Int
+
+  funnelAllUsers  Int
+  funnelActive    Int
+  funnelOpened    Int
+  funnelRead      Int
+  funnelReadAll   Int
+  funnelCommented Int
+  funnelWrote     Int
+
+  edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
 }
 
 model EditionView {

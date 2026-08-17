@@ -8,6 +8,7 @@ import { getDbUser } from "@/lib/getDbUser";
 import { triggerPublishedEditionEmail } from "@/lib/emails/triggers";
 import { backfillMissingHeroThumbnails } from "@/lib/heroThumbnails";
 import { captureWeeklyJamTracks } from "@/lib/jam";
+import { computeAndStoreSealedEditionSummary } from "@/lib/insights/edition";
 
 function isAdminEmail(email?: string | null) {
   const list =
@@ -140,6 +141,16 @@ async function handlePublish(req: NextRequest) {
       console.log("[cron] weekly jam capture done", { editionId: result.editionId });
     } catch (err) {
       console.error("[cron] weekly jam capture failed", err);
+    }
+
+    // Seal the *previous* edition's insights snapshot now that its reading
+    // week has fully elapsed — best-effort, idempotent, must never fail the
+    // publish itself. See docs/specs/2026-08-17-admin-insights-dashboard.md.
+    try {
+      const summaryResult = await computeAndStoreSealedEditionSummary(result.editionId);
+      console.log("[cron] edition summary snapshot", summaryResult);
+    } catch (err) {
+      console.error("[cron] edition summary snapshot failed", err);
     }
 
     return NextResponse.json(

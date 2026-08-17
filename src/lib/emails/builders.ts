@@ -34,6 +34,37 @@ export function buildPostSubmittedEmail(
   };
 }
 
+export function buildPostPublishedEmail(
+  authorName: string,
+  postTitle: string,
+  postId: string,
+  appUrl: string,
+  signoffEmoji?: string | null
+): BuiltEmail {
+  const safeAuthor = authorName?.trim() || "A writer you follow";
+  const safeTitle = postTitle?.trim() || "a new post";
+  const safeUrl = appUrl?.replace(/\/$/, "") || "";
+  const emojiPrefix = signoffEmoji?.trim() ? `${signoffEmoji.trim()} ` : "";
+
+  return {
+    subject: `${emojiPrefix}${safeAuthor} just published live to today's edition!`,
+    html: `
+      <h1>Fresh off the press from ${emojiPrefix}${safeAuthor}⚡</h1>
+      <p>They just published: <strong>${safeTitle}</strong></p>
+      <p>It's in today's edition already — go read it.</p>
+      <p>
+        <a href="${safeUrl}/reader/${postId}"
+           style="display:inline-block;padding:10px 16px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">
+          Read it now
+        </a>
+      </p>
+      <p style="margin-top:24px;font-size:12px;color:#888;">
+        Don’t want these emails? <a href="${safeUrl}/open/settings" style="color:#888;">Manage notification settings</a>
+      </p>
+    `,
+  };
+}
+
 export type ReportEmailInput = {
   reportId: string;
   contentType: "POST" | "COMMENT" | "USER";

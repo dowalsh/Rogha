@@ -3,6 +3,7 @@ import { sendEmail } from "./sender";
 import {
   buildCommentNotificationEmail,
   buildPostSubmittedEmail,
+  buildPostPublishedEmail,
   buildReportEmail,
   type ReportEmailInput,
 } from "./builders";
@@ -54,6 +55,84 @@ export async function triggerPostSubmittedEmails(
   const email = buildPostSubmittedEmail(
     authorName,
     post.title ?? "",
+    appUrl,
+    authorSignoff
+  );
+
+  const batchSize = 25;
+  let sent = 0;
+
+  for (let i = 0; i < recipients.length; i += batchSize) {
+    const batch = recipients.slice(i, i + batchSize);
+
+    const results = await Promise.allSettled(
+      batch.map((to) =>
+        sendEmail({
+          to,
+          subject: email.subject,
+          html: email.html,
+        })
+      )
+    );
+
+    sent += results.filter((r) => r.status === "fulfilled").length;
+
+    results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .forEach((r) => {
+        console.error("[EMAIL_FAN_OUT_ERROR]", {
+          postId,
+          error: r.reason,
+        });
+      });
+  }
+
+  return { sent };
+}
+
+export async function triggerPostPublishedEmails(
+  postId: string,
+  recipientIds: string[]
+) {
+  if (!postId) throw new Error("postId required");
+  if (!recipientIds?.length) return { sent: 0 };
+
+  const appUrl = process.env.APP_URL;
+  if (!appUrl) throw new Error("APP_URL is not set");
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      title: true,
+      officialKind: true,
+      author: { select: { id: true, username: true, signoffEmoji: true } },
+    },
+  });
+
+  if (!post || !post.author) return { sent: 0 };
+
+  const isOfficial = post.officialKind != null;
+  const authorName = isOfficial ? "Rogha" : post.author.username;
+  const authorSignoff = isOfficial ? null : post.author.signoffEmoji;
+
+  const users = await prisma.user.findMany({
+    where: {
+      id: { in: recipientIds },
+    },
+    select: { email: true },
+  });
+
+  const recipients = users
+    .map((u) => u.email)
+    .filter((email): email is string => !!email);
+
+  if (!recipients.length) return { sent: 0 };
+
+  const email = buildPostPublishedEmail(
+    authorName,
+    post.title ?? "",
+    postId,
     appUrl,
     authorSignoff
   );

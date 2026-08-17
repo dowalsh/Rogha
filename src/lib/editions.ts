@@ -6,7 +6,7 @@ import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
 import { getReadMapForPosts } from "@/lib/postReads";
 import { buildAudienceCandidateWhere, getRecipientPostIds } from "@/lib/access/postAccess";
-import { getWeeklyJamForEdition } from "@/lib/jam";
+import { getWeeklyJamForEdition, hasViewedWeeklyJam } from "@/lib/jam";
 
 type DbUser = { id: string };
 
@@ -16,6 +16,43 @@ export function plannedPublishAt(weekStart: Date): Date {
   d.setUTCHours(7, 0, 0, 0);
   console.debug("[plannedPublishAt]", { weekStart, planned: d });
   return d;
+}
+
+/**
+ * The Sunday live-join window: opens at the most recent Sunday 07:00 UTC
+ * (the reveal instant the cron publishes at) and seals 24h later, Monday
+ * 07:00 UTC — see docs/specs/2026-08-13-sunday-live-join.md.
+ */
+export function getSundayLiveJoinWindow(now: Date = new Date()) {
+  const day = now.getUTCDay(); // 0 = Sunday … 6 = Saturday
+  const hour = now.getUTCHours();
+  // Days back to the most recent Sunday 07:00 UTC <= now.
+  const daysBack = day === 0 && hour < 7 ? 7 : day;
+
+  const windowStart = new Date(now);
+  windowStart.setUTCDate(now.getUTCDate() - daysBack);
+  windowStart.setUTCHours(7, 0, 0, 0);
+
+  const windowEnd = new Date(windowStart);
+  windowEnd.setUTCDate(windowStart.getUTCDate() + 1);
+
+  return { windowStart, windowEnd, isOpen: now >= windowStart && now < windowEnd };
+}
+
+/**
+ * The edition currently open for Sunday live joins, if any — the edition
+ * whose publishedAt landed within today's live-join window. Returns null
+ * when the window is closed or (rare) the reveal cron hasn't run yet.
+ */
+export async function getOpenLiveJoinEdition(now: Date = new Date()) {
+  const { windowStart, windowEnd, isOpen } = getSundayLiveJoinWindow(now);
+  if (!isOpen) return null;
+
+  return prisma.edition.findFirst({
+    where: { publishedAt: { gte: windowStart, lt: windowEnd } },
+    orderBy: { publishedAt: "desc" },
+    select: { id: true, publishedAt: true },
+  });
 }
 
 /**
@@ -389,7 +426,10 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     }),
   ]);
 
-  const weeklyJam = await getWeeklyJamForEdition(user.id, edition.id, edition.publishedAt);
+  const [weeklyJam, jamReadByMe] = await Promise.all([
+    getWeeklyJamForEdition(user.id, edition.id, edition.publishedAt),
+    hasViewedWeeklyJam(user.id, edition.id),
+  ]);
 
   console.debug(
     "[getPublishedEditionById] edition:",
@@ -403,7 +443,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     hasOpened: Boolean(viewRecord),
     viewerCount,
     viewerNames: viewerPreview.map((v) => v.user.username),
-    weeklyJam,
+    weeklyJam: { ...weeklyJam, readByMe: jamReadByMe },
   };
 }
 

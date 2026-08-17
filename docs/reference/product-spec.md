@@ -12,9 +12,17 @@ The stated philosophy (from the in-app About page):
 1. **Not always on** — no push-driven, infinite feed. Content is gated behind a weekly reveal.
 2. **Constraints breed creativity** — a weekly cadence over constant posting; quality over quantity.
 3. **Shared experience** — publishing is synchronized so everyone posts and reveals together ("buzz").
-4. **Small audiences** — deliberately the opposite of platforms that "strive for scale," which the product philosophy holds "kills honesty and freedom of expression."
+4. **Small, chosen audiences** — each person writes for a handful of people they actually care about, not a crowd. This is a truth about the *individual's* audience, not a ceiling on Rogha's reach. The intimacy that makes honest expression possible is a per-user property: it holds whether Rogha has a hundred users or ten million. Bringing that intimacy to as many people as possible is the goal, not a compromise of it.
+
+## What Rogha optimizes for
+
+Rogha optimizes for the **quality and depth of connection** between people — real expression, actually read and responded to by the people who matter to the writer — and for bringing that experience to **as many people as possible**. These two goals reinforce each other: the better Rogha is at fostering honest, unhurried connection, the more it becomes worth telling a friend about, which is how it is meant to spread.
+
+The line the product holds is not between *small* and *large* — it is between *earning* engagement and *extracting* it. **Growth is a goal; growth-hacking is the enemy.** Rogha grows by being worth an invitation, never by the attention-extractive mechanics — infinite feeds, algorithmic ranking, always-on notification loops, engagement bait — that it defines itself against in the non-goals below. Depth first, and reach *through* depth. A feature that widens Rogha's reach is welcome; one that deepens engagement by pulling people back compulsively is not, no matter what it does to the numbers.
 
 ## Non-goals
+
+These are constraints on *how* Rogha works — its mechanics and its feel — not ceilings on how many people it reaches. Every one of them is about refusing attention-extractive design, not about staying small. Growth that respects them is exactly what Rogha is trying to do.
 
 - **No public feed for ordinary users.** Posts are visible only to friends or circle members. The `ALL_USERS` audience option exists in the schema but is admin-only by convention — regular users can't broadcast site-wide. `ALL_USERS` is also the substrate for admin-authored **official posts** (Editor's Note, Community Feature) — see the Post section below.
 - **No algorithmic ranking.** Content is ordered chronologically (by edition week / update time), not by engagement or relevance scoring.
@@ -44,13 +52,14 @@ The weekly publishing cycle — the core rhythm of the product.
 
 - A cron job runs **every Sunday at 07:00 UTC** and publishes all currently `SUBMITTED` posts into that week's Edition, regardless of when within the week they were submitted.
 - There is no separate "locked" state — submitting a post is effectively the commitment point; the next Sunday cron will sweep it into publication.
+- **Sunday live-join window.** For 24h after the reveal (Sunday 07:00 UTC → Monday 07:00 UTC — exactly the Pacific Sunday), the edition stays open to new posts written *that day*. Writing on Sunday during this window presents an explicit fork in the composer: **Submit for next week** (default — the normal path above) or **Publish to today's edition** (deliberate opt-in — `DRAFT → PUBLISHED` immediately, `editionId` set to the edition revealed that morning, no wait for next Sunday). The fork only applies to posts written *during* the window itself — a post already `SUBMITTED` earlier in the week has no "pull forward," since it's already queued for the very next reveal. After the seal (Monday 07:00 UTC) Sunday writing reverts to the normal submit-for-next-week path. Live-joined posts obey the same audience/visibility rules as any other post and ride the edition's existing "N unread" count — no bespoke UI for having joined mid-day. Monday–Saturday is unaffected; there is no mid-week instant publish. Full spec: [2026-08-13-sunday-live-join.md](../specs/2026-08-13-sunday-live-join.md).
 - Editions support a **reveal gate**: posts are hidden behind a blurred overlay ("N others already opened this week") until the viewer explicitly clicks to open it. This is a ritual/pacing mechanic, not a reciprocity gate — you do **not** need to have posted yourself to open and view an edition.
 - **Weekly Jam** is treated as if it were a post: a compact card (blank author, the viewer's own track art as the thumbnail) appears in a fixed slot after all written posts — never interleaved by recency — on the Edition front page, the Editions listing preview, and the archive list. It shows each opted-in friend's auto-synced top track of the week (via Last.fm, art via Spotify) — passive participation for friends who never write a post. Clicking it opens a dedicated detail page (`/editions/[id]/jam`, mirroring the post reader's layout, read-only — no comments/likes) listing every visible friend's track. Same reveal-gated visibility as the posts above it; pre-publish, Coming Sunday shows only a static "N friends connected" count, not live track data. Full spec: [2026-08-04-weekly-jam-mvp.md](../specs/2026-08-04-weekly-jam-mvp.md).
 
 ### Post
 A single weekly submission, scoped to one audience.
 
-- Lifecycle: `DRAFT → SUBMITTED → PUBLISHED`, or `ARCHIVED` / `REMOVED` (moderation).
+- Lifecycle: `DRAFT → SUBMITTED → PUBLISHED`, or `ARCHIVED` / `REMOVED` (moderation). One exception: during the Sunday live-join window, `DRAFT → PUBLISHED` directly, skipping `SUBMITTED` (see Edition above).
 - Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` — enforced admin-only server-side (`PUT /api/posts/[id]` rejects a non-admin setting `ALL_USERS`) and hidden from the audience picker for non-admins in the editor.
 - **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. The same rule applies to `CIRCLE`-audience posts against circle-membership `joinedAt`. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Its one sanctioned exception is **Republish** (below) — an author-initiated, per-recipient override of the gate, not a bypass of it. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
 - A `SUBMITTED` (not-yet-published) post shows a title/thumbnail-only preview to its eligible audience immediately (no temporal gate — see the spec above), but full content stays author-only until it publishes.
@@ -90,9 +99,10 @@ Gifting one of your own already-published posts to specific friends who joined a
 - After the comments section, the reader shows a "keep reading" block listing the other posts in the same edition (unread first, already-read tucked under a de-emphasized disclosure), or a "you're all caught up this week" state once nothing unread remains — since the edition reveal gate is edition-level, moving article-to-article costs nothing ritually.
 
 ### Notifications
-Four event types: `LIKE`, `COMMENT`, `SUBMIT`, `FRIEND_REQUEST`.
+Event types: `LIKE`, `COMMENT`, `SUBMIT`, `PUBLISH`, `FRIEND_REQUEST`, `FRIEND_REQUEST_ACCEPTED`.
 
-- `SUBMIT` notifications fan out based on the post's audience: all accepted friends (`FRIENDS`), all joined circle members (`CIRCLE`), or nobody (`ALL_USERS` — deliberately silent). The one exception: an official post (`officialKind != null`) with the admin's opt-in `notifyAllUsers` checked fans `SUBMIT` out to every user, respecting each user's `NotificationPreference` — a launch-style broadcast, off by default.
+- `SUBMIT` notifications fan out based on the post's audience: all accepted friends (`FRIENDS`), all joined circle members (`CIRCLE`), or nobody (`ALL_USERS` — deliberately silent). The one exception: an official post (`officialKind != null`) with the admin's opt-in `notifyAllUsers` checked fans `SUBMIT` out to every user, respecting each user's `NotificationPreference` — a launch-style broadcast, off by default. In-app, `SUBMIT` rows are deliberately non-clickable — "coming Sunday, blurred, queued" has nothing readable yet.
+- `PUBLISH` fires when a post live-joins today's Sunday edition (see Edition above), instead of `SUBMIT`. Same audience resolution and the same `NotificationPreference` fields (`emailSubmissions`/`pushSubmissions`) as `SUBMIT` — it's not a separate preference category. Unlike `SUBMIT`, it's **clickable**, routing straight to the readable post in the live edition, because it's live right now rather than queued.
 - Each user has independent, per-category toggles for in-app, email, and push delivery (`NotificationPreference`). A missing preference row defaults to everything enabled.
 - In-app notification rows are always created; email/push are conditional on the user's preferences.
 

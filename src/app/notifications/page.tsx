@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getNotificationLink } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { HeartIcon, MessageCircleIcon, Send, UserPlus } from "lucide-react";
+import { HeartIcon, MessageCircleIcon, Send, UserPlus, Zap } from "lucide-react";
 import Link from "next/link";
 
 import { useEffect, useState } from "react";
@@ -28,6 +28,8 @@ const getNotificationIcon = (type: string) => {
       return <MessageCircleIcon className="size-4 text-blue-500" />;
     case "SUBMIT":
       return <Send className="size-4 text-yellow-500" />;
+    case "PUBLISH":
+      return <Zap className="size-4 text-orange-500" />;
     case "FRIEND_REQUEST":
     case "FRIEND_REQUEST_ACCEPTED":
       return <UserPlus className="size-4 text-green-500" />;
@@ -120,11 +122,13 @@ function NotificationsPage() {
                             ? "liked"
                             : notification.type === "COMMENT"
                               ? "commented"
-                              : notification.type === "FRIEND_REQUEST"
-                                ? "sent you a friend request"
-                                : notification.type === "FRIEND_REQUEST_ACCEPTED"
-                                  ? "accepted your friend request"
-                                  : "submitted a new post"}
+                              : notification.type === "PUBLISH"
+                                ? "published a new post — live now"
+                                : notification.type === "FRIEND_REQUEST"
+                                  ? "sent you a friend request"
+                                  : notification.type === "FRIEND_REQUEST_ACCEPTED"
+                                    ? "accepted your friend request"
+                                    : "submitted a new post"}
                         </span>
                       </div>
 
@@ -172,6 +176,15 @@ function NotificationsPage() {
                         </div>
                       )}
 
+                      {/* PUBLISH notifications */}
+                      {notification.type === "PUBLISH" && notification.post && (
+                        <div className="pl-6 text-sm text-muted-foreground mt-2">
+                          <p className="font-medium">
+                            {notification.post.title ?? "Untitled post"}
+                          </p>
+                        </div>
+                      )}
+
                       <p className="text-sm text-muted-foreground pl-6">
                         {formatDistanceToNow(new Date(notification.createdAt), {
                           addSuffix: true,
@@ -181,7 +194,7 @@ function NotificationsPage() {
                   </>
                 );
 
-                // CLICKABLE: LIKE / COMMENT (and any type with a link)
+                // CLICKABLE: LIKE / COMMENT / PUBLISH (and any type with a link)
                 if (link) {
                   return (
                     <Link

@@ -17,9 +17,33 @@ type EditionPost = {
   readByMe?: boolean;
 };
 
+type WeeklyJamRow = {
+  userId: string;
+  imageUrl: string | null;
+  isViewer: boolean;
+};
+
+type WeeklyJamData = {
+  rows: WeeklyJamRow[];
+  readByMe?: boolean;
+};
+
 type EditionResponse = {
   id: string;
   posts: EditionPost[];
+  weeklyJam?: WeeklyJamData | null;
+};
+
+// A single row in the "Keep reading" / "Already read" lists — either a real
+// post or the Jam's synthetic entry (the Jam has no Post row of its own).
+type UpNextItem = {
+  id: string;
+  title: string;
+  authorName?: string | null;
+  metaText: string;
+  thumbUrl?: string | null;
+  href: string;
+  readByMe: boolean;
 };
 
 export function EditionUpNext({
@@ -55,8 +79,33 @@ export function EditionUpNext({
   }
 
   const siblings = data.posts.filter((p) => p.id !== currentPostId);
-  const unread = siblings.filter((p) => !p.readByMe);
-  const read = siblings.filter((p) => p.readByMe);
+  const postItems: UpNextItem[] = siblings.map((p) => ({
+    id: p.id,
+    title: p.title ?? "Untitled",
+    authorName: p.author?.username ?? "Unknown author",
+    metaText: `${formatDistanceToNow(new Date(p.updatedAt))} ago`,
+    thumbUrl: p.heroThumbUrl,
+    href: `/reader/${p.id}/edition`,
+    readByMe: Boolean(p.readByMe),
+  }));
+
+  const jam = data.weeklyJam;
+  const jamItem: UpNextItem | null =
+    jam && jam.rows.length > 0
+      ? {
+          id: `jam:${editionId}`,
+          title: "The Weekly Jam",
+          authorName: null,
+          metaText: "friends' top tracks this week",
+          thumbUrl: jam.rows.find((r) => r.isViewer)?.imageUrl ?? jam.rows[0]?.imageUrl,
+          href: `/editions/${editionId}/jam`,
+          readByMe: Boolean(jam.readByMe),
+        }
+      : null;
+
+  const items = jamItem ? [...postItems, jamItem] : postItems;
+  const unread = items.filter((i) => !i.readByMe);
+  const read = items.filter((i) => i.readByMe);
 
   return (
     <section className="space-y-4">
@@ -73,16 +122,16 @@ export function EditionUpNext({
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Keep reading</h2>
           <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
-            {unread.map((p) => (
+            {unread.map((item) => (
               <PostPreviewRow
-                key={p.id}
+                key={item.id}
                 variant="new"
-                postId={p.id}
-                title={p.title ?? "Untitled"}
-                authorName={p.author?.username ?? "Unknown author"}
-                metaText={`${formatDistanceToNow(new Date(p.updatedAt))} ago`}
-                thumbUrl={p.heroThumbUrl}
-                href={`/reader/${p.id}/edition`}
+                postId={item.id}
+                title={item.title}
+                authorName={item.authorName}
+                metaText={item.metaText}
+                thumbUrl={item.thumbUrl}
+                href={item.href}
               />
             ))}
           </div>
@@ -95,16 +144,16 @@ export function EditionUpNext({
             Already read this week ({read.length})
           </summary>
           <div className="mt-2 rounded-xl border bg-background/40 p-3 sm:p-4 divide-y opacity-70">
-            {read.map((p) => (
+            {read.map((item) => (
               <PostPreviewRow
-                key={p.id}
+                key={item.id}
                 variant="earlier"
-                postId={p.id}
-                title={p.title ?? "Untitled"}
-                authorName={p.author?.username ?? "Unknown author"}
-                metaText={`${formatDistanceToNow(new Date(p.updatedAt))} ago`}
-                thumbUrl={p.heroThumbUrl}
-                href={`/reader/${p.id}/edition`}
+                postId={item.id}
+                title={item.title}
+                authorName={item.authorName}
+                metaText={item.metaText}
+                thumbUrl={item.thumbUrl}
+                href={item.href}
               />
             ))}
           </div>

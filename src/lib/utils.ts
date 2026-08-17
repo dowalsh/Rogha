@@ -40,7 +40,7 @@ export function formatWeekLabel(date: Date): string {
 
 type NotificationWithRelations = {
   id: string;
-  type: "LIKE" | "COMMENT" | "SUBMIT" | "FRIEND_REQUEST" | "FRIEND_REQUEST_ACCEPTED";
+  type: "LIKE" | "COMMENT" | "SUBMIT" | "PUBLISH" | "FRIEND_REQUEST" | "FRIEND_REQUEST_ACCEPTED";
   postId?: string | null;
   commentId?: string | null;
   post?: { id: string | null } | null;
@@ -86,6 +86,13 @@ export function getNotificationLink(
 
   if (n.type === "SUBMIT") {
     return null;
+  }
+
+  // PUBLISH is live right now — unlike SUBMIT, it routes straight to the
+  // readable post (see docs/specs/2026-08-13-sunday-live-join.md).
+  if (n.type === "PUBLISH") {
+    const postId = n.postId ?? n.post?.id;
+    return postId ? `/reader/${postId}` : "/";
   }
 
   if (n.type === "FRIEND_REQUEST") {

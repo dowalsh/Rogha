@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { ToplineStatPanel } from "./charts";
+import { TOPLINE_EXPLAINERS } from "./explainers";
 import type { ToplineData } from "@/lib/insights/topline";
 
 function BackfillButton({ onDone }: { onDone: () => void }) {
@@ -85,6 +86,7 @@ export default function ToplineSection() {
             <ToplineStatPanel
               key={s.key}
               title={s.title}
+              info={TOPLINE_EXPLAINERS[s.key]}
               weeks={s.weeks}
               weeklyValues={s.weeklyValues}
               cumulativeValues={s.cumulativeValues}

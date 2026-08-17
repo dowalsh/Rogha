@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { StatusPill } from "@/components/admin/insights/StatusPill";
 import { InfoTooltip } from "@/components/admin/insights/InfoTooltip";
+import {
+  RECEPTION_EXPLAINER,
+  CONSUMED_EXPLAINER,
+  ISOLATED_EXPLAINER,
+} from "@/components/admin/insights/explainers";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { UserInsights } from "@/lib/insights/userDrilldown";
 
@@ -94,7 +99,10 @@ export default function UserInsightsPage() {
             </div>
           </Section>
 
-          <Section title="Network">
+          <Section
+            title="Network"
+            info={`Friend count, pending requests, and circles. Isolated: ${ISOLATED_EXPLAINER}`}
+          >
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Stat
                 label="Friends"
@@ -111,10 +119,7 @@ export default function UserInsightsPage() {
             )}
           </Section>
 
-          <Section
-            title="How they were received"
-            info="Reception: did people engage with what they wrote — reads, comments, and likes their posts got. Posting into a void is its own diagnosable churn cause."
-          >
+          <Section title="How they were received" info={RECEPTION_EXPLAINER}>
             <div className="grid grid-cols-3 gap-4">
               <Stat label="Reads received" value={data.reception.totalReads} />
               <Stat label="Comments received" value={data.reception.totalComments} />
@@ -150,10 +155,7 @@ export default function UserInsightsPage() {
             )}
           </Section>
 
-          <Section
-            title="What they consumed"
-            info="Consumption: did they engage with others — posts read, comments and likes given. Distinguishes a still-present lurker from someone actually gone."
-          >
+          <Section title="What they consumed" info={CONSUMED_EXPLAINER}>
             <div className="grid grid-cols-3 gap-4">
               <Stat label="Posts read" value={data.consumed.postsRead} />
               <Stat label="Comments given" value={data.consumed.commentsGiven} />

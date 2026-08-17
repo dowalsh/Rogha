@@ -1,4 +1,7 @@
-type StatusBand = "ACTIVE" | "SLIPPING" | "DORMANT" | "NEVER_ACTIVATED" | "ONBOARDING";
+"use client";
+
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { STATUS_EXPLAINERS, type StatusBand } from "./explainers";
 
 const STYLE: Record<StatusBand, string> = {
   ACTIVE: "bg-green-50 text-green-700",
@@ -18,10 +21,16 @@ const LABEL: Record<StatusBand, string> = {
 
 export function StatusPill({ status }: { status: StatusBand }) {
   return (
-    <span
-      className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${STYLE[status]}`}
-    >
-      {LABEL[status]}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          tabIndex={0}
+          className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium cursor-help ${STYLE[status]}`}
+        >
+          {LABEL[status]}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64 text-center">{STATUS_EXPLAINERS[status]}</TooltipContent>
+    </Tooltip>
   );
 }

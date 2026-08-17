@@ -7,11 +7,7 @@ import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { AdminTableSkeleton } from "@/components/admin/AdminTableSkeleton";
 import { StatusPill } from "./StatusPill";
 import { InfoTooltip } from "./InfoTooltip";
-
-const RECEPTION_EXPLAINER =
-  "Reads + comments their posts have received — did their writing land, or go into silence.";
-const CONSUMED_EXPLAINER =
-  "Posts they've read — are they still showing up to read, even if not writing.";
+import { RECEPTION_EXPLAINER, CONSUMED_EXPLAINER, ISOLATED_EXPLAINER } from "./explainers";
 
 type StatusBand = "ACTIVE" | "SLIPPING" | "DORMANT" | "NEVER_ACTIVATED" | "ONBOARDING";
 
@@ -275,7 +271,12 @@ export default function RosterSection() {
                   <th className="pb-2 pr-4">{sortHeader("status", "Status", "asc")}</th>
                   <th className="pb-2 pr-4">{sortHeader("lastActive", "Last active")}</th>
                   <th className="pb-2 pr-4">{sortHeader("joined", "Joined")}</th>
-                  <th className="pb-2 pr-4">{sortHeader("friends", "Friends")}</th>
+                  <th className="pb-2 pr-4">
+                    <span className="inline-flex items-center gap-1">
+                      {sortHeader("friends", "Friends")}
+                      <InfoTooltip text={`Accepted friend count. Isolated: ${ISOLATED_EXPLAINER}`} />
+                    </span>
+                  </th>
                   <th className="pb-2 pr-4">{sortHeader("wrote", "Wrote")}</th>
                   <th className="pb-2 pr-4">
                     <span className="inline-flex items-center gap-1">

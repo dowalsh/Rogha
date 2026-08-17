@@ -12,9 +12,17 @@ The stated philosophy (from the in-app About page):
 1. **Not always on** — no push-driven, infinite feed. Content is gated behind a weekly reveal.
 2. **Constraints breed creativity** — a weekly cadence over constant posting; quality over quantity.
 3. **Shared experience** — publishing is synchronized so everyone posts and reveals together ("buzz").
-4. **Small audiences** — deliberately the opposite of platforms that "strive for scale," which the product philosophy holds "kills honesty and freedom of expression."
+4. **Small, chosen audiences** — each person writes for a handful of people they actually care about, not a crowd. This is a truth about the *individual's* audience, not a ceiling on Rogha's reach. The intimacy that makes honest expression possible is a per-user property: it holds whether Rogha has a hundred users or ten million. Bringing that intimacy to as many people as possible is the goal, not a compromise of it.
+
+## What Rogha optimizes for
+
+Rogha optimizes for the **quality and depth of connection** between people — real expression, actually read and responded to by the people who matter to the writer — and for bringing that experience to **as many people as possible**. These two goals reinforce each other: the better Rogha is at fostering honest, unhurried connection, the more it becomes worth telling a friend about, which is how it is meant to spread.
+
+The line the product holds is not between *small* and *large* — it is between *earning* engagement and *extracting* it. **Growth is a goal; growth-hacking is the enemy.** Rogha grows by being worth an invitation, never by the attention-extractive mechanics — infinite feeds, algorithmic ranking, always-on notification loops, engagement bait — that it defines itself against in the non-goals below. Depth first, and reach *through* depth. A feature that widens Rogha's reach is welcome; one that deepens engagement by pulling people back compulsively is not, no matter what it does to the numbers.
 
 ## Non-goals
+
+These are constraints on *how* Rogha works — its mechanics and its feel — not ceilings on how many people it reaches. Every one of them is about refusing attention-extractive design, not about staying small. Growth that respects them is exactly what Rogha is trying to do.
 
 - **No public feed for ordinary users.** Posts are visible only to friends or circle members. The `ALL_USERS` audience option exists in the schema but is admin-only by convention — regular users can't broadcast site-wide. `ALL_USERS` is also the substrate for admin-authored **official posts** (Editor's Note, Community Feature) — see the Post section below.
 - **No algorithmic ranking.** Content is ordered chronologically (by edition week / update time), not by engagement or relevance scoring.

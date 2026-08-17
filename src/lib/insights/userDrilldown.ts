@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { getAllUserStatuses, type StatusBand } from "./status";
 import { getLastActivityMap } from "./activity";
+import { POLLUTED_READ_TIMESTAMPS } from "./trackingStart";
 
 const ISOLATED_THRESHOLD = 3;
 
@@ -98,14 +99,16 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
         _count: { select: { postReads: true, comments: true, likes: true } },
       },
     }),
-    prisma.postRead.count({ where: { userId } }),
+    prisma.postRead.count({
+      where: { userId, firstReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+    }),
     prisma.comment.count({ where: { authorId: userId, status: "ACTIVE" } }),
     prisma.postLike.count({ where: { userId } }),
     prisma.commentLike.count({ where: { userId } }),
     prisma.postRead.findFirst({
       where: { userId },
-      orderBy: { readAt: "desc" },
-      select: { readAt: true },
+      orderBy: { lastReadAt: "desc" },
+      select: { lastReadAt: true },
     }),
     prisma.comment.findFirst({
       where: { authorId: userId, status: "ACTIVE" },
@@ -162,7 +165,7 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
       likesGiven: postLikesGiven + commentLikesGiven,
     },
     timeline: {
-      lastPostRead: lastPostRead?.readAt ?? null,
+      lastPostRead: lastPostRead?.lastReadAt ?? null,
       lastPostWritten,
       lastCommentGiven: lastCommentGiven?.createdAt ?? null,
     },

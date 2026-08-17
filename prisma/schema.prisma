@@ -176,16 +176,18 @@ model WeeklyTrack {
 }
 
 model PostRead {
-  postId String
-  userId String
-  readAt DateTime @default(now())
+  postId      String
+  userId      String
+  firstReadAt DateTime @default(now())
+  lastReadAt  DateTime @default(now())
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([postId, userId])
   @@index([postId])
-  @@index([userId, readAt])
+  @@index([userId, lastReadAt])
+  @@index([firstReadAt])
 }
 
 enum PostStatus {

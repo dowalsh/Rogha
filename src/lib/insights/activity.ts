@@ -19,7 +19,7 @@ export async function getActivityInRange(start: Date, end: Date): Promise<Set<st
 
   const [reads, postLikes, commentLikes, comments, posts, jamTracks] = await Promise.all([
     prisma.postRead.findMany({
-      where: { readAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
+      where: { lastReadAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
       select: { userId: true },
     }),
     prisma.postLike.findMany({ where: { createdAt: range }, select: { userId: true } }),
@@ -54,8 +54,8 @@ export async function getLastActivityMap(): Promise<Map<string, Date>> {
   const [reads, postLikes, commentLikes, comments, posts, jamTracks] = await Promise.all([
     prisma.postRead.groupBy({
       by: ["userId"],
-      where: { readAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
-      _max: { readAt: true },
+      where: { lastReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+      _max: { lastReadAt: true },
     }),
     prisma.postLike.groupBy({ by: ["userId"], _max: { createdAt: true } }),
     prisma.commentLike.groupBy({ by: ["userId"], _max: { createdAt: true } }),
@@ -79,7 +79,7 @@ export async function getLastActivityMap(): Promise<Map<string, Date>> {
     if (!cur || at > cur) map.set(userId, at);
   };
 
-  for (const r of reads) bump(r.userId, r._max.readAt);
+  for (const r of reads) bump(r.userId, r._max.lastReadAt);
   for (const r of postLikes) bump(r.userId, r._max.createdAt);
   for (const r of commentLikes) bump(r.userId, r._max.createdAt);
   for (const r of comments) bump(r.authorId, r._max.createdAt);

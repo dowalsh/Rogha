@@ -55,13 +55,13 @@ export async function getRoster(): Promise<RosterRow[]> {
     prisma.post.findMany({ where: { status: "PUBLISHED" }, select: { id: true, authorId: true } }),
     prisma.postRead.groupBy({
       by: ["postId"],
-      where: { readAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+      where: { firstReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
       _count: { _all: true },
     }),
     prisma.comment.groupBy({ by: ["postId"], where: { status: "ACTIVE" }, _count: { _all: true } }),
     prisma.postRead.groupBy({
       by: ["userId"],
-      where: { readAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+      where: { firstReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
       _count: { _all: true },
     }),
   ]);

@@ -106,7 +106,7 @@ export async function GET(
           where: {
             postId: id,
             status: "ACTIVE",
-            createdAt: { gt: read.readAt },
+            createdAt: { gt: read.lastReadAt },
           },
         });
       }

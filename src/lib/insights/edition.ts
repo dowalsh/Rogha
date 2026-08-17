@@ -81,7 +81,7 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
     hasReadTracking
       ? prisma.postRead.findMany({
           where: {
-            readAt: {
+            firstReadAt: {
               gte: target.windowStart,
               lt: target.windowEnd,
               notIn: POLLUTED_READ_TIMESTAMPS,
@@ -129,11 +129,19 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
   );
 
   const editionPostIdSet = new Set(editionPosts.map((p) => p.id));
+  // Windowed by firstReadAt: a user who first reads one of this edition's
+  // posts long after the edition's window closed shouldn't count toward its
+  // funnelRead/funnelReadAll (previously unwindowed — any read, ever,
+  // counted, which meant funnel numbers could keep changing indefinitely).
   const editionReads = hasReadTracking
     ? await prisma.postRead.findMany({
         where: {
           postId: { in: Array.from(editionPostIdSet) },
-          readAt: { notIn: POLLUTED_READ_TIMESTAMPS },
+          firstReadAt: {
+            gte: target.windowStart,
+            lt: target.windowEnd,
+            notIn: POLLUTED_READ_TIMESTAMPS,
+          },
         },
         select: { postId: true, userId: true },
       })

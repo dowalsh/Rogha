@@ -6,6 +6,12 @@ import toast from "react-hot-toast";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { AdminTableSkeleton } from "@/components/admin/AdminTableSkeleton";
 import { StatusPill } from "./StatusPill";
+import { InfoTooltip } from "./InfoTooltip";
+
+const RECEPTION_EXPLAINER =
+  "Reads + comments their posts have received — did their writing land, or go into silence.";
+const CONSUMED_EXPLAINER =
+  "Posts they've read — are they still showing up to read, even if not writing.";
 
 type StatusBand = "ACTIVE" | "SLIPPING" | "DORMANT" | "NEVER_ACTIVATED" | "ONBOARDING";
 
@@ -271,8 +277,18 @@ export default function RosterSection() {
                   <th className="pb-2 pr-4">{sortHeader("joined", "Joined")}</th>
                   <th className="pb-2 pr-4">{sortHeader("friends", "Friends")}</th>
                   <th className="pb-2 pr-4">{sortHeader("wrote", "Wrote")}</th>
-                  <th className="pb-2 pr-4">{sortHeader("reception", "Reception")}</th>
-                  <th className="pb-2">{sortHeader("consumed", "Consumed")}</th>
+                  <th className="pb-2 pr-4">
+                    <span className="inline-flex items-center gap-1">
+                      {sortHeader("reception", "Reception")}
+                      <InfoTooltip text={RECEPTION_EXPLAINER} />
+                    </span>
+                  </th>
+                  <th className="pb-2">
+                    <span className="inline-flex items-center gap-1">
+                      {sortHeader("consumed", "Consumed")}
+                      <InfoTooltip text={CONSUMED_EXPLAINER} />
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">

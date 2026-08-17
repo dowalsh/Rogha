@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { StatusPill } from "@/components/admin/insights/StatusPill";
+import { InfoTooltip } from "@/components/admin/insights/InfoTooltip";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { UserInsights } from "@/lib/insights/userDrilldown";
 
@@ -15,10 +16,21 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  info,
+  children,
+}: {
+  title: string;
+  info?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-lg border p-4 space-y-3">
-      <h2 className="text-sm font-semibold">{title}</h2>
+      <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
+        {title}
+        {info && <InfoTooltip text={info} />}
+      </h2>
       {children}
     </div>
   );
@@ -99,7 +111,10 @@ export default function UserInsightsPage() {
             )}
           </Section>
 
-          <Section title="How they were received">
+          <Section
+            title="How they were received"
+            info="Reception: did people engage with what they wrote — reads, comments, and likes their posts got. Posting into a void is its own diagnosable churn cause."
+          >
             <div className="grid grid-cols-3 gap-4">
               <Stat label="Reads received" value={data.reception.totalReads} />
               <Stat label="Comments received" value={data.reception.totalComments} />
@@ -135,7 +150,10 @@ export default function UserInsightsPage() {
             )}
           </Section>
 
-          <Section title="What they consumed">
+          <Section
+            title="What they consumed"
+            info="Consumption: did they engage with others — posts read, comments and likes given. Distinguishes a still-present lurker from someone actually gone."
+          >
             <div className="grid grid-cols-3 gap-4">
               <Stat label="Posts read" value={data.consumed.postsRead} />
               <Stat label="Comments given" value={data.consumed.commentsGiven} />

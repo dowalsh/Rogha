@@ -68,7 +68,7 @@ export default function ToplineSection() {
 
       {showSkeleton && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="h-48 animate-pulse rounded-lg border bg-muted/40" />
           ))}
         </div>

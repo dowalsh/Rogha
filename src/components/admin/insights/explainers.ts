@@ -18,7 +18,7 @@ export const STATUS_EXPLAINERS: Record<StatusBand, string> = {
 };
 
 export const TOPLINE_EXPLAINERS: Record<
-  "users" | "activeUsers" | "posts" | "wordsWritten" | "wordsRead" | "reach",
+  "users" | "activeUsers" | "posts" | "wordsWritten" | "wordsRead",
   string
 > = {
   users: "Total signed-up users, with new signups this edition.",
@@ -28,7 +28,6 @@ export const TOPLINE_EXPLAINERS: Record<
   wordsWritten: "Total words authored across posts and comments.",
   wordsRead:
     "For every post-read, the word count of that post, summed — depth of consumption, not just reach.",
-  reach: "Cumulative users over time — the same total user count, framed as growth.",
 };
 
 export const FUNNEL_EXPLAINERS: Record<

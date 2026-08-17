@@ -10,7 +10,6 @@ import { formatWeekLabel } from "@/lib/utils";
 import { computeEditionSummary, type EditionSummaryData } from "./edition";
 import { getAllEditionsWithWindows } from "./windows";
 import { mapWithConcurrency } from "./concurrency";
-import { READ_TRACKING_START } from "./trackingStart";
 
 type Row = EditionSummaryData & { weekStart: Date; editionId: string };
 
@@ -19,8 +18,7 @@ export type ToplineSeriesKey =
   | "activeUsers"
   | "posts"
   | "wordsWritten"
-  | "wordsRead"
-  | "reach";
+  | "wordsRead";
 
 export type ToplineSeries = {
   key: ToplineSeriesKey;
@@ -38,13 +36,12 @@ export type ToplineSeries = {
 export type ToplineData = { series: ToplineSeries[]; hasData: boolean };
 
 async function getRows(): Promise<Row[]> {
-  // Editions before real PostRead tracking existed have no trustworthy
-  // wordsRead/funnelRead data (see trackingStart.ts) — start every series
-  // from the same point so the whole dashboard reads as one consistent
-  // timeline instead of some metrics dropping to zero mid-chart.
-  const editions = (await getAllEditionsWithWindows()).filter(
-    (e) => e.windowStart >= READ_TRACKING_START,
-  );
+  // Full edition history — every series but wordsRead/funnelRead has real
+  // data going back to the start. computeEditionSummary itself zeroes
+  // wordsRead (and funnelRead/funnelReadAll, read via topline's siblings)
+  // for editions before READ_TRACKING_START, since PostRead tracking didn't
+  // exist yet (see trackingStart.ts) — no filtering needed here.
+  const editions = await getAllEditionsWithWindows();
   if (editions.length === 0) return [];
 
   const stored = await prisma.editionSummary.findMany({
@@ -146,18 +143,6 @@ export async function getTopline(): Promise<ToplineData> {
       activeRate: null,
       chartMode: "toggle",
       format: "compact",
-    },
-    {
-      key: "reach",
-      title: "Reach",
-      weeks,
-      weeklyValues: usersWeekly,
-      cumulativeValues: usersCumulative,
-      current: latest.totalUsers,
-      delta: previous ? latest.totalUsers - previous.totalUsers : null,
-      activeRate: null,
-      chartMode: "cumulative",
-      format: "count",
     },
   ];
 

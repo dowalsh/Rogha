@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { formatWeekLabel } from "@/lib/utils";
 import { computeEditionSummary, type EditionSummaryData } from "./edition";
 import { getAllEditionsWithWindows } from "./windows";
+import { mapWithConcurrency } from "./concurrency";
 
 type Row = EditionSummaryData & { weekStart: Date; editionId: string };
 
@@ -44,12 +45,15 @@ async function getRows(): Promise<Row[]> {
   });
   const storedMap = new Map(stored.map((s) => [s.editionId, s]));
 
-  const rows: Row[] = [];
-  for (const ed of editions) {
+  // Order matters (weekStart ascending) — mapWithConcurrency preserves
+  // input order regardless of completion order. Most editions should hit
+  // the `existing` branch (no query at all) once backfilled; concurrency is
+  // capped for the rest so a mid-history gap can't fan out unbounded.
+  const rows: Row[] = await mapWithConcurrency(editions, 3, async (ed) => {
     const existing = storedMap.get(ed.id);
     const data: EditionSummaryData = existing ?? (await computeEditionSummary(ed.id));
-    rows.push({ ...data, weekStart: ed.weekStart, editionId: ed.id });
-  }
+    return { ...data, weekStart: ed.weekStart, editionId: ed.id };
+  });
   return rows;
 }
 

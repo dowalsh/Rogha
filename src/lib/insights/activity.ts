@@ -18,8 +18,21 @@ export async function getActivityInRange(start: Date, end: Date): Promise<Set<st
   const range = { gte: start, lt: end };
 
   const [reads, postLikes, commentLikes, comments, posts, jamTracks] = await Promise.all([
+    // firstReadAt OR lastReadAt: firstReadAt is immutable, so a user who
+    // first read something in this window can never be dropped from it by a
+    // later recompute, even if they've since reopened that same post in a
+    // different window (which lastReadAt alone would otherwise erase).
+    // lastReadAt still catches reopens as fresh activity in whatever window
+    // they actually happen in. Reads that fall strictly between a post's
+    // first and last open (neither endpoint) remain untracked — accepted
+    // gap, would need a full append-only read-events log to close.
     prisma.postRead.findMany({
-      where: { lastReadAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
+      where: {
+        OR: [
+          { firstReadAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
+          { lastReadAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
+        ],
+      },
       select: { userId: true },
     }),
     prisma.postLike.findMany({ where: { createdAt: range }, select: { userId: true } }),

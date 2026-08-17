@@ -47,16 +47,26 @@ export async function getHeroData(userId: string): Promise<HeroData> {
   if (!latest) return { kind: "empty" };
 
   const edition = await getPublishedEditionById({ id: userId }, latest.id);
-  if (!edition || edition.posts.length === 0) return { kind: "empty" };
+  if (!edition) return { kind: "empty" };
+  if (edition.posts.length === 0 && edition.weeklyJam.rows.length === 0)
+    return { kind: "empty" };
 
   const postIds = edition.posts.map((p) => p.id);
   const readMap = await getReadMapForPosts(userId, postIds);
 
-  const openedCount = readMap.size;
-  const totalCount = postIds.length;
+  // The Jam counts as one more "story" once it has data — folds it into the
+  // same opened/unread tallies as real posts (mirrors EditionUpNext's
+  // "Keep reading" / "Already read" treatment of the Jam).
+  const jamCounts = edition.weeklyJam.rows.length > 0;
+
+  const openedCount = readMap.size + (jamCounts && edition.weeklyJam.readByMe ? 1 : 0);
+  const totalCount = postIds.length + (jamCounts ? 1 : 0);
   const unreadPostIds = edition.posts
     .filter((p) => !readMap.has(p.id))
     .map((p) => p.id);
+  if (jamCounts && !edition.weeklyJam.readByMe) {
+    unreadPostIds.push(`jam:${edition.id}`);
+  }
 
   const state: HeroState =
     openedCount === 0

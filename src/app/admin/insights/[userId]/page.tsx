@@ -54,8 +54,11 @@ export default function UserInsightsPage() {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-      <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to admin
+      <Link
+        href="/admin?insightsTab=roster"
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Back to roster
       </Link>
 
       {showSkeleton && <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />}

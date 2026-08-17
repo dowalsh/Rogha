@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AdminTableSkeleton } from "@/components/admin/AdminTableSkeleton";
@@ -737,7 +737,9 @@ export default function AdminDashboard() {
           <TabsTrigger value="music">Music</TabsTrigger>
         </TabsList>
         <TabsContent value="insights" className="mt-6">
-          <InsightsTab />
+          <Suspense fallback={null}>
+            <InsightsTab />
+          </Suspense>
         </TabsContent>
         <TabsContent value="posts" className="mt-6">
           <PostsTab />

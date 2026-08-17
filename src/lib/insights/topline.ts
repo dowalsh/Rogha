@@ -10,6 +10,7 @@ import { formatWeekLabel } from "@/lib/utils";
 import { computeEditionSummary, type EditionSummaryData } from "./edition";
 import { getAllEditionsWithWindows } from "./windows";
 import { mapWithConcurrency } from "./concurrency";
+import { READ_TRACKING_START } from "./trackingStart";
 
 type Row = EditionSummaryData & { weekStart: Date; editionId: string };
 
@@ -37,7 +38,13 @@ export type ToplineSeries = {
 export type ToplineData = { series: ToplineSeries[]; hasData: boolean };
 
 async function getRows(): Promise<Row[]> {
-  const editions = await getAllEditionsWithWindows();
+  // Editions before real PostRead tracking existed have no trustworthy
+  // wordsRead/funnelRead data (see trackingStart.ts) — start every series
+  // from the same point so the whole dashboard reads as one consistent
+  // timeline instead of some metrics dropping to zero mid-chart.
+  const editions = (await getAllEditionsWithWindows()).filter(
+    (e) => e.windowStart >= READ_TRACKING_START,
+  );
   if (editions.length === 0) return [];
 
   const stored = await prisma.editionSummary.findMany({

@@ -8,6 +8,7 @@
 import { prisma } from "@/lib/prisma";
 import { getAllUserStatuses, type StatusBand } from "./status";
 import { getLastActivityMap } from "./activity";
+import { POLLUTED_READ_TIMESTAMPS } from "./trackingStart";
 
 export type RosterRow = {
   id: string;
@@ -52,9 +53,17 @@ export async function getRoster(): Promise<RosterRow[]> {
     prisma.friendship.findMany({ where: { status: "ACCEPTED" }, select: { aId: true, bId: true } }),
     prisma.post.groupBy({ by: ["authorId"], where: { status: "PUBLISHED" }, _count: { _all: true } }),
     prisma.post.findMany({ where: { status: "PUBLISHED" }, select: { id: true, authorId: true } }),
-    prisma.postRead.groupBy({ by: ["postId"], _count: { _all: true } }),
+    prisma.postRead.groupBy({
+      by: ["postId"],
+      where: { readAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+      _count: { _all: true },
+    }),
     prisma.comment.groupBy({ by: ["postId"], where: { status: "ACTIVE" }, _count: { _all: true } }),
-    prisma.postRead.groupBy({ by: ["userId"], _count: { _all: true } }),
+    prisma.postRead.groupBy({
+      by: ["userId"],
+      where: { readAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+      _count: { _all: true },
+    }),
   ]);
 
   const statusMap = await getAllUserStatuses(users, lastActivityMap);

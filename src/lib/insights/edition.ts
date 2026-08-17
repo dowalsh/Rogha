@@ -13,6 +13,7 @@ import { resolveVisiblePosts, type MinimalPost } from "@/lib/access/postAccess";
 import { getActiveUserIdsAsOf } from "./status";
 import { getAllEditionsWithWindows, getPreviousEditionId, type EditionWithWindow } from "./windows";
 import { mapWithConcurrency } from "./concurrency";
+import { READ_TRACKING_START, POLLUTED_READ_TIMESTAMPS } from "./trackingStart";
 
 function countWords(text: string): number {
   const trimmed = text.trim();
@@ -71,7 +72,9 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
       select: { authorId: true, postId: true, content: true },
     }),
     prisma.postRead.findMany({
-      where: { readAt: { gte: target.windowStart, lt: target.windowEnd } },
+      where: {
+        readAt: { gte: target.windowStart, lt: target.windowEnd, notIn: POLLUTED_READ_TIMESTAMPS },
+      },
       select: { postId: true, userId: true },
     }),
     prisma.editionView.findMany({
@@ -114,7 +117,10 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
 
   const editionPostIdSet = new Set(editionPosts.map((p) => p.id));
   const editionReads = await prisma.postRead.findMany({
-    where: { postId: { in: Array.from(editionPostIdSet) } },
+    where: {
+      postId: { in: Array.from(editionPostIdSet) },
+      readAt: { notIn: POLLUTED_READ_TIMESTAMPS },
+    },
     select: { postId: true, userId: true },
   });
   const readSetByUser = new Map<string, Set<string>>();
@@ -220,7 +226,11 @@ export async function backfillEditionSummaries(): Promise<{
   editionIds: string[];
 }> {
   const editions = await getAllEditionsWithWindows();
-  const sealed = editions.filter((e) => e.isSealed);
+  // Editions whose window predates real PostRead tracking (see
+  // trackingStart.ts) never had genuine reading data — skip them so backfill
+  // can't re-persist a wordsRead/funnelRead number built on the mass-seeded
+  // rows, no matter how many times it's re-run.
+  const sealed = editions.filter((e) => e.isSealed && e.windowStart >= READ_TRACKING_START);
   if (sealed.length === 0) return { computed: 0, alreadyPresent: 0, editionIds: [] };
 
   const existing = await prisma.editionSummary.findMany({

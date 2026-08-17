@@ -7,6 +7,7 @@
 // excluded here).
 
 import { prisma } from "@/lib/prisma";
+import { POLLUTED_READ_TIMESTAMPS } from "./trackingStart";
 
 /**
  * User ids with at least one activity event in [start, end). Five bounded
@@ -17,7 +18,10 @@ export async function getActivityInRange(start: Date, end: Date): Promise<Set<st
   const range = { gte: start, lt: end };
 
   const [reads, postLikes, commentLikes, comments, posts, jamTracks] = await Promise.all([
-    prisma.postRead.findMany({ where: { readAt: range }, select: { userId: true } }),
+    prisma.postRead.findMany({
+      where: { readAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
+      select: { userId: true },
+    }),
     prisma.postLike.findMany({ where: { createdAt: range }, select: { userId: true } }),
     prisma.commentLike.findMany({ where: { createdAt: range }, select: { userId: true } }),
     prisma.comment.findMany({
@@ -48,7 +52,11 @@ export async function getActivityInRange(start: Date, end: Date): Promise<Set<st
  */
 export async function getLastActivityMap(): Promise<Map<string, Date>> {
   const [reads, postLikes, commentLikes, comments, posts, jamTracks] = await Promise.all([
-    prisma.postRead.groupBy({ by: ["userId"], _max: { readAt: true } }),
+    prisma.postRead.groupBy({
+      by: ["userId"],
+      where: { readAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+      _max: { readAt: true },
+    }),
     prisma.postLike.groupBy({ by: ["userId"], _max: { createdAt: true } }),
     prisma.commentLike.groupBy({ by: ["userId"], _max: { createdAt: true } }),
     prisma.comment.groupBy({

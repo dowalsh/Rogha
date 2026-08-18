@@ -87,14 +87,14 @@ export function PostRow({
     : `/editor/${id}`;
 
   return (
-    <tr className="border-t align-middle">
+    <tr className="border-t">
       {/* POST COLUMN */}
-      <td className="p-3">
+      <td className="p-3 align-top">
         <PostTitleLink href={titleHref} heroImageUrl={heroImageUrl} title={title} />
       </td>
 
       {/* STATUS COLUMN */}
-      <td className="p-3 align-middle">
+      <td className="p-3 align-top">
         <div className="flex flex-col items-center gap-1">
           <span
             className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em] ${statusStyles[status]}`}
@@ -117,7 +117,7 @@ export function PostRow({
       </td>
 
       {/* UPDATED COLUMN — to the minute */}
-      <td className="p-3 align-middle text-xs text-muted-foreground">
+      <td className="p-3 align-top text-xs text-muted-foreground">
         {updatedAt.toLocaleString(undefined, {
           year: "numeric",
           month: "short",
@@ -128,7 +128,7 @@ export function PostRow({
       </td>
 
       {/* ACTIONS COLUMN */}
-      <td className="p-3 align-middle">
+      <td className="p-3 align-top">
         <div className="flex justify-end gap-2">
           {isRepublish && status !== "PUBLISHED" ? (
             <span className="px-2 text-xs text-muted-foreground">Awaiting Sunday</span>

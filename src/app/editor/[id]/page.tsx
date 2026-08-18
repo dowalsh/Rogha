@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
@@ -200,6 +200,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         }),
       });
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
+      // Refresh the shared /api/posts/{id} cache so reopening this post
+      // (via in-app navigation, not a hard reload) reads the just-saved
+      // data instead of whatever was cached before this save.
+      await mutate(`/api/posts/${params.id}`);
       setSaved(true);
       return true;
     } catch (err) {
@@ -268,6 +272,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         toast.error(body.error ?? "Failed to submit. Please try again.");
         return;
       }
+      await mutate(`/api/posts/${params.id}`);
       setStatus(next);
       setSaved(true);
       const emoji = me?.signoffEmoji;

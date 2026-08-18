@@ -11,11 +11,26 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
+export type ConnectedFriend = {
+  userId: string;
+  username: string;
+  image: string | null;
+};
+
 // Single source of truth for the Weekly Jam explainer copy, shared by both
 // entry points (the Jam card's "Connect your Music" button and the info
 // button in Settings) — see docs/specs/2026-08-04-weekly-jam-mvp.md
 // "Connect flow & explainer".
-export function WeeklyJamExplainer({ trigger }: { trigger: React.ReactNode }) {
+export function WeeklyJamExplainer({
+  trigger,
+  connectedFriends,
+}: {
+  trigger: React.ReactNode;
+  // Friends who've already connected, shown as social proof. Only the
+  // Jam card's CTA (WeeklyJamRows) knows this — omitted elsewhere (e.g.
+  // WeeklyJamInfoDot in Settings), so the section just doesn't render.
+  connectedFriends?: ConnectedFriend[];
+}) {
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -23,6 +38,34 @@ export function WeeklyJamExplainer({ trigger }: { trigger: React.ReactNode }) {
         <DialogHeader>
           <DialogTitle>The Weekly Jam</DialogTitle>
         </DialogHeader>
+
+        {connectedFriends && connectedFriends.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Already connected
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {connectedFriends.map((friend) => (
+                <span
+                  key={friend.userId}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-muted py-1 pl-1 pr-2.5 text-xs"
+                >
+                  {friend.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={friend.image}
+                      alt=""
+                      className="h-5 w-5 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="h-5 w-5 shrink-0 rounded-full bg-border" />
+                  )}
+                  {friend.username}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>

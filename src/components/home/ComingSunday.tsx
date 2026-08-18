@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
-import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
+import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
 import { shortTimeAgo, cn } from "@/lib/utils";
 import type { ComingNextData } from "@/lib/home";
 
@@ -40,21 +40,39 @@ function JamTeaser({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-3 py-2", className)}>
-      <div className="flex h-12 w-3 shrink-0 items-center justify-center" />
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
-        <Music className="h-5 w-5 text-muted-foreground" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-serif text-sm">The Weekly Jam</div>
-        <div className="truncate text-xs text-muted-foreground">
-          {jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center">
-        <WeeklyJamInfoDot />
-      </div>
-    </div>
+    <WeeklyJamExplainer
+      trigger={
+        <button
+          type="button"
+          aria-label="What is The Weekly Jam?"
+          className={cn(
+            "flex w-full items-center gap-3 py-2 text-left hover:bg-muted/50",
+            className,
+          )}
+        >
+          <div className="flex h-12 w-3 shrink-0 items-center justify-center" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted">
+            <Music className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-serif text-sm">The Weekly Jam</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center">
+            {/* Visual-only badge — the whole row is the click target now, so
+                this can't be its own interactive element (no nested buttons). */}
+            <span
+              aria-hidden="true"
+              className="inline-flex items-center rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wide text-white shadow-sm"
+            >
+              New
+            </span>
+          </div>
+        </button>
+      }
+    />
   );
 }
 

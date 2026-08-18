@@ -126,7 +126,7 @@ export function CircleDialog({
         if (!isOpen) onClose(); // only close if the user actually closes it
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{circle?.name ?? "Circle"}</DialogTitle>
         </DialogHeader>
@@ -134,7 +134,7 @@ export function CircleDialog({
         <div className="space-y-5">
           <div>
             <h3 className="font-medium mb-2">Members</h3>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {members.map((m) => (
                 <li
                   key={m.user.id}

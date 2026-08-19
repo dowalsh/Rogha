@@ -41,6 +41,7 @@ function JamTeaser({
 }) {
   return (
     <WeeklyJamExplainer
+      connectedFriends={data.jamConnectedFriends}
       trigger={
         <button
           type="button"

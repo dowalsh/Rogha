@@ -14,11 +14,13 @@ import DeepLinkInit from "@/components/DeepLinkInit";
 import MePreloader from "@/components/MePreloader";
 import UsernameNudge from "@/components/UsernameNudge";
 import RepublishAnnouncementNudge from "@/components/RepublishAnnouncementNudge";
+import AppStoreNudge from "@/components/AppStoreNudge";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
 import TermsGate from "@/components/TermsGate";
 import { formatDistanceToNow } from "date-fns";
 import { SWRProvider } from "@/components/providers/SWRProvider";
+import { APP_STORE_ID } from "@/lib/appStore";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -42,6 +44,12 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Rogha",
   description: "Social media by friends, for friends.",
+  // Native iOS Smart App Banner: mobile Safari shows a "Get / Open" bar for the
+  // Rogha app. Renders <meta name="apple-itunes-app" content="app-id=...">.
+  // Safari-only — never appears inside the app's own WebView. app-argument
+  // deep-links installed users back to the page they were on via the existing
+  // universal-links setup (.well-known/apple-app-site-association).
+  itunes: { appId: APP_STORE_ID },
 };
 
 export default async function RootLayout({
@@ -130,6 +138,7 @@ export default async function RootLayout({
                 <Navbar />
                 <UsernameNudge />
                 <RepublishAnnouncementNudge />
+                <AppStoreNudge />
                 <main className="pb-8">
                   <div className="max-w-7xl mx-auto px-4">
                     <TermsGate>{children}</TermsGate>

@@ -129,7 +129,7 @@ export function PostRow({
 
       {/* ACTIONS COLUMN */}
       <td className="p-3 align-top">
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
           {isRepublish && status !== "PUBLISHED" ? (
             <span className="px-2 text-xs text-muted-foreground">Awaiting Sunday</span>
           ) : (

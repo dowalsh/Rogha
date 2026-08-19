@@ -68,7 +68,10 @@ export function WeeklyJamExplainer({
         )}
 
         <div className="space-y-3 text-sm text-muted-foreground">
-          <p>Sharing music is fun (and important). Rogha now does that too.</p>
+          <p>
+            Music is fun. Sharing music with friends is fun. Now you can do it
+            on Rogha.
+          </p>
           <p>
             Introducing{" "}
             <strong className="font-bold italic text-foreground">

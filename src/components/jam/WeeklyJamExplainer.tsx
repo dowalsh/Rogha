@@ -69,12 +69,15 @@ export function WeeklyJamExplainer({
 
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>
-            Rogha is about sharing what&apos;s important to them with their friends. For a lot of
-            people - thats music.
+            Rogha is about sharing what&apos;s important with friends. For a lot
+            of people - thats music.
           </p>
           <p>
-            Introducing <strong className="font-bold italic text-foreground">The Weekly Jam</strong>.
-            Every week - see the top track from each of your friends.
+            Introducing{" "}
+            <strong className="font-bold italic text-foreground">
+              The Weekly Jam
+            </strong>
+            . Every week - see the top track from each of your friends.
           </p>
           <p>to join in - you need to connect your music.</p>
           <p>
@@ -118,8 +121,9 @@ export function WeeklyJamExplainer({
             <li>then add your last.fm username to rogha in settings.</li>
           </ul>
           <p>
-            Warning - you may have to do some email verification (Boo, i know) - but once
-            you&apos;re done - The Weekly Jam will auto-sync every week!!!
+            Warning - you may have to do some email verification (Boo, i know) -
+            but once you&apos;re done - The Weekly Jam will auto-sync every
+            week!!!
           </p>
         </div>
 

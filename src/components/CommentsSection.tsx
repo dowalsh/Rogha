@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -520,10 +520,12 @@ export default function CommentsSection({
   const currentUserId = me?.id ?? null;
 
   // revalidateIfStale: false — comment add/reply/delete are managed via the
-  // local `comments` state below (with optimistic updates), so a background
-  // revalidation racing an in-flight optimistic update could clobber it.
-  // The upside of SWR here is instant comments on back-navigation; freshness
-  // beyond that isn't critical for a comment thread.
+  // local `comments` state below (with optimistic updates), so an automatic
+  // background revalidation racing an in-flight optimistic update could
+  // clobber it. postComment/deleteComment instead call mutate() explicitly
+  // once the write succeeds, so the cache is refreshed without racing local
+  // state (seededForIdRef only reseeds on a fresh mount, i.e. after the
+  // write has already settled).
   const { data: commentsData } = useSWR<CommentType[]>(
     `/api/posts/${postId}/comments`,
     { revalidateIfStale: false },
@@ -603,6 +605,12 @@ export default function CommentsSection({
         likeCount: 0,
         likedByMe: false,
       }));
+
+      // Refresh the shared comments cache so navigating away and back
+      // (remounting this component) reads the just-posted comment instead
+      // of the pre-post snapshot — seededForIdRef already guards against
+      // this clobbering the local optimistic state in the current mount.
+      mutate(`/api/posts/${postId}/comments`);
     } catch (err) {
       console.error("Failed to post comment:", err);
       updateLocalComment(id, parentId, (c) => ({
@@ -689,6 +697,8 @@ export default function CommentsSection({
       method: "DELETE",
     });
     if (!res.ok) return;
+
+    mutate(`/api/posts/${postId}/comments`);
 
     if (parentId) {
       setComments((prev) =>

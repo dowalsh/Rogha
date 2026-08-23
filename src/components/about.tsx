@@ -1,9 +1,15 @@
+"use client";
+
+import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Newspaper, NotebookPen, Blend, Smartphone } from "lucide-react";
 import { APP_STORE_URL } from "@/lib/appStore";
 
 export function About() {
+  const [isNative] = useState(() => Capacitor.isNativePlatform());
+
   return (
     <div className="max-w-3xl mx-auto py-8">
       <div className="max-w-3xl mx-auto py-8">
@@ -21,17 +27,19 @@ export function About() {
           </p>
           <p>Ar aghaidh linn.</p>
 
-          <div className="rounded-xl border bg-muted/40 p-4 flex flex-col items-center gap-3 text-center">
-            <p className="font-serif text-lg">
-              Rogha is now on the App Store too!
-            </p>
-            <Button asChild>
-              <a href={APP_STORE_URL} target="_blank" rel="noreferrer">
-                <Smartphone className="w-4 h-4" />
-                <span>Get Rogha on iPhone</span>
-              </a>
-            </Button>
-          </div>
+          {!isNative && (
+            <div className="rounded-xl border bg-muted/40 p-4 flex flex-col items-center gap-3 text-center">
+              <p className="font-serif text-lg">
+                Rogha is now on the App Store too!
+              </p>
+              <Button asChild>
+                <a href={APP_STORE_URL} target="_blank" rel="noreferrer">
+                  <Smartphone className="w-4 h-4" />
+                  <span>Get Rogha on iPhone</span>
+                </a>
+              </Button>
+            </div>
+          )}
 
           <h3 className="text-3xl font-serif text-center">Editions</h3>
           <p>

@@ -51,17 +51,29 @@ function Navbar() {
   return (
     <nav className="sticky top-0 w-full border-b bg-background z-50 pt-safe">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Desktop row: logo left, nav right */}
+        {/* Desktop row: back button + logo left, nav right */}
         <div className="hidden md:flex items-center justify-between h-16">
-          <Link href="/" className="relative block h-12 w-32 shrink-0">
-            <Image
-              src="/logo.png"
-              alt="Rogha Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </Link>
+          <div className="flex items-center gap-2">
+            {showBackButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.back()}
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
+            <Link href="/" className="relative block h-12 w-32 shrink-0">
+              <Image
+                src="/logo.png"
+                alt="Rogha Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </Link>
+          </div>
 
           <DesktopNavbar
             isLoaded={isLoaded}

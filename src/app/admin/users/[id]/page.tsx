@@ -50,14 +50,14 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export default function UserInsightsPage() {
-  const { userId } = useParams<{ userId: string }>();
+export default function UserDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<UserInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/admin/insights/roster/${userId}`)
+    fetch(`/api/admin/insights/roster/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -65,17 +65,17 @@ export default function UserInsightsPage() {
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, [id]);
 
   const showSkeleton = useDelayedLoading(loading);
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <Link
-        href="/admin?insightsTab=roster"
+        href="/admin/users"
         className="text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to roster
+        ← Back to users
       </Link>
 
       {showSkeleton && <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />}

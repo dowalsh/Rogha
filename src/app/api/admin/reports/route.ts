@@ -27,14 +27,14 @@ export async function GET() {
       if (r.contentType === "POST") {
         const post = await prisma.post.findUnique({
           where: { id: r.contentId },
-          select: { title: true, status: true, author: { select: { username: true } } },
+          select: { title: true, status: true, author: { select: { id: true, username: true } } },
         });
         preview = post?.title ?? "(untitled)";
         return { ...r, preview, contentStatus: post?.status ?? null, contentAuthor: post?.author ?? null };
       } else {
         const comment = await prisma.comment.findUnique({
           where: { id: r.contentId },
-          select: { content: true, status: true, postId: true, author: { select: { username: true } } },
+          select: { content: true, status: true, postId: true, author: { select: { id: true, username: true } } },
         });
         preview = comment?.content ?? "";
         return { ...r, preview, contentStatus: comment?.status ?? null, contentAuthor: comment?.author ?? null, postId: comment?.postId ?? null };

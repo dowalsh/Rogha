@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Spinner } from "@/components/Spinner";
+import { StatusBadge } from "@/components/admin/StatusBadge";
+import { UserLink } from "@/components/admin/UserLink";
 import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 
@@ -12,7 +14,7 @@ type AdminComment = {
   status: string;
   createdAt: string;
   parentCommentId: string | null;
-  author: { username: string };
+  author: { id: string; username: string };
 };
 
 type AdminPostDetail = {
@@ -72,26 +74,14 @@ export default function AdminPostViewPage() {
     );
   }
 
-  const statusColor: Record<string, string> = {
-    REMOVED: "bg-red-100 text-red-700",
-    PUBLISHED: "bg-blue-100 text-blue-700",
-    SUBMITTED: "bg-yellow-100 text-yellow-700",
-    DRAFT: "bg-gray-100 text-gray-500",
-    ARCHIVED: "bg-gray-100 text-gray-400",
-  };
-
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       {/* Admin meta bar */}
       <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-3 text-xs space-y-1">
         <div className="flex items-center gap-3 flex-wrap">
-          <span className={`rounded px-1.5 py-0.5 font-medium ${statusColor[post.status] ?? "bg-muted"}`}>
-            {post.status}
-          </span>
+          <StatusBadge status={post.status} />
           <span className="text-muted-foreground">
-            by <span className="font-medium text-foreground">{post.author.username}</span>
-            {" "}·{" "}
-            <span>{post.author.email}</span>
+            by <UserLink id={post.author.id} username={post.author.username} email={post.author.email} />
           </span>
           <span className="text-muted-foreground">
             {new Date(post.createdAt).toLocaleString()}
@@ -130,9 +120,7 @@ export default function AdminPostViewPage() {
               className={`scroll-mt-20 rounded-lg border p-3 space-y-1 ${c.parentCommentId ? "ml-8 bg-muted/30" : ""} ${c.status === "REMOVED" ? "border-red-200 bg-red-50/50 opacity-70" : ""}`}
             >
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {c.author.username}
-                </span>
+                <UserLink id={c.author.id} username={c.author.username} />
                 {c.parentCommentId && <span>↳ reply</span>}
                 <span>·</span>
                 <span>{new Date(c.createdAt).toLocaleString()}</span>

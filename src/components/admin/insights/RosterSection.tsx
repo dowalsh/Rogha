@@ -240,7 +240,7 @@ export default function RosterSection() {
             {sorted.map((u) => (
               <Link
                 key={u.id}
-                href={`/admin/insights/${u.id}`}
+                href={`/admin/users/${u.id}`}
                 className="block rounded-lg border p-3 space-y-2 hover:bg-muted/40"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -296,7 +296,7 @@ export default function RosterSection() {
                 {sorted.map((u) => (
                   <tr key={u.id} className="hover:bg-muted/30">
                     <td className="py-3 pr-4">
-                      <Link href={`/admin/insights/${u.id}`} className="hover:underline">
+                      <Link href={`/admin/users/${u.id}`} className="hover:underline">
                         <span className="font-medium">{u.username}</span>
                         <span className="text-muted-foreground"> · {u.email}</span>
                       </Link>

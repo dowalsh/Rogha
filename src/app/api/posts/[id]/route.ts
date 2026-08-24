@@ -18,6 +18,7 @@ import {
 } from "@/lib/editions";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
+import { revalidatePath } from "next/cache";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -343,6 +344,19 @@ export async function PUT(
         userId: user.id,
         postId: updatedPost.id,
       });
+
+      // The edition detail page is a force-dynamic Server Component, but
+      // LatestEditionPreloader does a `kind: "full"` router.prefetch of it
+      // client-side and next.config.js bumps staleTimes.dynamic to 60s so
+      // that prefetch survives a while — meaning a client who already
+      // prefetched this edition before the live-join publish would keep
+      // seeing the pre-publish Router Cache entry (missing the new post)
+      // until that TTL expired. revalidatePath purges that client Router
+      // Cache entry too, not just server-side caches, so the next visit
+      // (soft or hard nav) re-renders with the newly published post.
+      if (updatedPost.editionId) {
+        revalidatePath(`/editions/${updatedPost.editionId}`);
+      }
     }
 
     return NextResponse.json(updatedPost, { status: 200 });

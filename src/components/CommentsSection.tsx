@@ -133,6 +133,7 @@ function FailedCommentActions({
 // Flat, one level deep — replies never recurse further (no reply-to-a-reply).
 function ReplyItem({
   reply,
+  postId,
   onDelete,
   onBlocked,
   currentUserId,
@@ -140,6 +141,7 @@ function ReplyItem({
   onDiscard,
 }: {
   reply: CommentType;
+  postId: string;
   onDelete: (id: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
@@ -156,6 +158,13 @@ function ReplyItem({
     initialLiked: reply.likedByMe,
     initialCount: reply.likeCount,
   });
+  // Refresh the comments cache after a like/unlike, same as postComment/
+  // deleteComment — otherwise a remount (in-app navigation away and back)
+  // reseeds from the pre-toggle cached snapshot and the like appears lost.
+  const handleToggleLike = async () => {
+    await toggle();
+    mutate(`/api/posts/${postId}/comments`);
+  };
 
   if (reported) return null;
 
@@ -207,7 +216,7 @@ function ReplyItem({
           </p>
           {!reply.deliveryStatus && (
             <div className="flex items-center gap-1">
-              <LikeHeart liked={liked} onToggle={toggle} />
+              <LikeHeart liked={liked} onToggle={handleToggleLike} />
               <LikeCount
                 count={count}
                 fetchLikersUrl={`/api/comments/${reply.id}/likes`}
@@ -280,6 +289,7 @@ function InlineComposer({
 
 function CommentItem({
   comment,
+  postId,
   onReplyClick,
   onDelete,
   onBlocked,
@@ -295,6 +305,7 @@ function CommentItem({
   onDiscard,
 }: {
   comment: CommentType;
+  postId: string;
   onReplyClick: (
     commentId: string,
     authorName: string,
@@ -323,6 +334,11 @@ function CommentItem({
     initialLiked: comment.likedByMe,
     initialCount: comment.likeCount,
   });
+  // See ReplyItem's handleToggleLike — same reasoning.
+  const handleToggleLike = async () => {
+    await toggle();
+    mutate(`/api/posts/${postId}/comments`);
+  };
 
   if (reported) return null;
 
@@ -378,7 +394,7 @@ function CommentItem({
           </p>
           {!comment.deliveryStatus && (
             <div className="flex items-center gap-1">
-              <LikeHeart liked={liked} onToggle={toggle} />
+              <LikeHeart liked={liked} onToggle={handleToggleLike} />
               <LikeCount
                 count={count}
                 fetchLikersUrl={`/api/comments/${comment.id}/likes`}
@@ -396,6 +412,7 @@ function CommentItem({
             <ReplyItem
               key={r.id}
               reply={r}
+              postId={postId}
               onDelete={(id) => onDelete(id, comment.id)}
               onBlocked={onBlocked}
               currentUserId={currentUserId}
@@ -782,6 +799,7 @@ export default function CommentsSection({
               <CommentItem
                 key={c.id}
                 comment={c}
+                postId={postId}
                 onReplyClick={handleReplyClick}
                 onDelete={deleteComment}
                 onBlocked={handleBlocked}

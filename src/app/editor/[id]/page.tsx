@@ -272,7 +272,18 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         toast.error(body.error ?? "Failed to submit. Please try again.");
         return;
       }
+      const updated = await res.json().catch(() => null);
       await mutate(`/api/posts/${params.id}`);
+      // Live-join publish lands this post in an open edition immediately —
+      // refresh the edition caches too (LatestEditionPreloader seeds both
+      // with revalidate: false, so nothing else would pick this up) so
+      // viewers already on /editions or with EditionUpNext mounted see the
+      // new post without a hard reload. The edition page itself is fixed
+      // server-side via revalidatePath in the PUT handler.
+      if (next === "PUBLISHED" && updated?.editionId) {
+        mutate("/api/editions/latest");
+        mutate(`/api/editions/${updated.editionId}`);
+      }
       setStatus(next);
       setSaved(true);
       const emoji = me?.signoffEmoji;

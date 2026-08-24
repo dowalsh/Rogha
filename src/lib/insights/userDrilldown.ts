@@ -26,6 +26,7 @@ export type UserInsights = {
     pendingIncoming: number;
     pendingOutgoing: number;
     circles: { id: string; name: string }[];
+    friendsList: { id: string; username: string; image: string | null }[];
   };
 
   posts: {
@@ -37,6 +38,15 @@ export type UserInsights = {
     reads: number;
     comments: number;
     likes: number;
+  }[];
+
+  comments: {
+    id: string;
+    content: string;
+    status: string;
+    createdAt: Date;
+    postId: string;
+    postTitle: string | null;
   }[];
 
   reception: { totalReads: number; totalComments: number; totalLikes: number };
@@ -60,10 +70,12 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
   const [
     lastActivityMap,
     friendCount,
+    friendships,
     pendingIncoming,
     pendingOutgoing,
     circleMemberships,
     posts,
+    comments,
     readsGiven,
     commentsGiven,
     postLikesGiven,
@@ -74,6 +86,14 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
     getLastActivityMap(),
     prisma.friendship.count({
       where: { status: "ACCEPTED", OR: [{ aId: userId }, { bId: userId }] },
+    }),
+    prisma.friendship.findMany({
+      where: { status: "ACCEPTED", OR: [{ aId: userId }, { bId: userId }] },
+      select: {
+        aId: true,
+        a: { select: { id: true, username: true, image: true } },
+        b: { select: { id: true, username: true, image: true } },
+      },
     }),
     prisma.friendship.count({
       where: {
@@ -99,6 +119,17 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
         _count: { select: { postReads: true, comments: true, likes: true } },
       },
     }),
+    prisma.comment.findMany({
+      where: { authorId: userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        content: true,
+        status: true,
+        createdAt: true,
+        post: { select: { id: true, title: true } },
+      },
+    }),
     prisma.postRead.count({
       where: { userId, firstReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
     }),
@@ -116,6 +147,8 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
       select: { createdAt: true },
     }),
   ]);
+
+  const friendsList = friendships.map((f) => (f.aId === userId ? f.b : f.a));
 
   const statusMap = await getAllUserStatuses([user], lastActivityMap);
   const statusRow = statusMap.get(user.id);
@@ -155,9 +188,18 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
       pendingIncoming,
       pendingOutgoing,
       circles: circleMemberships.map((m) => m.circle),
+      friendsList,
     },
 
     posts: postsWithReception,
+    comments: comments.map((c) => ({
+      id: c.id,
+      content: c.content,
+      status: c.status,
+      createdAt: c.createdAt,
+      postId: c.post.id,
+      postTitle: c.post.title,
+    })),
     reception: { totalReads, totalComments, totalLikes },
     consumed: {
       postsRead: readsGiven,

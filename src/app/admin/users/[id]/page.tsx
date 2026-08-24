@@ -10,6 +10,9 @@ import {
   CONSUMED_EXPLAINER,
   ISOLATED_EXPLAINER,
 } from "@/components/admin/insights/explainers";
+import { StatusBadge } from "@/components/admin/StatusBadge";
+import { UserLink } from "@/components/admin/UserLink";
+import { PostLink } from "@/components/admin/PostLink";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { UserInsights } from "@/lib/insights/userDrilldown";
 
@@ -117,6 +120,15 @@ export default function UserDetailPage() {
                 {data.network.circles.map((c) => c.name).join(", ")}
               </p>
             )}
+            {data.network.friendsList.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {data.network.friendsList.map((f) => (
+                  <span key={f.id} className="rounded-full border px-2 py-1">
+                    <UserLink id={f.id} username={f.username} />
+                  </span>
+                ))}
+              </div>
+            )}
           </Section>
 
           <Section title="How they were received" info={RECEPTION_EXPLAINER}>
@@ -150,6 +162,30 @@ export default function UserDetailPage() {
                       {p.reads} reads · {p.comments} comments · {p.likes} likes
                     </div>
                   </Link>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          <Section title="What they commented">
+            {data.comments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No comments.</p>
+            ) : (
+              <div className="divide-y">
+                {data.comments.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`flex items-start justify-between gap-3 py-2 text-sm ${c.status === "REMOVED" ? "opacity-50" : ""}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="line-clamp-2">{c.content}</p>
+                      <div className="text-xs text-muted-foreground">
+                        on <PostLink id={c.postId} title={c.postTitle} /> ·{" "}
+                        {fmtDate(c.createdAt as unknown as string)}
+                      </div>
+                    </div>
+                    <StatusBadge status={c.status} />
+                  </div>
                 ))}
               </div>
             )}

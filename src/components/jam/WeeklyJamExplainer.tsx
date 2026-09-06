@@ -123,7 +123,7 @@ export function WeeklyJamExplainer({
 
         {connectedFriends && connectedFriends.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Connected</p>
+            <p className="text-xs font-medium text-muted-foreground">Friends Connected</p>
             <div className="flex flex-wrap gap-2">
               {connectedFriends.map((friend) => (
                 <span

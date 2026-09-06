@@ -4,7 +4,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, HelpCircle, Music } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, HelpCircle, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
 import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
@@ -71,13 +71,17 @@ function JamTeaser({
               {jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}
             </div>
           </div>
-          {data.viewerJamConnected && (
-            <div className="flex shrink-0 items-center">
-              {/* Visual-only — the whole row is the click target, so this
-                  can't be its own interactive element (no nested buttons). */}
+          <div className="flex shrink-0 items-center">
+            {/* Visual-only — the whole row is the click target, so this
+                can't be its own interactive element (no nested buttons).
+                Eye = sneak peek once connected; "?" = info for the
+                not-yet-connected explainer. */}
+            {data.viewerJamConnected ? (
+              <Eye aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+            ) : (
               <HelpCircle aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-            </div>
-          )}
+            )}
+          </div>
         </button>
       }
     />

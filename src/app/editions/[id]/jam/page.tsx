@@ -6,6 +6,7 @@ import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
 import { markWeeklyJamViewed } from "@/lib/jam";
 import { WeeklyJamRows } from "@/components/jam/WeeklyJamRows";
+import { EditionUpNext } from "@/components/reader/EditionUpNext";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,12 @@ export default async function WeeklyJamPage({
       </header>
 
       <WeeklyJamRows rows={rows} viewerConnected={viewerConnected} />
+
+      <EditionUpNext
+        editionId={edition.id}
+        currentPostId={`jam:${edition.id}`}
+        backHref={`/editions/${edition.id}`}
+      />
 
       {/* Fixed bottom buffer — same reasoning as the reader page: without
           trailing space to scroll into, opening a track's comment composer

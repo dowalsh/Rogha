@@ -112,11 +112,9 @@ export async function upsertWeeklyPlaylist(
 
   // Spotify caps this endpoint at 100 URIs per request — plenty for a
   // friend-group Jam (own track + friends' tracks), so no pagination needed.
-  // Path is /items, not /tracks — Spotify's Feb 2026 migration renamed this
-  // endpoint (the old /tracks path 403s instead of erroring clearly).
   let tracksRes: Response;
   try {
-    tracksRes = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/items`, {
+    tracksRes = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${ownerAccessToken}`,

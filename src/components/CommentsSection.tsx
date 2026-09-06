@@ -480,7 +480,20 @@ function CommentItem({
   );
 }
 
-export default function CommentsSection({ target }: { target: CommentsTarget }) {
+export default function CommentsSection({
+  target,
+  onComposerOpenChange,
+}: {
+  target: CommentsTarget;
+  // Called synchronously with the state-setting call that opens/closes a
+  // composer (not from an effect watching activeComposer) — so a parent
+  // rendering a keyboard-space buffer commits it in the *same* render pass
+  // as the composer itself, before InlineComposer's mount effect calls
+  // focus(). The native keyboard-avoidance scroll only gets one shot at
+  // this, computed off whatever's already in the DOM/painted by the time
+  // focus() runs — an effect-driven update lands a frame too late.
+  onComposerOpenChange?: (open: boolean) => void;
+}) {
   const router = useRouter();
   const { user } = useUser();
   const [comments, setComments] = useState<CommentType[]>([]);
@@ -512,6 +525,7 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
   }, []);
 
   function openNewComment() {
+    onComposerOpenChange?.(true);
     setActiveComposer({ kind: "new" });
   }
 
@@ -520,6 +534,7 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
     authorName: string,
     parentId: string,
   ) {
+    onComposerOpenChange?.(true);
     setActiveComposer({ kind: "reply", id: commentId, name: authorName, parentId });
     setPulsingId(commentId);
     setTimeout(
@@ -529,6 +544,7 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
   }
 
   function closeComposer() {
+    onComposerOpenChange?.(false);
     setActiveComposer(null);
     setNewComment("");
   }

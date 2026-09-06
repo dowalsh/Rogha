@@ -124,6 +124,7 @@ function ReadPostPageInner({
   } | null>(null);
   const [editionStatusChecked, setEditionStatusChecked] = useState(false);
   const [editionRevealed, setEditionRevealed] = useState(true);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [revealFading, setRevealFading] = useState(false);
 
   const { isLoaded, isSignedIn, user } = useUser();
@@ -443,6 +444,7 @@ function ReadPostPageInner({
             authorName: post.author?.username ?? "post author",
             audienceType: post.audienceType,
           }}
+          onComposerOpenChange={setComposerOpen}
         />
       </div>
       {post.editionId && (
@@ -452,7 +454,7 @@ function ReadPostPageInner({
           backHref={fallbackBackHref}
         />
       )}
-      <KeyboardSpaceBuffer />
+      <KeyboardSpaceBuffer active={composerOpen} />
       <ReaderJumpFab commentsAnchorId="comments" />
     </div>
   );

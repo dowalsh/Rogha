@@ -12,6 +12,10 @@ import { cn } from "@/lib/utils";
 type WeeklyJamRowsProps = {
   rows: WeeklyJamRow[];
   viewerConnected: boolean;
+  // Fires synchronously (not from an effect) whenever any row's composer
+  // opens/closes, aggregated across every expanded row's own thread — see
+  // CommentsSection's onComposerOpenChange for why the timing matters.
+  onComposerOpenChange?: (open: boolean) => void;
 };
 
 // Always rendered — never hidden — but reflects connection state: an active
@@ -47,10 +51,12 @@ function JamRow({
   row,
   expanded,
   onToggleComments,
+  onComposerOpenChange,
 }: {
   row: WeeklyJamRow;
   expanded: boolean;
   onToggleComments: () => void;
+  onComposerOpenChange: (open: boolean) => void;
 }) {
   return (
     <div className="py-2">
@@ -117,7 +123,10 @@ function JamRow({
           row's expanded state is independent (no accordion). */}
       {expanded && (
         <div className="mt-2">
-          <CommentsSection target={{ kind: "track", id: row.trackId }} />
+          <CommentsSection
+            target={{ kind: "track", id: row.trackId }}
+            onComposerOpenChange={onComposerOpenChange}
+          />
         </div>
       )}
     </div>
@@ -127,7 +136,11 @@ function JamRow({
 // The body of the Weekly Jam — reused by both the detail page
 // (src/app/editions/[id]/jam/page.tsx) and, previously, the inline Edition
 // card (now a compact teaser rendered by Frontpage.tsx instead).
-export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
+export function WeeklyJamRows({
+  rows,
+  viewerConnected,
+  onComposerOpenChange,
+}: WeeklyJamRowsProps) {
   const connectedFriends: ConnectedFriend[] = rows
     .filter((row) => !row.isViewer)
     .map((row) => ({ userId: row.userId, username: row.username, image: row.image }));
@@ -135,6 +148,11 @@ export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
   // Independent expand/collapse per row — multiple threads can be open at
   // once, no accordion collapsing.
   const [expandedTrackIds, setExpandedTrackIds] = useState<Set<string>>(new Set());
+  // Tracks which rows currently have an open composer, aggregated into the
+  // single open/closed signal the parent (jam page) needs — more than one
+  // row can be expanded at a time, but only its own composer's open/close
+  // should ever add/remove it from this set.
+  const [composingTrackIds, setComposingTrackIds] = useState<Set<string>>(new Set());
 
   function toggleComments(trackId: string) {
     setExpandedTrackIds((prev) => {
@@ -144,6 +162,19 @@ export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
       } else {
         next.add(trackId);
       }
+      return next;
+    });
+  }
+
+  function handleTrackComposerChange(trackId: string, open: boolean) {
+    setComposingTrackIds((prev) => {
+      const next = new Set(prev);
+      if (open) {
+        next.add(trackId);
+      } else {
+        next.delete(trackId);
+      }
+      onComposerOpenChange?.(next.size > 0);
       return next;
     });
   }
@@ -158,6 +189,9 @@ export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
               row={row}
               expanded={expandedTrackIds.has(row.trackId)}
               onToggleComments={() => toggleComments(row.trackId)}
+              onComposerOpenChange={(open) =>
+                handleTrackComposerChange(row.trackId, open)
+              }
             />
           ))}
         </div>

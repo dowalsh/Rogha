@@ -7,10 +7,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { getTopTrackLastWeek } from "@/lib/lastfm";
-import { resolveSpotifyTrack } from "@/lib/spotify";
-import { getOwnerAccessToken, upsertWeeklyPlaylist } from "@/lib/spotify-playlist";
+import { resolveSpotifyAlbumImage } from "@/lib/spotify";
 import { getAcceptedFriendships } from "@/lib/friends";
-import { formatWeekLabel } from "@/lib/utils";
 import type { WeeklyJamData, WeeklyJamRow } from "@/lib/jam-preview";
 
 export type { WeeklyJamRow, WeeklyJamData } from "@/lib/jam-preview";
@@ -40,12 +38,10 @@ export async function captureWeeklyJamTracks(editionId: string): Promise<void> {
 
       const t = result.track;
       // Prefer Spotify's licensed art over Last.fm's — same precedence as
-      // the admin route (src/app/api/admin/lastfm-top-track/route.ts). Also
-      // resolves the track's Spotify URI in the same search, so the weekly
-      // playlist build (buildWeeklyPlaylists, below) never has to re-search.
-      const spotifyTrack = await resolveSpotifyTrack(t.artist, t.name);
-      const imageUrl = spotifyTrack?.imageUrl ?? t.imageUrl;
-      const imageSource = spotifyTrack?.imageUrl ? "spotify" : t.imageSource;
+      // the admin route (src/app/api/admin/lastfm-top-track/route.ts).
+      const spotifyImageUrl = await resolveSpotifyAlbumImage(t.artist, t.name);
+      const imageUrl = spotifyImageUrl ?? t.imageUrl;
+      const imageSource = spotifyImageUrl ? "spotify" : t.imageSource;
 
       const data = {
         name: t.name,
@@ -54,7 +50,6 @@ export async function captureWeeklyJamTracks(editionId: string): Promise<void> {
         imageUrl,
         imageSource,
         spotifySearchUrl: t.spotifySearchUrl,
-        spotifyUri: spotifyTrack?.uri ?? null,
         lastfmUrl: t.lastfmUrl,
       };
 
@@ -113,7 +108,6 @@ export async function getWeeklyJamForEdition(
       playCount: true,
       imageUrl: true,
       spotifySearchUrl: true,
-      spotifyUri: true,
       lastfmUrl: true,
       user: { select: { username: true, image: true } },
     },
@@ -129,7 +123,6 @@ export async function getWeeklyJamForEdition(
       playCount: t.playCount,
       imageUrl: t.imageUrl,
       spotifySearchUrl: t.spotifySearchUrl,
-      spotifyUri: t.spotifyUri,
       lastfmUrl: t.lastfmUrl,
       isViewer: t.userId === viewerId,
     }))
@@ -139,91 +132,6 @@ export async function getWeeklyJamForEdition(
     rows,
     viewerConnected: Boolean(viewer?.jamEnabled && viewer?.lastfmUsername),
   };
-}
-
-// ── Playlists ────────────────────────────────────────────────────────────
-
-/**
- * Builds/updates one Spotify playlist per user for this edition — their own
- * track + their visible friends' tracks, exactly the rows getWeeklyJamForEdition
- * would show them. Runs on the app owner's own Spotify account (the
- * single-account workaround; see the plan doc — per-user OAuth isn't viable
- * past Spotify Dev Mode's 25-user cap at this app's scale). Best-effort per
- * user, same as captureWeeklyJamTracks; silently no-ops if the owner's
- * Spotify auth isn't configured (SPOTIFY_OWNER_REFRESH_TOKEN/USER_ID).
- */
-export async function buildWeeklyPlaylists(editionId: string): Promise<void> {
-  const ownerUserId = process.env.SPOTIFY_OWNER_USER_ID;
-  if (!ownerUserId) return;
-
-  const ownerAccessToken = await getOwnerAccessToken();
-  if (!ownerAccessToken) return;
-
-  const [edition, users, existingPlaylists] = await Promise.all([
-    prisma.edition.findUnique({
-      where: { id: editionId },
-      select: { weekStart: true, publishedAt: true },
-    }),
-    prisma.user.findMany({ select: { id: true, username: true } }),
-    prisma.weeklyPlaylist.findMany({
-      where: { editionId },
-      select: { userId: true, spotifyPlaylistId: true },
-    }),
-  ]);
-  if (!edition) return;
-
-  const existingByUser = new Map(existingPlaylists.map((p) => [p.userId, p.spotifyPlaylistId]));
-  const weekLabel = formatWeekLabel(edition.weekStart);
-
-  for (const user of users) {
-    try {
-      const { rows } = await getWeeklyJamForEdition(user.id, editionId, edition.publishedAt);
-      const trackUris = Array.from(
-        new Set(rows.map((r) => r.spotifyUri).filter((uri): uri is string => Boolean(uri))),
-      );
-      if (trackUris.length === 0) continue;
-
-      const result = await upsertWeeklyPlaylist(ownerAccessToken, ownerUserId, {
-        existingPlaylistId: existingByUser.get(user.id) ?? null,
-        name: `Rogha — ${user.username}'s weekly jam ${weekLabel}`,
-        trackUris,
-      });
-      if (!result) continue;
-
-      await prisma.weeklyPlaylist.upsert({
-        where: { editionId_userId: { editionId, userId: user.id } },
-        create: {
-          editionId,
-          userId: user.id,
-          spotifyPlaylistId: result.id,
-          spotifyPlaylistUrl: result.url,
-          trackCount: trackUris.length,
-        },
-        update: {
-          spotifyPlaylistId: result.id,
-          spotifyPlaylistUrl: result.url,
-          trackCount: trackUris.length,
-        },
-      });
-    } catch (err) {
-      console.error("[buildWeeklyPlaylists] user failed, skipping", user.id, err);
-    }
-  }
-}
-
-/**
- * The viewer's Spotify playlist link for this edition, if one's been built —
- * powers the "Listen on Spotify" button on the Jam page.
- */
-export async function getWeeklyPlaylistUrl(
-  editionId: string,
-  userId: string,
-): Promise<string | null> {
-  const playlist = await prisma.weeklyPlaylist.findUnique({
-    where: { editionId_userId: { editionId, userId } },
-    select: { spotifyPlaylistUrl: true },
-  });
-  return playlist?.spotifyPlaylistUrl ?? null;
 }
 
 /**

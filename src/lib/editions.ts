@@ -6,7 +6,7 @@ import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
 import { getReadMapForPosts } from "@/lib/postReads";
 import { buildAudienceCandidateWhere, getRecipientPostIds } from "@/lib/access/postAccess";
-import { getWeeklyJamForEdition, hasViewedWeeklyJam, getWeeklyPlaylistUrl } from "@/lib/jam";
+import { getWeeklyJamForEdition, hasViewedWeeklyJam } from "@/lib/jam";
 
 type DbUser = { id: string };
 
@@ -426,10 +426,9 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     }),
   ]);
 
-  const [weeklyJam, jamReadByMe, playlistUrl] = await Promise.all([
+  const [weeklyJam, jamReadByMe] = await Promise.all([
     getWeeklyJamForEdition(user.id, edition.id, edition.publishedAt),
     hasViewedWeeklyJam(user.id, edition.id),
-    getWeeklyPlaylistUrl(edition.id, user.id),
   ]);
 
   console.debug(
@@ -444,7 +443,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     hasOpened: Boolean(viewRecord),
     viewerCount,
     viewerNames: viewerPreview.map((v) => v.user.username),
-    weeklyJam: { ...weeklyJam, readByMe: jamReadByMe, playlistUrl },
+    weeklyJam: { ...weeklyJam, readByMe: jamReadByMe },
   };
 }
 

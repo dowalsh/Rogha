@@ -12,7 +12,6 @@ export type WeeklyJamRow = {
   playCount: number;
   imageUrl: string | null;
   spotifySearchUrl: string;
-  spotifyUri: string | null;
   lastfmUrl: string;
   isViewer: boolean;
 };

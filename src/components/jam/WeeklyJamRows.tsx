@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, ListMusic } from "lucide-react";
-import { useState } from "react";
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
+import { Check } from "lucide-react";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
 import { WeeklyJamExplainer, type ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
@@ -12,36 +9,7 @@ import { Button } from "@/components/ui/button";
 type WeeklyJamRowsProps = {
   rows: WeeklyJamRow[];
   viewerConnected: boolean;
-  playlistUrl: string | null;
 };
-
-// Outbound https://open.spotify.com link — not a deep link back into the
-// app — so on native this just needs the in-app browser sheet, same pattern
-// as DesktopNavbar/MobileNavbar's external links.
-function ListenOnSpotifyButton({ playlistUrl }: { playlistUrl: string }) {
-  const [isNative] = useState(() => Capacitor.isNativePlatform());
-
-  if (isNative) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => Browser.open({ url: playlistUrl, presentationStyle: "popover" })}
-      >
-        <ListMusic className="h-4 w-4" />
-        Listen on Spotify
-      </Button>
-    );
-  }
-  return (
-    <Button variant="outline" size="sm" asChild>
-      <Link href={playlistUrl} target="_blank" rel="noreferrer">
-        <ListMusic className="h-4 w-4" />
-        Listen on Spotify
-      </Link>
-    </Button>
-  );
-}
 
 // Always rendered — never hidden — but reflects connection state: an active
 // CTA when not connected, a passive status line once connected.
@@ -109,7 +77,7 @@ function JamRow({ row }: { row: WeeklyJamRow }) {
 // The body of the Weekly Jam — reused by both the detail page
 // (src/app/editions/[id]/jam/page.tsx) and, previously, the inline Edition
 // card (now a compact teaser rendered by Frontpage.tsx instead).
-export function WeeklyJamRows({ rows, viewerConnected, playlistUrl }: WeeklyJamRowsProps) {
+export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
   const connectedFriends: ConnectedFriend[] = rows
     .filter((row) => !row.isViewer)
     .map((row) => ({ userId: row.userId, username: row.username, image: row.image }));
@@ -128,9 +96,8 @@ export function WeeklyJamRows({ rows, viewerConnected, playlistUrl }: WeeklyJamR
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 pt-1">
+      <div className="pt-1">
         <ConnectButton viewerConnected={viewerConnected} connectedFriends={connectedFriends} />
-        {playlistUrl && <ListenOnSpotifyButton playlistUrl={playlistUrl} />}
       </div>
 
       {rows.length > 0 && (

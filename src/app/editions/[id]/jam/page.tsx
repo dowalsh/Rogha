@@ -25,7 +25,7 @@ export default async function WeeklyJamPage({
 
   const editionLabel =
     edition.title ?? `Week of ${edition.weekStart.toISOString().slice(0, 10)}`;
-  const { rows, viewerConnected, playlistUrl } = edition.weeklyJam;
+  const { rows, viewerConnected } = edition.weeklyJam;
 
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
@@ -47,7 +47,7 @@ export default async function WeeklyJamPage({
         </div>
       </header>
 
-      <WeeklyJamRows rows={rows} viewerConnected={viewerConnected} playlistUrl={playlistUrl} />
+      <WeeklyJamRows rows={rows} viewerConnected={viewerConnected} />
     </div>
   );
 }

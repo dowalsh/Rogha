@@ -1,10 +1,10 @@
 // src/app/api/tracks/[id]/comments/route.ts
 //
 // Comments on an individual Weekly Jam song row (WeeklyTrack). Mirrors
-// src/app/api/posts/[id]/comments/route.ts closely — same one-level nesting
-// rule, same report/block filtering, same shape — just gated by
-// requireTrackAccess instead of requirePostAccess and writing weeklyTrackId
-// instead of postId.
+// src/app/api/posts/[id]/comments/route.ts's report/block filtering and
+// shape, but top-level only — no replies at all (unlike posts, which allow
+// one level of nesting) — gated by requireTrackAccess instead of
+// requirePostAccess and writing weeklyTrackId instead of postId.
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,7 +14,7 @@ import { createCommentNotification } from "@/actions/notification.action";
 import { requireTrackAccess } from "@/lib/access/trackAccess";
 import { isContentBlocked } from "@/lib/contentFilter";
 
-// GET top-level comments (with replies) for a track
+// GET top-level comments for a track — no replies, nesting isn't supported here
 export async function GET(
   _req: NextRequest,
   context: { params: { id: string } },
@@ -58,19 +58,6 @@ export async function GET(
         author: { select: { id: true, username: true, image: true } },
         _count: { select: { likes: true } },
         likes: { where: { userId: user.id }, select: { id: true } },
-        replies: {
-          where: {
-            status: "ACTIVE",
-            ...(blockedAuthorIds.length > 0 ? { NOT: { authorId: { in: blockedAuthorIds } } } : {}),
-            ...excludeFilter(),
-          },
-          include: {
-            author: { select: { id: true, username: true, image: true } },
-            _count: { select: { likes: true } },
-            likes: { where: { userId: user.id }, select: { id: true } },
-          },
-          orderBy: { createdAt: "asc" },
-        },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -79,11 +66,7 @@ export async function GET(
       ...c,
       likeCount: c._count.likes,
       likedByMe: c.likes.length > 0,
-      replies: (c.replies ?? []).map((r: any) => ({
-        ...r,
-        likeCount: r._count.likes,
-        likedByMe: r.likes.length > 0,
-      })),
+      replies: [] as never[],
     });
 
     return NextResponse.json(comments.map(normalize), { status: 200 });
@@ -96,7 +79,7 @@ export async function GET(
   }
 }
 
-// POST create new comment (top-level or reply)
+// POST create new top-level comment — replies aren't supported here
 export async function POST(
   req: NextRequest,
   context: { params: { id: string } },
@@ -124,6 +107,14 @@ export async function POST(
       return NextResponse.json({ error: "Missing content" }, { status: 400 });
     }
 
+    // Top-level only — Jam comments don't support replies at all.
+    if (parentId) {
+      return NextResponse.json(
+        { error: "Replies aren't supported on Jam comments" },
+        { status: 400 },
+      );
+    }
+
     if (isContentBlocked(content)) {
       return NextResponse.json(
         { error: "This comment contains language that may violate our community standards." },
@@ -131,33 +122,11 @@ export async function POST(
       );
     }
 
-    // prevent replies to replies — one level of nesting only
-    if (parentId) {
-      const parent = await prisma.comment.findUnique({
-        where: { id: parentId },
-        select: { parentCommentId: true },
-      });
-
-      if (!parent) {
-        return NextResponse.json(
-          { error: "Parent not found" },
-          { status: 404 },
-        );
-      }
-      if (parent.parentCommentId) {
-        return NextResponse.json(
-          { error: "Replies may only be nested two levels deep" },
-          { status: 400 },
-        );
-      }
-    }
-
     const newComment = await prisma.comment.create({
       data: {
         content,
         authorId: user.id,
         weeklyTrackId: trackId,
-        ...(parentId ? { parentCommentId: parentId } : {}),
       },
       include: {
         author: { select: { id: true, username: true, image: true } },
@@ -167,8 +136,7 @@ export async function POST(
     // 🔔 trigger a notification
     await createCommentNotification({
       commenterId: user.id,
-      trackId: parentId ? undefined : trackId, // top-level → notify track owner
-      parentCommentId: parentId ?? undefined, // reply → notify parent comment author
+      trackId,
       newCommentId: newComment.id,
     });
 

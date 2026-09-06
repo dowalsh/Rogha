@@ -264,24 +264,9 @@ function InlineComposer({
   // Focus on mount (no preventScroll) — iOS lifts this above the keyboard,
   // and since it's the DOM node right after the target comment (or at the
   // top of the thread), whatever it should sit under ends up directly on
-  // top of it. No scroll math needed... except the browser's auto-scroll-
-  // into-view fires the instant focus() is called, which is *before* the
-  // keyboard has actually opened and shrunk the viewport (KeyboardResize.
-  // Native in capacitor.config.ts). So it scrolls the field into view of
-  // the *old*, full-height viewport, then the keyboard slides up under it
-  // and covers it anyway. Re-scroll once the viewport actually shrinks.
+  // top of it. No scroll math needed.
   useEffect(() => {
     textareaRef.current?.focus();
-
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-    function handleResize() {
-      if (document.activeElement === textareaRef.current) {
-        textareaRef.current?.scrollIntoView({ block: "center" });
-      }
-    }
-    viewport.addEventListener("resize", handleResize);
-    return () => viewport.removeEventListener("resize", handleResize);
   }, []);
 
   return (
@@ -307,15 +292,15 @@ function InlineComposer({
         onInput={(e) => {
           const el = e.currentTarget;
           el.style.height = "auto";
-          // Capped so a long comment grows the box, not the whole composer
-          // — past this height it scrolls internally instead of pushing
-          // Cancel/Submit (rendered above it) further down/off screen.
-          const maxHeight = 200;
-          el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
-          el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+          el.style.height = `${el.scrollHeight}px`;
         }}
         placeholder={placeholder}
-        className="max-h-[200px] resize-none overflow-hidden"
+        // max-h + overflow-y-auto do the capping/scrolling purely in CSS —
+        // the JS above still measures/sets the full unbounded scrollHeight
+        // (unchanged from before the cap existed), so the browser's own
+        // keyboard-avoidance scroll on focus sees the same growth behavior
+        // it always did; only the rendered/visible height is clamped.
+        className="max-h-[200px] resize-none overflow-y-auto"
       />
     </div>
   );
@@ -459,8 +444,9 @@ function CommentItem({
 
       {/* inline, in-place reply composer — renders right after this
           thread's replies so the target is directly above it by DOM
-          order, replacing the Reply button while active */}
-      {!comment.deliveryStatus &&
+          order, replacing the Reply button while active. Track threads
+          don't support replies at all, so this never renders for them. */}
+      {target.kind === "post" && !comment.deliveryStatus &&
         (isReplying ? (
           <div className="pl-9 mt-2">
             <InlineComposer
@@ -795,7 +781,19 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
         </div>
       )}
 
-      <div className="space-y-6 pb-8">
+      <div
+        className={cn(
+          "space-y-6 pb-8",
+          // Mirrors the reply-grouping style (CommentItem's replies block
+          // below) — a vertical line groups the composer + top-level
+          // comments under the song row they hang off of, same visual
+          // language as a reply thread groups under its parent comment.
+          target.kind === "track" && "relative pl-9",
+        )}
+      >
+        {target.kind === "track" && (
+          <div className="absolute left-4 top-0 bottom-2 w-px bg-border" />
+        )}
         {/* New top-level comment — inline, in-place at the top of the
             thread, same convention as replies. Reads as "almost like the
             first comment" rather than a separate pill/bar. */}

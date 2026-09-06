@@ -27,11 +27,14 @@ or "TrackComment" model was needed.
 
 ## Nesting
 
-One level of nesting only — reuses the exact rule already enforced for post
-comments (`parentCommentId`, checked in
-`src/app/api/posts/[id]/comments/route.ts`): a reply can't itself be replied
-to. The new `src/app/api/tracks/[id]/comments/route.ts` copies this check
-verbatim.
+Top-level only — no replies at all, unlike posts (which allow one level of
+nesting via `parentCommentId`). `src/app/api/tracks/[id]/comments/route.ts`
+rejects any `parentId` on POST with a 400, and `CommentsSection`/`CommentItem`
+hide the Reply button and reply composer entirely when the thread's `target`
+is a track. Visually, the composer + top-level comments are grouped under a
+single vertical line beneath the song row (mirroring how a post comment's
+replies are grouped under it), since there's no per-comment reply thread to
+group instead.
 
 ## Audience
 

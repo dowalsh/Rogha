@@ -23,10 +23,7 @@ export async function GET() {
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("redirect_uri", redirectUri);
-  // Both scopes, not just -private: Spotify's "Add Items to Playlist"
-  // endpoint has a long-standing quirk where it can 403 for a private
-  // playlist unless the token also carries playlist-modify-public.
-  url.searchParams.set("scope", "playlist-modify-private playlist-modify-public");
+  url.searchParams.set("scope", "playlist-modify-private");
 
   return NextResponse.redirect(url.toString());
 }

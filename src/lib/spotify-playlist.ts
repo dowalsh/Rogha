@@ -67,14 +67,12 @@ export async function getOwnerAccessToken(): Promise<string | null> {
 
 /**
  * Creates a new playlist (if `existingPlaylistId` is null) or replaces the
- * tracks of an existing one, under the owner's Spotify account. Uses
- * /me/playlists rather than /users/{id}/playlists — the latter 403s unless
- * the path id matches the token's account exactly, which /me sidesteps.
- * Returns null on any failure — best-effort, one user's failure shouldn't
- * affect others.
+ * tracks of an existing one, under the owner's Spotify account. Returns null
+ * on any failure — best-effort, one user's failure shouldn't affect others.
  */
 export async function upsertWeeklyPlaylist(
   ownerAccessToken: string,
+  ownerUserId: string,
   opts: { existingPlaylistId: string | null; name: string; trackUris: string[] },
 ): Promise<{ id: string; url: string } | null> {
   let playlistId = opts.existingPlaylistId;
@@ -82,7 +80,7 @@ export async function upsertWeeklyPlaylist(
   if (!playlistId) {
     let createRes: Response;
     try {
-      createRes = await fetch(`https://api.spotify.com/v1/me/playlists`, {
+      createRes = await fetch(`https://api.spotify.com/v1/users/${ownerUserId}/playlists`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${ownerAccessToken}`,

@@ -150,9 +150,12 @@ export async function getWeeklyJamForEdition(
  * single-account workaround; see the plan doc — per-user OAuth isn't viable
  * past Spotify Dev Mode's 25-user cap at this app's scale). Best-effort per
  * user, same as captureWeeklyJamTracks; silently no-ops if the owner's
- * Spotify auth isn't configured (SPOTIFY_OWNER_REFRESH_TOKEN).
+ * Spotify auth isn't configured (SPOTIFY_OWNER_REFRESH_TOKEN/USER_ID).
  */
 export async function buildWeeklyPlaylists(editionId: string): Promise<void> {
+  const ownerUserId = process.env.SPOTIFY_OWNER_USER_ID;
+  if (!ownerUserId) return;
+
   const ownerAccessToken = await getOwnerAccessToken();
   if (!ownerAccessToken) return;
 
@@ -180,7 +183,7 @@ export async function buildWeeklyPlaylists(editionId: string): Promise<void> {
       );
       if (trackUris.length === 0) continue;
 
-      const result = await upsertWeeklyPlaylist(ownerAccessToken, {
+      const result = await upsertWeeklyPlaylist(ownerAccessToken, ownerUserId, {
         existingPlaylistId: existingByUser.get(user.id) ?? null,
         name: `Rogha — ${user.username}'s weekly jam ${weekLabel}`,
         trackUris,

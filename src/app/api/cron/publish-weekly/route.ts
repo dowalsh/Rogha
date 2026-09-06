@@ -7,7 +7,7 @@ import { getWeekStartUTC } from "@/lib/utils";
 import { getDbUser } from "@/lib/getDbUser";
 import { triggerPublishedEditionEmail } from "@/lib/emails/triggers";
 import { backfillMissingHeroThumbnails } from "@/lib/heroThumbnails";
-import { captureWeeklyJamTracks } from "@/lib/jam";
+import { captureWeeklyJamTracks, buildWeeklyPlaylists } from "@/lib/jam";
 import { computeAndStoreSealedEditionSummary } from "@/lib/insights/edition";
 
 function isAdminEmail(email?: string | null) {
@@ -141,6 +141,16 @@ async function handlePublish(req: NextRequest) {
       console.log("[cron] weekly jam capture done", { editionId: result.editionId });
     } catch (err) {
       console.error("[cron] weekly jam capture failed", err);
+    }
+
+    // Weekly Jam playlists — best-effort, runs after capture so freshly
+    // resolved spotifyUris are available. No-ops silently if the owner's
+    // Spotify auth isn't configured.
+    try {
+      await buildWeeklyPlaylists(result.editionId);
+      console.log("[cron] weekly playlist build done", { editionId: result.editionId });
+    } catch (err) {
+      console.error("[cron] weekly playlist build failed", err);
     }
 
     // Seal the *previous* edition's insights snapshot now that its reading

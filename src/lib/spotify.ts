@@ -9,11 +9,14 @@ const SEARCH_URL = "https://api.spotify.com/v1/search";
 
 type SpotifyImage = { url: string; width: number | null; height: number | null };
 
+type SpotifySearchItem = {
+  uri?: string;
+  album?: { images?: SpotifyImage[] };
+};
+
 type SpotifySearchResponse = {
   tracks?: {
-    items?: Array<{
-      album?: { images?: SpotifyImage[] };
-    }>;
+    items?: SpotifySearchItem[];
   };
 };
 
@@ -74,15 +77,7 @@ function pickImageUrl(images: SpotifyImage[] | undefined): string | null {
   return (medium ?? images[0]).url ?? null;
 }
 
-/**
- * Best-effort album art lookup for a track. Returns null on any failure
- * (missing credentials, network error, no match) rather than throwing —
- * callers should treat this as an optional enhancement, not a dependency.
- */
-export async function resolveSpotifyAlbumImage(
-  artist: string,
-  track: string,
-): Promise<string | null> {
+async function searchTrack(artist: string, track: string): Promise<SpotifySearchItem | null> {
   const token = await getAccessToken();
   if (!token) return null;
 
@@ -110,6 +105,32 @@ export async function resolveSpotifyAlbumImage(
     return null;
   }
 
-  const item = body.tracks?.items?.[0];
+  return body.tracks?.items?.[0] ?? null;
+}
+
+/**
+ * Best-effort album art lookup for a track. Returns null on any failure
+ * (missing credentials, network error, no match) rather than throwing —
+ * callers should treat this as an optional enhancement, not a dependency.
+ */
+export async function resolveSpotifyAlbumImage(
+  artist: string,
+  track: string,
+): Promise<string | null> {
+  const item = await searchTrack(artist, track);
   return pickImageUrl(item?.album?.images) ?? null;
+}
+
+/**
+ * Resolves a track to its Spotify URI (for playlist writes) alongside the
+ * same album art `resolveSpotifyAlbumImage` returns — one search instead of
+ * two, since callers like captureWeeklyJamTracks need both anyway.
+ */
+export async function resolveSpotifyTrack(
+  artist: string,
+  track: string,
+): Promise<{ uri: string; imageUrl: string | null } | null> {
+  const item = await searchTrack(artist, track);
+  if (!item?.uri) return null;
+  return { uri: item.uri, imageUrl: pickImageUrl(item.album?.images) ?? null };
 }

@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
-import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 import { jamPreviewFromRows, type WeeklyJamRow } from "@/lib/jam-preview";
 
 // Front page posts as they arrive from the Edition page
@@ -104,9 +103,6 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
             </div>
           </article>
         </Link>
-        <div className="absolute top-0 right-0">
-          <WeeklyJamInfoDot />
-        </div>
       </section>
     );
   }
@@ -206,9 +202,6 @@ function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: 
             </div>
           </article>
         </Link>
-        <div className="absolute top-1 right-1 z-10">
-          <WeeklyJamInfoDot />
-        </div>
       </div>
     );
   }

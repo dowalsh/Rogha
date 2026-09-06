@@ -102,8 +102,8 @@ export function WeeklyJamExplainer({
 }: {
   trigger: React.ReactNode;
   // Friends who've already connected, shown as social proof. Only the
-  // Jam card's CTA (WeeklyJamRows) knows this — omitted elsewhere (e.g.
-  // WeeklyJamInfoDot in Settings), so the section just doesn't render.
+  // Jam card's CTA (WeeklyJamRows) knows this — omitted elsewhere, so the
+  // section just doesn't render.
   connectedFriends?: ConnectedFriend[];
   // Whether the viewer themself is connected — swaps the header copy and
   // unlocks the sneak-peek section (there's nothing to peek at otherwise).

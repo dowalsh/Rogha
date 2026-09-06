@@ -4,7 +4,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Music } from "lucide-react";
+import { ChevronDown, ChevronRight, HelpCircle, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
 import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
@@ -17,14 +17,19 @@ type ComingSundayProps = {
 };
 
 function jamTeaserText(count: number, viewerJamConnected: boolean): string {
-  if (count === 0) {
-    // Nobody's connected yet — if the viewer isn't either, make it a pitch,
-    // not a status report: they could be the first.
-    return viewerJamConnected
-      ? "No friends have connected to The Weekly Jam yet"
-      : "No one's connected to The Weekly Jam yet — be the first!";
+  if (viewerJamConnected) {
+    // Viewer's already in — lead with that and point them at the sneak
+    // peek rather than repeating the same friend-count line as below.
+    return count === 0
+      ? "You're connected. Tap for a sneak peek of your song this week!"
+      : `You and ${count} friend${count === 1 ? "" : "s"} connected. Tap for a sneak peek of your song this week!`;
   }
-  return `${count} friend${count === 1 ? "" : "s"} ${count === 1 ? "has" : "have"} connected to The Weekly Jam`;
+  if (count === 0) {
+    // Nobody's connected yet — make it a pitch, not a status report: the
+    // viewer could be the first.
+    return "No one's connected to The Weekly Jam yet — be the first!";
+  }
+  return `${count} friend${count === 1 ? "" : "s"} connected`;
 }
 
 // Mirrors PostPreviewRow's exact row shape (leading spacer, h-12 thumb,
@@ -42,10 +47,15 @@ function JamTeaser({
   return (
     <WeeklyJamExplainer
       connectedFriends={data.jamConnectedFriends}
+      viewerJamConnected={data.viewerJamConnected}
       trigger={
         <button
           type="button"
-          aria-label="What is The Weekly Jam?"
+          aria-label={
+            data.viewerJamConnected
+              ? "Sneak peek your top song this week"
+              : "What is The Weekly Jam?"
+          }
           className={cn(
             "flex w-full items-center gap-3 py-2 text-left hover:bg-muted/50",
             className,
@@ -61,16 +71,13 @@ function JamTeaser({
               {jamTeaserText(data.jamConnectedCount, data.viewerJamConnected)}
             </div>
           </div>
-          <div className="flex shrink-0 items-center">
-            {/* Visual-only badge — the whole row is the click target now, so
-                this can't be its own interactive element (no nested buttons). */}
-            <span
-              aria-hidden="true"
-              className="inline-flex items-center rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wide text-white shadow-sm"
-            >
-              New
-            </span>
-          </div>
+          {data.viewerJamConnected && (
+            <div className="flex shrink-0 items-center">
+              {/* Visual-only — the whole row is the click target, so this
+                  can't be its own interactive element (no nested buttons). */}
+              <HelpCircle aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
         </button>
       }
     />

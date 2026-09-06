@@ -13,7 +13,6 @@ import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { mutate } from "swr";
-import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 
 type Prefs = {
   emailEnabled: boolean;
@@ -201,7 +200,6 @@ export function ProfileSettingsTab() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-1.5">
             <CardTitle className="text-base">Connect your Music</CardTitle>
-            <WeeklyJamInfoDot />
           </div>
           {jamSaveStatus === "saving" && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">

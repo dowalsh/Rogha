@@ -6,8 +6,12 @@ import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
-import { WeeklyJamExplainer, type ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
+import {
+  WeeklyJamExplainer,
+  type ConnectedFriend,
+} from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
+import { NewBadge } from "@/components/ui/new-badge";
 
 type WeeklyJamRowsProps = {
   rows: WeeklyJamRow[];
@@ -21,23 +25,31 @@ type WeeklyJamRowsProps = {
 function ListenOnSpotifyButton({ playlistUrl }: { playlistUrl: string }) {
   const [isNative] = useState(() => Capacitor.isNativePlatform());
 
+  const content = (
+    <>
+      <ListMusic className="h-4 w-4" />
+      Listen to Spotify Playlist
+      <NewBadge className="pointer-events-none ml-1" />
+    </>
+  );
+
   if (isNative) {
     return (
       <Button
-        variant="outline"
-        size="sm"
-        onClick={() => Browser.open({ url: playlistUrl, presentationStyle: "popover" })}
+        variant="default"
+        className="w-full"
+        onClick={() =>
+          Browser.open({ url: playlistUrl, presentationStyle: "popover" })
+        }
       >
-        <ListMusic className="h-4 w-4" />
-        Listen on Spotify
+        {content}
       </Button>
     );
   }
   return (
-    <Button variant="outline" size="sm" asChild>
+    <Button variant="default" className="w-full" asChild>
       <Link href={playlistUrl} target="_blank" rel="noreferrer">
-        <ListMusic className="h-4 w-4" />
-        Listen on Spotify
+        {content}
       </Link>
     </Button>
   );
@@ -92,16 +104,10 @@ function JamRow({ row }: { row: WeeklyJamRow }) {
         <p className="truncate text-sm text-muted-foreground">
           {row.name} — {row.artist}
         </p>
-        <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
+        <p className="text-xs text-muted-foreground">
+          {row.playCount} plays this week
+        </p>
       </div>
-      <Link
-        href={row.spotifySearchUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="shrink-0 text-xs text-blue-600 hover:underline"
-      >
-        Open in Spotify
-      </Link>
     </div>
   );
 }
@@ -109,13 +115,23 @@ function JamRow({ row }: { row: WeeklyJamRow }) {
 // The body of the Weekly Jam — reused by both the detail page
 // (src/app/editions/[id]/jam/page.tsx) and, previously, the inline Edition
 // card (now a compact teaser rendered by Frontpage.tsx instead).
-export function WeeklyJamRows({ rows, viewerConnected, playlistUrl }: WeeklyJamRowsProps) {
+export function WeeklyJamRows({
+  rows,
+  viewerConnected,
+  playlistUrl,
+}: WeeklyJamRowsProps) {
   const connectedFriends: ConnectedFriend[] = rows
     .filter((row) => !row.isViewer)
-    .map((row) => ({ userId: row.userId, username: row.username, image: row.image }));
+    .map((row) => ({
+      userId: row.userId,
+      username: row.username,
+      image: row.image,
+    }));
 
   return (
     <div className="space-y-3">
+      {playlistUrl && <ListenOnSpotifyButton playlistUrl={playlistUrl} />}
+
       {rows.length > 0 ? (
         <div className="divide-y">
           {rows.map((row) => (
@@ -129,14 +145,21 @@ export function WeeklyJamRows({ rows, viewerConnected, playlistUrl }: WeeklyJamR
       )}
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <ConnectButton viewerConnected={viewerConnected} connectedFriends={connectedFriends} />
-        {playlistUrl && <ListenOnSpotifyButton playlistUrl={playlistUrl} />}
+        <ConnectButton
+          viewerConnected={viewerConnected}
+          connectedFriends={connectedFriends}
+        />
       </div>
 
       {rows.length > 0 && (
         <p className="pt-1 text-[10px] text-muted-foreground">
           Track data powered by{" "}
-          <Link href="https://www.last.fm" target="_blank" rel="noreferrer" className="hover:underline">
+          <Link
+            href="https://www.last.fm"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline"
+          >
             AudioScrobbler
           </Link>
         </p>

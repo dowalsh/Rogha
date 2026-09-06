@@ -765,30 +765,35 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
   );
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-8">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold">Comments</h2>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-            {totalComments}
-          </span>
+    <div className={cn("mx-auto max-w-2xl", target.kind === "post" ? "space-y-8 py-8" : "space-y-6")}>
+      {/* Track threads skip the header entirely — the row above already
+          shows the comment count, so a second "Comments N" label + divider
+          would be redundant; jump straight into the composer/list. */}
+      {target.kind === "post" && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold">Comments</h2>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+              {totalComments}
+            </span>
+          </div>
+          {target.audienceType === "FRIENDS" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              Comments are visible to all {target.authorName}'s friends
+            </p>
+          )}
+          {target.audienceType === "ALL_USERS" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              Comments are visible to all Rogha users
+            </p>
+          )}
+          {target.audienceType === "CIRCLE" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              Comments are visible to all members of this circle
+            </p>
+          )}
         </div>
-        {target.kind === "post" && target.audienceType === "FRIENDS" && (
-          <p className="text-sm italic text-orange-500 mb-4">
-            Comments are visible to all {target.authorName}'s friends
-          </p>
-        )}
-        {target.kind === "post" && target.audienceType === "ALL_USERS" && (
-          <p className="text-sm italic text-orange-500 mb-4">
-            Comments are visible to all Rogha users
-          </p>
-        )}
-        {target.kind === "post" && target.audienceType === "CIRCLE" && (
-          <p className="text-sm italic text-orange-500 mb-4">
-            Comments are visible to all members of this circle
-          </p>
-        )}
-      </div>
+      )}
 
       <div className="space-y-6 pb-8">
         {/* New top-level comment — inline, in-place at the top of the

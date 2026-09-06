@@ -53,43 +53,55 @@ function JamRow({
 }) {
   return (
     <div className="py-2">
-      <div className="flex items-center gap-3">
-        {row.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={row.imageUrl}
-            alt={`${row.name} album art`}
-            className="h-12 w-12 shrink-0 rounded object-cover"
-          />
-        ) : (
-          <div className="h-12 w-12 shrink-0 rounded bg-muted" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">
-            {row.isViewer ? "You" : row.username}
-          </p>
-          <p className="truncate text-sm text-muted-foreground">
-            {row.name} — {row.artist}
-          </p>
-          <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+      {/* The whole row toggles the thread — Open in Spotify stops
+          propagation so it opens the link instead of also toggling. */}
+      <div
+        onClick={onToggleComments}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleComments();
+          }
+        }}
+        className="cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          {row.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={row.imageUrl}
+              alt={`${row.name} album art`}
+              className="h-12 w-12 shrink-0 rounded object-cover"
+            />
+          ) : (
+            <div className="h-12 w-12 shrink-0 rounded bg-muted" />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {row.isViewer ? "You" : row.username}
+            </p>
+            <p className="truncate text-sm text-muted-foreground">
+              {row.name} — {row.artist}
+            </p>
+            <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
+          </div>
           <Link
             href={row.spotifyTrackUrl ?? row.spotifySearchUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-blue-600 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 text-xs text-blue-600 hover:underline"
           >
             Open in Spotify
           </Link>
-          <button
-            onClick={onToggleComments}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            aria-expanded={expanded}
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-            {row.commentCount}
-          </button>
+        </div>
+
+        <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+          <MessageCircle className="h-3.5 w-3.5" />
+          {row.commentCount}
         </div>
       </div>
 
@@ -97,7 +109,7 @@ function JamRow({
           been opened, so collapsed rows don't fire comment requests. Each
           row's expanded state is independent (no accordion). */}
       {expanded && (
-        <div className="mt-2 border-t pt-2">
+        <div className="mt-2">
           <CommentsSection target={{ kind: "track", id: row.trackId }} />
         </div>
       )}

@@ -23,6 +23,7 @@ import { RepublishModal, type RepublishTarget } from "@/components/RepublishModa
 import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { ReaderJumpFab } from "@/components/reader/ReaderJumpFab";
 import { EditionUpNext } from "@/components/reader/EditionUpNext";
+import { KeyboardSpaceBuffer } from "@/components/KeyboardSpaceBuffer";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { AudienceType } from "@/types/index";
 
@@ -439,13 +440,7 @@ function ReadPostPageInner({
           backHref={fallbackBackHref}
         />
       )}
-      {/* Fixed bottom buffer — without it, a composer opened near the end of
-          a short thread has nowhere left to scroll: the native
-          keyboard-avoidance scroll (KeyboardResize.Native) can only move the
-          page up to the end of its actual content, so on a short page the
-          keyboard still covers the field no matter what. This just reserves
-          enough trailing space for that scroll to have somewhere to go. */}
-      <div aria-hidden className="h-80" />
+      <KeyboardSpaceBuffer />
       <ReaderJumpFab commentsAnchorId="comments" />
     </div>
   );

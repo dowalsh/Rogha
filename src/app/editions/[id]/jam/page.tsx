@@ -7,6 +7,7 @@ import { getPublishedEditionById } from "@/lib/editions";
 import { markWeeklyJamViewed } from "@/lib/jam";
 import { WeeklyJamRows } from "@/components/jam/WeeklyJamRows";
 import { EditionUpNext } from "@/components/reader/EditionUpNext";
+import { KeyboardSpaceBuffer } from "@/components/KeyboardSpaceBuffer";
 
 export const dynamic = "force-dynamic";
 
@@ -54,12 +55,7 @@ export default async function WeeklyJamPage({
         backHref={`/editions/${edition.id}`}
       />
 
-      {/* Fixed bottom buffer — same reasoning as the reader page: without
-          trailing space to scroll into, opening a track's comment composer
-          near the end of a short row list leaves the keyboard covering it,
-          since the native keyboard-avoidance scroll can't move the page
-          past the end of its actual content. */}
-      <div aria-hidden className="h-80" />
+      <KeyboardSpaceBuffer />
     </div>
   );
 }

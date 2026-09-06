@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, MessageCircle } from "lucide-react";
+import { Check, ChevronDown, MessageCircle } from "lucide-react";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
 import { WeeklyJamExplainer, type ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
 import CommentsSection from "@/components/CommentsSection";
+import { cn } from "@/lib/utils";
 
 type WeeklyJamRowsProps = {
   rows: WeeklyJamRow[];
@@ -102,6 +103,12 @@ function JamRow({
         <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
           <MessageCircle className="h-3.5 w-3.5" />
           {row.commentCount}
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+              expanded && "rotate-180",
+            )}
+          />
         </div>
       </div>
 

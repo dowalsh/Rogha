@@ -12,6 +12,8 @@ import { extractTextFromDoc } from "@/lib/contentFilter";
 import { resolveVisiblePosts, type MinimalPost } from "@/lib/access/postAccess";
 import { getActiveUserIdsAsOf } from "./status";
 import { getAllEditionsWithWindows, getPreviousEditionId, type EditionWithWindow } from "./windows";
+import { mapWithConcurrency } from "./concurrency";
+import { READ_TRACKING_START, POLLUTED_READ_TIMESTAMPS } from "./trackingStart";
 
 function countWords(text: string): number {
   const trimmed = text.trim();
@@ -42,6 +44,13 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
   const target: EditionWithWindow = all[idx];
   const trailing3 = all.slice(Math.max(0, idx - 2), idx + 1);
 
+  // Read-tracking (PostRead) didn't exist before READ_TRACKING_START — its
+  // seed backfill mass-wrote a PostRead row for every post x every user, so
+  // any edition whose window started before that point has no trustworthy
+  // read data. Every other metric (users, posts, wordsWritten, funnelWrote/
+  // Commented) is unaffected and still reported for full history.
+  const hasReadTracking = target.windowStart >= READ_TRACKING_START;
+
   const [totalUsers, newSignups, activeUserIds] = await Promise.all([
     prisma.user.count({ where: { createdAt: { lte: target.windowEnd } } }),
     prisma.user.count({
@@ -69,10 +78,18 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
       },
       select: { authorId: true, postId: true, content: true },
     }),
-    prisma.postRead.findMany({
-      where: { readAt: { gte: target.windowStart, lt: target.windowEnd } },
-      select: { postId: true, userId: true },
-    }),
+    hasReadTracking
+      ? prisma.postRead.findMany({
+          where: {
+            firstReadAt: {
+              gte: target.windowStart,
+              lt: target.windowEnd,
+              notIn: POLLUTED_READ_TIMESTAMPS,
+            },
+          },
+          select: { postId: true, userId: true },
+        })
+      : Promise.resolve([] as { postId: string; userId: string }[]),
     prisma.editionView.findMany({
       where: { editionId: target.id },
       select: { userId: true },
@@ -112,10 +129,23 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
   );
 
   const editionPostIdSet = new Set(editionPosts.map((p) => p.id));
-  const editionReads = await prisma.postRead.findMany({
-    where: { postId: { in: Array.from(editionPostIdSet) } },
-    select: { postId: true, userId: true },
-  });
+  // Windowed by firstReadAt: a user who first reads one of this edition's
+  // posts long after the edition's window closed shouldn't count toward its
+  // funnelRead/funnelReadAll (previously unwindowed — any read, ever,
+  // counted, which meant funnel numbers could keep changing indefinitely).
+  const editionReads = hasReadTracking
+    ? await prisma.postRead.findMany({
+        where: {
+          postId: { in: Array.from(editionPostIdSet) },
+          firstReadAt: {
+            gte: target.windowStart,
+            lt: target.windowEnd,
+            notIn: POLLUTED_READ_TIMESTAMPS,
+          },
+        },
+        select: { postId: true, userId: true },
+      })
+    : [];
   const readSetByUser = new Map<string, Set<string>>();
   for (const r of editionReads) {
     if (!readSetByUser.has(r.userId)) readSetByUser.set(r.userId, new Set());
@@ -136,22 +166,28 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
     publishedAt: target.publishedAt,
   }));
 
-  let funnelRead = 0;
-  let funnelReadAll = 0;
-  for (const uid of Array.from(openerIds)) {
-    const readSet = readSetByUser.get(uid) ?? new Set<string>();
-    if (readSet.size > 0) funnelRead++;
-
-    const visible = await resolveVisiblePosts({ viewerId: uid, posts: minimalPosts });
-    if (visible.length > 0 && visible.every((p) => readSet.has(p.id))) {
-      funnelReadAll++;
-    }
-  }
-
+  // Per-opener "did they read everything available to them" check — each
+  // one is its own resolveVisiblePosts call (friendships/blocks/circles),
+  // so fan these out concurrently rather than one at a time. Skipped
+  // entirely pre-READ_TRACKING_START since there's no real read data to
+  // check against.
+  const openerResults = hasReadTracking
+    ? await mapWithConcurrency(Array.from(openerIds), 8, async (uid) => {
+        const readSet = readSetByUser.get(uid) ?? new Set<string>();
+        const visible = await resolveVisiblePosts({ viewerId: uid, posts: minimalPosts });
+        return {
+          hasRead: readSet.size > 0,
+          readAll: visible.length > 0 && visible.every((p) => readSet.has(p.id)),
+        };
+      })
+    : [];
   const funnelCommented = Array.from(commentedUserIds).filter((id) => openerIds.has(id)).length;
 
   const editionAuthorIds = new Set(editionPosts.map((p) => p.authorId));
   const funnelWrote = Array.from(editionAuthorIds).filter((id) => activeUserIds.has(id)).length;
+
+  const funnelRead = openerResults.filter((r) => r.hasRead).length;
+  const funnelReadAll = openerResults.filter((r) => r.readAll).length;
 
   return {
     totalUsers,
@@ -159,7 +195,7 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
     activeUsers: activeUserIds.size,
     postsCount: editionPosts.length,
     wordsWritten,
-    wordsRead,
+    wordsRead: hasReadTracking ? wordsRead : 0,
     funnelAllUsers: totalUsers,
     funnelActive: activeUserIds.size,
     funnelOpened: openerIds.size,
@@ -199,4 +235,50 @@ export async function computeAndStoreSealedEditionSummary(currentEditionId: stri
     update: data,
   });
   return { skipped: false, editionId: previousEditionId };
+}
+
+/**
+ * One-time (or as-needed) catch-up: computes and persists EditionSummary
+ * for every *sealed* edition that doesn't have one yet, instead of waiting
+ * for the weekly cron to trickle through one edition at a time. The current
+ * (unsealed) edition is deliberately excluded — it's always computed live,
+ * never persisted, since its window is still open.
+ *
+ * Admin-triggered (see /api/admin/insights/backfill) — safe to re-run,
+ * already-computed editions are skipped.
+ */
+export async function backfillEditionSummaries(): Promise<{
+  computed: number;
+  alreadyPresent: number;
+  editionIds: string[];
+}> {
+  const editions = await getAllEditionsWithWindows();
+  const sealed = editions.filter((e) => e.isSealed);
+  if (sealed.length === 0) return { computed: 0, alreadyPresent: 0, editionIds: [] };
+
+  const existing = await prisma.editionSummary.findMany({
+    where: { editionId: { in: sealed.map((e) => e.id) } },
+    select: { editionId: true },
+  });
+  const existingIds = new Set(existing.map((e) => e.editionId));
+  const missing = sealed.filter((e) => !existingIds.has(e.id));
+
+  // Cap concurrency at the edition level too — each edition's own
+  // computation already fans out per-opener queries (see above), so running
+  // every missing edition at once would multiply that back out.
+  const computedIds = await mapWithConcurrency(missing, 3, async (e) => {
+    const data = await computeEditionSummary(e.id);
+    await prisma.editionSummary.upsert({
+      where: { editionId: e.id },
+      create: { editionId: e.id, ...data },
+      update: data,
+    });
+    return e.id;
+  });
+
+  return {
+    computed: computedIds.length,
+    alreadyPresent: existingIds.size,
+    editionIds: computedIds,
+  };
 }

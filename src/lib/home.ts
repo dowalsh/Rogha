@@ -12,7 +12,8 @@ import {
   getPublishedEditionById,
   plannedPublishAt,
 } from "@/lib/editions";
-import { getJamConnectedFriendCount } from "@/lib/jam";
+import { getJamConnectedFriendCount, getJamConnectedFriends } from "@/lib/jam";
+import type { ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
 import { getWeekStartUTC } from "@/lib/utils";
 
 // --- hero -------------------------------------------------------------
@@ -112,6 +113,7 @@ export type ComingNextData =
       state: "empty";
       daysLeft: number;
       jamConnectedCount: number;
+      jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
     }
   | {
@@ -122,6 +124,7 @@ export type ComingNextData =
       friendsSubmittedCount: number;
       daysLeft: number;
       jamConnectedCount: number;
+      jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
     };
 
@@ -172,8 +175,9 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     return { visible: true, state: "no-friends" };
   }
 
-  const [jamConnectedCount, viewer] = await Promise.all([
+  const [jamConnectedCount, jamConnectedFriends, viewer] = await Promise.all([
     getJamConnectedFriendCount(friendIds),
+    getJamConnectedFriends(friendIds),
     prisma.user.findUnique({
       where: { id: userId },
       select: { jamEnabled: true, lastfmUsername: true },
@@ -187,6 +191,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       state: "empty",
       daysLeft: computeDaysLeft(new Date()),
       jamConnectedCount,
+      jamConnectedFriends,
       viewerJamConnected,
     };
   }
@@ -230,6 +235,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     friendsSubmittedCount: others.length,
     daysLeft: computeDaysLeft(new Date()),
     jamConnectedCount,
+    jamConnectedFriends,
     viewerJamConnected,
   };
 }

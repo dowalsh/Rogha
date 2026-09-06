@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { StatusPill } from "@/components/admin/insights/StatusPill";
+import { InfoTooltip } from "@/components/admin/insights/InfoTooltip";
+import {
+  RECEPTION_EXPLAINER,
+  CONSUMED_EXPLAINER,
+  ISOLATED_EXPLAINER,
+} from "@/components/admin/insights/explainers";
+import { StatusBadge } from "@/components/admin/StatusBadge";
+import { UserLink } from "@/components/admin/UserLink";
+import { PostLink } from "@/components/admin/PostLink";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { UserInsights } from "@/lib/insights/userDrilldown";
 
@@ -15,10 +24,21 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  info,
+  children,
+}: {
+  title: string;
+  info?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-lg border p-4 space-y-3">
-      <h2 className="text-sm font-semibold">{title}</h2>
+      <h2 className="inline-flex items-center gap-1.5 text-sm font-semibold">
+        {title}
+        {info && <InfoTooltip text={info} />}
+      </h2>
       {children}
     </div>
   );
@@ -33,14 +53,14 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export default function UserInsightsPage() {
-  const { userId } = useParams<{ userId: string }>();
+export default function UserDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<UserInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/admin/insights/roster/${userId}`)
+    fetch(`/api/admin/insights/roster/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -48,14 +68,17 @@ export default function UserInsightsPage() {
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, [id]);
 
   const showSkeleton = useDelayedLoading(loading);
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-      <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to admin
+    <div className="max-w-4xl mx-auto space-y-6">
+      <Link
+        href="/admin/users"
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Back to users
       </Link>
 
       {showSkeleton && <div className="h-64 animate-pulse rounded-lg border bg-muted/40" />}
@@ -79,7 +102,10 @@ export default function UserInsightsPage() {
             </div>
           </Section>
 
-          <Section title="Network">
+          <Section
+            title="Network"
+            info={`Friend count, pending requests, and circles. Isolated: ${ISOLATED_EXPLAINER}`}
+          >
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Stat
                 label="Friends"
@@ -94,9 +120,18 @@ export default function UserInsightsPage() {
                 {data.network.circles.map((c) => c.name).join(", ")}
               </p>
             )}
+            {data.network.friendsList.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {data.network.friendsList.map((f) => (
+                  <span key={f.id} className="rounded-full border px-2 py-1">
+                    <UserLink id={f.id} username={f.username} />
+                  </span>
+                ))}
+              </div>
+            )}
           </Section>
 
-          <Section title="How they were received">
+          <Section title="How they were received" info={RECEPTION_EXPLAINER}>
             <div className="grid grid-cols-3 gap-4">
               <Stat label="Reads received" value={data.reception.totalReads} />
               <Stat label="Comments received" value={data.reception.totalComments} />
@@ -132,7 +167,31 @@ export default function UserInsightsPage() {
             )}
           </Section>
 
-          <Section title="What they consumed">
+          <Section title="What they commented">
+            {data.comments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No comments.</p>
+            ) : (
+              <div className="divide-y">
+                {data.comments.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`flex items-start justify-between gap-3 py-2 text-sm ${c.status === "REMOVED" ? "opacity-50" : ""}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="line-clamp-2">{c.content}</p>
+                      <div className="text-xs text-muted-foreground">
+                        on <PostLink id={c.postId} title={c.postTitle} /> ·{" "}
+                        {fmtDate(c.createdAt as unknown as string)}
+                      </div>
+                    </div>
+                    <StatusBadge status={c.status} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          <Section title="What they consumed" info={CONSUMED_EXPLAINER}>
             <div className="grid grid-cols-3 gap-4">
               <Stat label="Posts read" value={data.consumed.postsRead} />
               <Stat label="Comments given" value={data.consumed.commentsGiven} />

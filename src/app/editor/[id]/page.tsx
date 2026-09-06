@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
@@ -200,6 +200,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         }),
       });
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
+      // Refresh the shared /api/posts/{id} cache so reopening this post
+      // (via in-app navigation, not a hard reload) reads the just-saved
+      // data instead of whatever was cached before this save.
+      await mutate(`/api/posts/${params.id}`);
       setSaved(true);
       return true;
     } catch (err) {
@@ -229,6 +233,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     if (audienceType === "CIRCLE" && !circleId) {
       alert("Please select a circle before submitting.");
       console.log("Submit blocked: no circle selected for CIRCLE audience");
+      return;
+    }
+
+    if (next === "SUBMITTED" && title.trim().length === 0) {
+      toast.error("Please add a title before submitting.");
       return;
     }
 
@@ -262,6 +271,18 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         const body = await res.json().catch(() => ({}));
         toast.error(body.error ?? "Failed to submit. Please try again.");
         return;
+      }
+      const updated = await res.json().catch(() => null);
+      await mutate(`/api/posts/${params.id}`);
+      // Live-join publish lands this post in an open edition immediately —
+      // refresh the edition caches too (LatestEditionPreloader seeds both
+      // with revalidate: false, so nothing else would pick this up) so
+      // viewers already on /editions or with EditionUpNext mounted see the
+      // new post without a hard reload. The edition page itself is fixed
+      // server-side via revalidatePath in the PUT handler.
+      if (next === "PUBLISHED" && updated?.editionId) {
+        mutate("/api/editions/latest");
+        mutate(`/api/editions/${updated.editionId}`);
       }
       setStatus(next);
       setSaved(true);

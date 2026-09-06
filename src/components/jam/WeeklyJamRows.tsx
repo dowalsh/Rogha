@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
-import { WeeklyJamExplainer } from "@/components/jam/WeeklyJamExplainer";
+import { WeeklyJamExplainer, type ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
 
 type WeeklyJamRowsProps = {
@@ -13,7 +13,13 @@ type WeeklyJamRowsProps = {
 
 // Always rendered — never hidden — but reflects connection state: an active
 // CTA when not connected, a passive status line once connected.
-function ConnectButton({ viewerConnected }: { viewerConnected: boolean }) {
+function ConnectButton({
+  viewerConnected,
+  connectedFriends,
+}: {
+  viewerConnected: boolean;
+  connectedFriends: ConnectedFriend[];
+}) {
   if (viewerConnected) {
     return (
       <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -24,6 +30,7 @@ function ConnectButton({ viewerConnected }: { viewerConnected: boolean }) {
   }
   return (
     <WeeklyJamExplainer
+      connectedFriends={connectedFriends}
       trigger={
         <Button variant="outline" size="sm">
           Connect Music
@@ -71,6 +78,10 @@ function JamRow({ row }: { row: WeeklyJamRow }) {
 // (src/app/editions/[id]/jam/page.tsx) and, previously, the inline Edition
 // card (now a compact teaser rendered by Frontpage.tsx instead).
 export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
+  const connectedFriends: ConnectedFriend[] = rows
+    .filter((row) => !row.isViewer)
+    .map((row) => ({ userId: row.userId, username: row.username, image: row.image }));
+
   return (
     <div className="space-y-3">
       {rows.length > 0 ? (
@@ -86,7 +97,7 @@ export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
       )}
 
       <div className="pt-1">
-        <ConnectButton viewerConnected={viewerConnected} />
+        <ConnectButton viewerConnected={viewerConnected} connectedFriends={connectedFriends} />
       </div>
 
       {rows.length > 0 && (

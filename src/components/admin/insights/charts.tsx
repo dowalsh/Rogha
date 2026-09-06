@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { InfoTooltip } from "./InfoTooltip";
 
 export type ChartMode = "weekly" | "cumulative";
 
@@ -81,6 +82,7 @@ function DeltaBadge({ delta, format }: { delta: number | null; format: (v: numbe
 
 export function ToplineStatPanel({
   title,
+  info,
   weeks,
   weeklyValues,
   cumulativeValues,
@@ -91,6 +93,7 @@ export function ToplineStatPanel({
   format = "count",
 }: {
   title: string;
+  info?: string;
   weeks: string[];
   weeklyValues: number[];
   cumulativeValues: number[];
@@ -108,7 +111,10 @@ export function ToplineStatPanel({
     <div className="rounded-lg border p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+          <h3 className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
+            {title}
+            {info && <InfoTooltip text={info} />}
+          </h3>
           <p className="text-2xl font-semibold">{current === null ? "—" : formatValue(current)}</p>
           <div className="mt-0.5 flex items-center gap-2">
             <DeltaBadge delta={delta} format={formatValue} />

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { InfoTooltip } from "./InfoTooltip";
+import { FUNNEL_EXPLAINERS } from "./explainers";
 import type { FunnelData, FunnelableEdition } from "@/lib/insights/funnel";
 
 function pctLabel(pct: number | null): string {
@@ -11,12 +13,14 @@ function pctLabel(pct: number | null): string {
 
 function FunnelStepBar({
   label,
+  info,
   value,
   denominatorLabel,
   pct,
   max,
 }: {
   label: string;
+  info?: string;
   value: number;
   denominatorLabel: string;
   pct: number | null;
@@ -26,7 +30,10 @@ function FunnelStepBar({
   return (
     <div className="space-y-1">
       <div className="flex items-baseline justify-between gap-2 text-sm">
-        <span className="font-medium">{label}</span>
+        <span className="inline-flex items-center gap-1 font-medium">
+          {label}
+          {info && <InfoTooltip text={info} />}
+        </span>
         <span className="text-muted-foreground">
           {value.toLocaleString()} · {pctLabel(pct)} {denominatorLabel}
         </span>
@@ -111,6 +118,7 @@ export default function FunnelSection() {
           <FunnelStepBar
             key={step.key}
             label={step.label}
+            info={FUNNEL_EXPLAINERS[step.key]}
             value={step.value}
             denominatorLabel={step.denominatorLabel}
             pct={step.pct}

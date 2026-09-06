@@ -178,3 +178,23 @@ export async function getJamConnectedFriendCount(friendIds: string[]): Promise<n
     },
   });
 }
+
+/**
+ * Identities (not just a count) of the given (accepted-friend) ids who've
+ * opted into Jam — powers the "who's already connected" list in the Coming
+ * Sunday teaser's explainer popup, mirrors getJamConnectedFriendCount above.
+ */
+export async function getJamConnectedFriends(
+  friendIds: string[],
+): Promise<{ userId: string; username: string; image: string | null }[]> {
+  if (friendIds.length === 0) return [];
+  const users = await prisma.user.findMany({
+    where: {
+      id: { in: friendIds },
+      jamEnabled: true,
+      lastfmUsername: { not: null },
+    },
+    select: { id: true, username: true, image: true },
+  });
+  return users.map((u) => ({ userId: u.id, username: u.username, image: u.image }));
+}

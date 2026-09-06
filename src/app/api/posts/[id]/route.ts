@@ -4,14 +4,21 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
-import { createSubmitNotifications, createPublishNotifications } from "@/actions/notification.action";
+import {
+  createSubmitNotifications,
+  createPublishNotifications,
+} from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 import { canViewPost } from "@/lib/access/postAccess";
 import { isContentBlocked, extractTextFromDoc } from "@/lib/contentFilter";
 import { generateHeroThumbnails } from "@/lib/heroThumbnails";
-import { getSundayLiveJoinWindow, getOpenLiveJoinEdition } from "@/lib/editions";
+import {
+  getSundayLiveJoinWindow,
+  getOpenLiveJoinEdition,
+} from "@/lib/editions";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
+import { revalidatePath } from "next/cache";
 
 // GET post by ID (public if PUBLISHED)
 export async function GET(
@@ -39,10 +46,14 @@ export async function GET(
         createdAt: true,
         updatedAt: true,
 
-        author: { select: { id: true, clerkId: true, username: true, image: true } },
+        author: {
+          select: { id: true, clerkId: true, username: true, image: true },
+        },
         edition: { select: { publishedAt: true } },
         republishedFromPostId: true,
-        republishedFrom: { select: { edition: { select: { publishedAt: true } } } },
+        republishedFrom: {
+          select: { edition: { select: { publishedAt: true } } },
+        },
         republishMessage: true,
         _count: { select: { likes: true } },
         likes: { select: { id: true, userId: true } },
@@ -93,7 +104,11 @@ export async function GET(
       let newCommentCount: number | null = null;
       if (read) {
         newCommentCount = await prisma.comment.count({
-          where: { postId: id, status: "ACTIVE", createdAt: { gt: read.readAt } },
+          where: {
+            postId: id,
+            status: "ACTIVE",
+            createdAt: { gt: read.lastReadAt },
+          },
         });
       }
 
@@ -152,13 +167,19 @@ export async function PUT(
     const incomingOfficialKind = body.officialKind as string | null | undefined;
     const incomingNotifyAllUsers = Boolean(body.notifyAllUsers);
 
-    if (incomingOfficialKind != null && !allowedOfficialKind.has(incomingOfficialKind)) {
+    if (
+      incomingOfficialKind != null &&
+      !allowedOfficialKind.has(incomingOfficialKind)
+    ) {
       return NextResponse.json(
         { error: "Invalid officialKind" },
         { status: 400 },
       );
     }
-    if ((incomingOfficialKind != null || incomingNotifyAllUsers) && user.role !== "ADMIN") {
+    if (
+      (incomingOfficialKind != null || incomingNotifyAllUsers) &&
+      user.role !== "ADMIN"
+    ) {
       return NextResponse.json(
         { error: "Only admins can post official content" },
         { status: 403 },
@@ -168,9 +189,10 @@ export async function PUT(
     // ---- Audience normalization ----
     const allowedAudience = new Set(["CIRCLE", "FRIENDS", "ALL_USERS"]);
     // Official posts always force ALL_USERS, regardless of what the client sent.
-    const incomingAudience = incomingOfficialKind != null
-      ? "ALL_USERS"
-      : (body.audienceType as string | undefined);
+    const incomingAudience =
+      incomingOfficialKind != null
+        ? "ALL_USERS"
+        : (body.audienceType as string | undefined);
     const incomingCircleId =
       (body.circleId as string | null | undefined) ?? null;
 
@@ -197,10 +219,20 @@ export async function PUT(
 
     // Content filter — only on submission / live-publish (not every autosave keystroke)
     if (body.status === "SUBMITTED" || isPublishNow) {
+      if (typeof body.title !== "string" || body.title.trim().length === 0) {
+        return NextResponse.json(
+          { error: "Title is required" },
+          { status: 400 },
+        );
+      }
+
       const bodyText = extractTextFromDoc(body.content);
       if (isContentBlocked(body.title, bodyText)) {
         return NextResponse.json(
-          { error: "This post contains language that may violate our community standards." },
+          {
+            error:
+              "This post contains language that may violate our community standards.",
+          },
           { status: 422 },
         );
       }
@@ -214,7 +246,10 @@ export async function PUT(
       select: { heroImageUrl: true },
     });
 
-    let thumbUpdate: { heroThumbUrl?: string | null; heroThumbBlurUrl?: string | null } = {};
+    let thumbUpdate: {
+      heroThumbUrl?: string | null;
+      heroThumbBlurUrl?: string | null;
+    } = {};
     if (body.heroImageUrl && body.heroImageUrl !== existingHero?.heroImageUrl) {
       const thumbs = await generateHeroThumbnails(body.heroImageUrl);
       thumbUpdate = {
@@ -234,63 +269,68 @@ export async function PUT(
       audienceType: incomingAudience,
       circleId: incomingAudience === "CIRCLE" ? incomingCircleId : null,
       officialKind: incomingOfficialKind ?? null,
-      notifyAllUsers: incomingOfficialKind != null ? incomingNotifyAllUsers : false,
+      notifyAllUsers:
+        incomingOfficialKind != null ? incomingNotifyAllUsers : false,
     };
 
-    const { previousPost, updatedPost, firstTimeSubmitFromDraft, livePublished } =
-      await prisma.$transaction(async (tx) => {
-        const post = await tx.post.findUnique({ where: { id } });
-        if (!post || post.authorId !== user.id) {
-          throw new Error("NOT_FOUND_OR_NOT_OWNER");
+    const {
+      previousPost,
+      updatedPost,
+      firstTimeSubmitFromDraft,
+      livePublished,
+    } = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.findUnique({ where: { id } });
+      if (!post || post.authorId !== user.id) {
+        throw new Error("NOT_FOUND_OR_NOT_OWNER");
+      }
+
+      let updateData = { ...baseUpdate };
+      let livePublished = false;
+
+      // Sunday live-join: publish straight into today's open edition.
+      // Server re-validates independently of whatever the client showed —
+      // see docs/specs/2026-08-13-sunday-live-join.md.
+      if (isPublishNow) {
+        if (post.status !== "DRAFT") {
+          throw new Error("LIVE_JOIN_INVALID_STATUS");
         }
-
-        let updateData = { ...baseUpdate };
-        let livePublished = false;
-
-        // Sunday live-join: publish straight into today's open edition.
-        // Server re-validates independently of whatever the client showed —
-        // see docs/specs/2026-08-13-sunday-live-join.md.
-        if (isPublishNow) {
-          if (post.status !== "DRAFT") {
-            throw new Error("LIVE_JOIN_INVALID_STATUS");
-          }
-          const { windowStart, windowEnd, isOpen } = getSundayLiveJoinWindow();
-          if (!isOpen) {
-            throw new Error("LIVE_JOIN_WINDOW_CLOSED");
-          }
-          const openEdition = await tx.edition.findFirst({
-            where: { publishedAt: { gte: windowStart, lt: windowEnd } },
-            orderBy: { publishedAt: "desc" },
-            select: { id: true },
-          });
-          if (!openEdition) {
-            throw new Error("LIVE_JOIN_NO_OPEN_EDITION");
-          }
-          updateData = { ...updateData, editionId: openEdition.id };
-          livePublished = true;
+        const { windowStart, windowEnd, isOpen } = getSundayLiveJoinWindow();
+        if (!isOpen) {
+          throw new Error("LIVE_JOIN_WINDOW_CLOSED");
         }
-
-        const updated = await tx.post.update({
-          where: { id },
-          data: updateData,
+        const openEdition = await tx.edition.findFirst({
+          where: { publishedAt: { gte: windowStart, lt: windowEnd } },
+          orderBy: { publishedAt: "desc" },
+          select: { id: true },
         });
-
-        if (livePublished) {
-          await recordActivityEvent({
-            actorId: updated.authorId,
-            eventType: ActivityEventType.POST_PUBLISHED,
-            postId: updated.id,
-          });
+        if (!openEdition) {
+          throw new Error("LIVE_JOIN_NO_OPEN_EDITION");
         }
+        updateData = { ...updateData, editionId: openEdition.id };
+        livePublished = true;
+      }
 
-        return {
-          previousPost: post,
-          updatedPost: updated,
-          firstTimeSubmitFromDraft:
-            updated.status === "SUBMITTED" && post.status === "DRAFT",
-          livePublished,
-        };
+      const updated = await tx.post.update({
+        where: { id },
+        data: updateData,
       });
+
+      if (livePublished) {
+        await recordActivityEvent({
+          actorId: updated.authorId,
+          eventType: ActivityEventType.POST_PUBLISHED,
+          postId: updated.id,
+        });
+      }
+
+      return {
+        previousPost: post,
+        updatedPost: updated,
+        firstTimeSubmitFromDraft:
+          updated.status === "SUBMITTED" && post.status === "DRAFT",
+        livePublished,
+      };
+    });
 
     // Outside transaction: side effects
     if (firstTimeSubmitFromDraft) {
@@ -304,6 +344,19 @@ export async function PUT(
         userId: user.id,
         postId: updatedPost.id,
       });
+
+      // The edition detail page is a force-dynamic Server Component, but
+      // LatestEditionPreloader does a `kind: "full"` router.prefetch of it
+      // client-side and next.config.js bumps staleTimes.dynamic to 60s so
+      // that prefetch survives a while — meaning a client who already
+      // prefetched this edition before the live-join publish would keep
+      // seeing the pre-publish Router Cache entry (missing the new post)
+      // until that TTL expired. revalidatePath purges that client Router
+      // Cache entry too, not just server-side caches, so the next visit
+      // (soft or hard nav) re-renders with the newly published post.
+      if (updatedPost.editionId) {
+        revalidatePath(`/editions/${updatedPost.editionId}`);
+      }
     }
 
     return NextResponse.json(updatedPost, { status: 200 });

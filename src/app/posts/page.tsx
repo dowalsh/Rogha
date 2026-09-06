@@ -153,13 +153,13 @@ export default function PostsPage() {
 
               {/* Desktop: table */}
               <div className="hidden md:block rounded-md border">
-                <table className="w-full text-sm">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
                     <tr>
                       <th className="p-3 font-medium">Post</th>
-                      <th className="p-3 font-medium text-center">Status</th>
-                      <th className="p-3 font-medium text-center">Updated</th>
-                      <th className="p-3 font-medium"></th>
+                      <th className="w-28 p-3 font-medium text-center">Status</th>
+                      <th className="w-40 p-3 font-medium text-center">Updated</th>
+                      <th className="w-40 p-3 font-medium"></th>
                     </tr>
                   </thead>
                   <tbody>

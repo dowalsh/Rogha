@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { formatWeekLabel } from "@/lib/utils";
 import { computeEditionSummary, type EditionSummaryData } from "./edition";
 import { getAllEditionsWithWindows } from "./windows";
+import { mapWithConcurrency } from "./concurrency";
 
 type Row = EditionSummaryData & { weekStart: Date; editionId: string };
 
@@ -17,8 +18,7 @@ export type ToplineSeriesKey =
   | "activeUsers"
   | "posts"
   | "wordsWritten"
-  | "wordsRead"
-  | "reach";
+  | "wordsRead";
 
 export type ToplineSeries = {
   key: ToplineSeriesKey;
@@ -36,6 +36,11 @@ export type ToplineSeries = {
 export type ToplineData = { series: ToplineSeries[]; hasData: boolean };
 
 async function getRows(): Promise<Row[]> {
+  // Full edition history — every series but wordsRead/funnelRead has real
+  // data going back to the start. computeEditionSummary itself zeroes
+  // wordsRead (and funnelRead/funnelReadAll, read via topline's siblings)
+  // for editions before READ_TRACKING_START, since PostRead tracking didn't
+  // exist yet (see trackingStart.ts) — no filtering needed here.
   const editions = await getAllEditionsWithWindows();
   if (editions.length === 0) return [];
 
@@ -44,12 +49,15 @@ async function getRows(): Promise<Row[]> {
   });
   const storedMap = new Map(stored.map((s) => [s.editionId, s]));
 
-  const rows: Row[] = [];
-  for (const ed of editions) {
+  // Order matters (weekStart ascending) — mapWithConcurrency preserves
+  // input order regardless of completion order. Most editions should hit
+  // the `existing` branch (no query at all) once backfilled; concurrency is
+  // capped for the rest so a mid-history gap can't fan out unbounded.
+  const rows: Row[] = await mapWithConcurrency(editions, 3, async (ed) => {
     const existing = storedMap.get(ed.id);
     const data: EditionSummaryData = existing ?? (await computeEditionSummary(ed.id));
-    rows.push({ ...data, weekStart: ed.weekStart, editionId: ed.id });
-  }
+    return { ...data, weekStart: ed.weekStart, editionId: ed.id };
+  });
   return rows;
 }
 
@@ -135,18 +143,6 @@ export async function getTopline(): Promise<ToplineData> {
       activeRate: null,
       chartMode: "toggle",
       format: "compact",
-    },
-    {
-      key: "reach",
-      title: "Reach",
-      weeks,
-      weeklyValues: usersWeekly,
-      cumulativeValues: usersCumulative,
-      current: latest.totalUsers,
-      delta: previous ? latest.totalUsers - previous.totalUsers : null,
-      activeRate: null,
-      chartMode: "cumulative",
-      format: "count",
     },
   ];
 

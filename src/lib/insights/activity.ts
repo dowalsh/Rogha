@@ -7,6 +7,7 @@
 // excluded here).
 
 import { prisma } from "@/lib/prisma";
+import { POLLUTED_READ_TIMESTAMPS } from "./trackingStart";
 
 /**
  * User ids with at least one activity event in [start, end). Five bounded
@@ -17,7 +18,23 @@ export async function getActivityInRange(start: Date, end: Date): Promise<Set<st
   const range = { gte: start, lt: end };
 
   const [reads, postLikes, commentLikes, comments, posts, jamTracks] = await Promise.all([
-    prisma.postRead.findMany({ where: { readAt: range }, select: { userId: true } }),
+    // firstReadAt OR lastReadAt: firstReadAt is immutable, so a user who
+    // first read something in this window can never be dropped from it by a
+    // later recompute, even if they've since reopened that same post in a
+    // different window (which lastReadAt alone would otherwise erase).
+    // lastReadAt still catches reopens as fresh activity in whatever window
+    // they actually happen in. Reads that fall strictly between a post's
+    // first and last open (neither endpoint) remain untracked — accepted
+    // gap, would need a full append-only read-events log to close.
+    prisma.postRead.findMany({
+      where: {
+        OR: [
+          { firstReadAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
+          { lastReadAt: { ...range, notIn: POLLUTED_READ_TIMESTAMPS } },
+        ],
+      },
+      select: { userId: true },
+    }),
     prisma.postLike.findMany({ where: { createdAt: range }, select: { userId: true } }),
     prisma.commentLike.findMany({ where: { createdAt: range }, select: { userId: true } }),
     prisma.comment.findMany({
@@ -48,7 +65,11 @@ export async function getActivityInRange(start: Date, end: Date): Promise<Set<st
  */
 export async function getLastActivityMap(): Promise<Map<string, Date>> {
   const [reads, postLikes, commentLikes, comments, posts, jamTracks] = await Promise.all([
-    prisma.postRead.groupBy({ by: ["userId"], _max: { readAt: true } }),
+    prisma.postRead.groupBy({
+      by: ["userId"],
+      where: { lastReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
+      _max: { lastReadAt: true },
+    }),
     prisma.postLike.groupBy({ by: ["userId"], _max: { createdAt: true } }),
     prisma.commentLike.groupBy({ by: ["userId"], _max: { createdAt: true } }),
     prisma.comment.groupBy({
@@ -71,7 +92,7 @@ export async function getLastActivityMap(): Promise<Map<string, Date>> {
     if (!cur || at > cur) map.set(userId, at);
   };
 
-  for (const r of reads) bump(r.userId, r._max.readAt);
+  for (const r of reads) bump(r.userId, r._max.lastReadAt);
   for (const r of postLikes) bump(r.userId, r._max.createdAt);
   for (const r of commentLikes) bump(r.userId, r._max.createdAt);
   for (const r of comments) bump(r.authorId, r._max.createdAt);

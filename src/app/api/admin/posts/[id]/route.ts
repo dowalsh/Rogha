@@ -32,7 +32,7 @@ export async function GET(
           status: true,
           createdAt: true,
           parentCommentId: true,
-          author: { select: { username: true } },
+          author: { select: { id: true, username: true } },
         },
       },
     },

@@ -1,10 +1,10 @@
-import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/admin";
-import AdminDashboard from "./AdminDashboard";
+import InsightsOverview from "@/components/admin/InsightsOverview";
 
-export default async function AdminPage() {
-  const { error } = await requireAdmin();
-  if (error) redirect("/");
-
-  return <AdminDashboard />;
+export default function AdminOverviewPage() {
+  return (
+    <>
+      <h1 className="text-2xl font-semibold">Overview</h1>
+      <InsightsOverview />
+    </>
+  );
 }

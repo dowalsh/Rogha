@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -133,6 +133,7 @@ function FailedCommentActions({
 // Flat, one level deep — replies never recurse further (no reply-to-a-reply).
 function ReplyItem({
   reply,
+  postId,
   onDelete,
   onBlocked,
   currentUserId,
@@ -140,6 +141,7 @@ function ReplyItem({
   onDiscard,
 }: {
   reply: CommentType;
+  postId: string;
   onDelete: (id: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
@@ -156,6 +158,13 @@ function ReplyItem({
     initialLiked: reply.likedByMe,
     initialCount: reply.likeCount,
   });
+  // Refresh the comments cache after a like/unlike, same as postComment/
+  // deleteComment — otherwise a remount (in-app navigation away and back)
+  // reseeds from the pre-toggle cached snapshot and the like appears lost.
+  const handleToggleLike = async () => {
+    await toggle();
+    mutate(`/api/posts/${postId}/comments`);
+  };
 
   if (reported) return null;
 
@@ -207,7 +216,7 @@ function ReplyItem({
           </p>
           {!reply.deliveryStatus && (
             <div className="flex items-center gap-1">
-              <LikeHeart liked={liked} onToggle={toggle} />
+              <LikeHeart liked={liked} onToggle={handleToggleLike} />
               <LikeCount
                 count={count}
                 fetchLikersUrl={`/api/comments/${reply.id}/likes`}
@@ -280,6 +289,7 @@ function InlineComposer({
 
 function CommentItem({
   comment,
+  postId,
   onReplyClick,
   onDelete,
   onBlocked,
@@ -295,6 +305,7 @@ function CommentItem({
   onDiscard,
 }: {
   comment: CommentType;
+  postId: string;
   onReplyClick: (
     commentId: string,
     authorName: string,
@@ -323,6 +334,11 @@ function CommentItem({
     initialLiked: comment.likedByMe,
     initialCount: comment.likeCount,
   });
+  // See ReplyItem's handleToggleLike — same reasoning.
+  const handleToggleLike = async () => {
+    await toggle();
+    mutate(`/api/posts/${postId}/comments`);
+  };
 
   if (reported) return null;
 
@@ -378,7 +394,7 @@ function CommentItem({
           </p>
           {!comment.deliveryStatus && (
             <div className="flex items-center gap-1">
-              <LikeHeart liked={liked} onToggle={toggle} />
+              <LikeHeart liked={liked} onToggle={handleToggleLike} />
               <LikeCount
                 count={count}
                 fetchLikersUrl={`/api/comments/${comment.id}/likes`}
@@ -396,6 +412,7 @@ function CommentItem({
             <ReplyItem
               key={r.id}
               reply={r}
+              postId={postId}
               onDelete={(id) => onDelete(id, comment.id)}
               onBlocked={onBlocked}
               currentUserId={currentUserId}
@@ -520,10 +537,12 @@ export default function CommentsSection({
   const currentUserId = me?.id ?? null;
 
   // revalidateIfStale: false — comment add/reply/delete are managed via the
-  // local `comments` state below (with optimistic updates), so a background
-  // revalidation racing an in-flight optimistic update could clobber it.
-  // The upside of SWR here is instant comments on back-navigation; freshness
-  // beyond that isn't critical for a comment thread.
+  // local `comments` state below (with optimistic updates), so an automatic
+  // background revalidation racing an in-flight optimistic update could
+  // clobber it. postComment/deleteComment instead call mutate() explicitly
+  // once the write succeeds, so the cache is refreshed without racing local
+  // state (seededForIdRef only reseeds on a fresh mount, i.e. after the
+  // write has already settled).
   const { data: commentsData } = useSWR<CommentType[]>(
     `/api/posts/${postId}/comments`,
     { revalidateIfStale: false },
@@ -603,6 +622,12 @@ export default function CommentsSection({
         likeCount: 0,
         likedByMe: false,
       }));
+
+      // Refresh the shared comments cache so navigating away and back
+      // (remounting this component) reads the just-posted comment instead
+      // of the pre-post snapshot — seededForIdRef already guards against
+      // this clobbering the local optimistic state in the current mount.
+      mutate(`/api/posts/${postId}/comments`);
     } catch (err) {
       console.error("Failed to post comment:", err);
       updateLocalComment(id, parentId, (c) => ({
@@ -690,6 +715,8 @@ export default function CommentsSection({
     });
     if (!res.ok) return;
 
+    mutate(`/api/posts/${postId}/comments`);
+
     if (parentId) {
       setComments((prev) =>
         prev.map((c) =>
@@ -772,6 +799,7 @@ export default function CommentsSection({
               <CommentItem
                 key={c.id}
                 comment={c}
+                postId={postId}
                 onReplyClick={handleReplyClick}
                 onDelete={deleteComment}
                 onBlocked={handleBlocked}

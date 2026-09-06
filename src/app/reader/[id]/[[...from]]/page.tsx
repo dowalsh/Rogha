@@ -423,10 +423,13 @@ function ReadPostPageInner({
       <hr className="my-8 border-t border-muted" />
       <div id="comments" className="scroll-mt-24">
         <CommentsSection
-          postId={post.id}
-          postAuthorId={post.author?.id ?? ""}
-          postAuthorName={post.author?.username ?? "post author"}
-          postAudienceType={post.audienceType}
+          target={{
+            kind: "post",
+            id: post.id,
+            authorId: post.author?.id ?? "",
+            authorName: post.author?.username ?? "post author",
+            audienceType: post.audienceType,
+          }}
         />
       </div>
       {post.editionId && (

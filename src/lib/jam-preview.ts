@@ -4,6 +4,7 @@
 // into client components (e.g. Frontpage.tsx) without bundling the pg driver.
 
 export type WeeklyJamRow = {
+  trackId: string;
   userId: string;
   username: string;
   image: string | null;
@@ -12,8 +13,12 @@ export type WeeklyJamRow = {
   playCount: number;
   imageUrl: string | null;
   spotifySearchUrl: string;
+  // Exact open.spotify.com/track/<id> match, when Spotify search found one —
+  // "Open in Spotify" should prefer this over spotifySearchUrl.
+  spotifyTrackUrl: string | null;
   lastfmUrl: string;
   isViewer: boolean;
+  commentCount: number;
 };
 
 export type WeeklyJamData = {

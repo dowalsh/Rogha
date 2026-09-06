@@ -157,6 +157,7 @@ model WeeklyJamView {
 }
 
 model WeeklyTrack {
+  id               String   @id @default(cuid())
   editionId        String
   userId           String
   name             String
@@ -165,13 +166,16 @@ model WeeklyTrack {
   imageUrl         String?
   imageSource      String? // "spotify" | "lastfm"
   spotifySearchUrl String
+  spotifyTrackUrl  String? // exact open.spotify.com/track/<id> match, when Spotify search finds one — falls back to spotifySearchUrl otherwise
   lastfmUrl        String
   capturedAt       DateTime @default(now())
 
   edition Edition @relation(fields: [editionId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([editionId, userId])
+  comments Comment[]
+
+  @@unique([editionId, userId])
   @@index([editionId])
 }
 
@@ -307,14 +311,16 @@ model Comment {
   id              String        @id @default(cuid())
   content         String
   authorId        String
-  postId          String
+  postId          String?
+  weeklyTrackId   String?
   parentCommentId String?
   status          CommentStatus @default(ACTIVE)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post          Post?          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  weeklyTrack   WeeklyTrack?   @relation(fields: [weeklyTrackId], references: [id], onDelete: Cascade)
   notifications Notification[]
 
   parent  Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id])
@@ -325,6 +331,7 @@ model Comment {
   activityEvents ActivityEvent[] @relation("CommentActivityEvents")
 
   @@index([authorId, postId])
+  @@index([authorId, weeklyTrackId])
 }
 
 model PostLike {

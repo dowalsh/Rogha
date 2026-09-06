@@ -153,7 +153,7 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
   }
 
   const commentedUserIds = new Set(
-    commentsInWindow.filter((c) => editionPostIdSet.has(c.postId)).map((c) => c.authorId),
+    commentsInWindow.filter((c) => c.postId != null && editionPostIdSet.has(c.postId)).map((c) => c.authorId),
   );
 
   const minimalPosts: MinimalPost[] = editionPosts.map((p) => ({

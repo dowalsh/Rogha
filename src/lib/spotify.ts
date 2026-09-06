@@ -12,6 +12,8 @@ type SpotifyImage = { url: string; width: number | null; height: number | null }
 type SpotifySearchResponse = {
   tracks?: {
     items?: Array<{
+      id?: string;
+      external_urls?: { spotify?: string };
       album?: { images?: SpotifyImage[] };
     }>;
   };
@@ -112,4 +114,49 @@ export async function resolveSpotifyAlbumImage(
 
   const item = body.tracks?.items?.[0];
   return pickImageUrl(item?.album?.images) ?? null;
+}
+
+/**
+ * Best-effort exact-track lookup: same search as resolveSpotifyAlbumImage,
+ * but also returns the matched track's own open.spotify.com URL — so
+ * "Open in Spotify" can deep-link straight to the track instead of a search
+ * results page. One search call covers both; returns nulls on any failure
+ * (missing credentials, network error, no match), same as its sibling.
+ */
+export async function resolveSpotifyTrackMatch(
+  artist: string,
+  track: string,
+): Promise<{ imageUrl: string | null; trackUrl: string | null }> {
+  const token = await getAccessToken();
+  if (!token) return { imageUrl: null, trackUrl: null };
+
+  const url = new URL(SEARCH_URL);
+  url.searchParams.set("q", `track:${track} artist:${artist}`);
+  url.searchParams.set("type", "track");
+  url.searchParams.set("limit", "1");
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+  } catch {
+    return { imageUrl: null, trackUrl: null };
+  }
+
+  if (!res.ok) return { imageUrl: null, trackUrl: null };
+
+  let body: SpotifySearchResponse;
+  try {
+    body = await res.json();
+  } catch {
+    return { imageUrl: null, trackUrl: null };
+  }
+
+  const item = body.tracks?.items?.[0];
+  return {
+    imageUrl: pickImageUrl(item?.album?.images) ?? null,
+    trackUrl: item?.external_urls?.spotify ?? (item?.id ? `https://open.spotify.com/track/${item.id}` : null),
+  };
 }

@@ -40,7 +40,10 @@ export async function POST(
         where: { id: commentId },
         select: { postId: true },
       });
-      if (comment) {
+      // ActivityEvent is post-scoped only (powers post-centric insights) —
+      // track comment likes don't feed it, same as track comments skipping
+      // recordActivityEvent on creation.
+      if (comment?.postId) {
         await recordActivityEvent({
           actorId: user.id,
           eventType: ActivityEventType.COMMENT_LIKED,

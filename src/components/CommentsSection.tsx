@@ -14,6 +14,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { AudienceType } from "@/types/index";
 import { cn } from "@/lib/utils";
 
+// What this thread is attached to — a post (reader page, full audience
+// banner + block-redirect-home behavior) or a Weekly Jam track (song row,
+// no audience banner since track visibility is always "friends who can see
+// this Jam", not a configurable audience type).
+export type CommentsTarget =
+  | { kind: "post"; id: string; authorId: string; authorName: string; audienceType: AudienceType }
+  | { kind: "track"; id: string };
+
+function commentsApiPath(target: CommentsTarget) {
+  return target.kind === "post"
+    ? `/api/posts/${target.id}/comments`
+    : `/api/tracks/${target.id}/comments`;
+}
+
 interface Author {
   id: string;
   username: string;
@@ -133,7 +147,7 @@ function FailedCommentActions({
 // Flat, one level deep — replies never recurse further (no reply-to-a-reply).
 function ReplyItem({
   reply,
-  postId,
+  target,
   onDelete,
   onBlocked,
   currentUserId,
@@ -141,7 +155,7 @@ function ReplyItem({
   onDiscard,
 }: {
   reply: CommentType;
-  postId: string;
+  target: CommentsTarget;
   onDelete: (id: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
@@ -163,7 +177,7 @@ function ReplyItem({
   // reseeds from the pre-toggle cached snapshot and the like appears lost.
   const handleToggleLike = async () => {
     await toggle();
-    mutate(`/api/posts/${postId}/comments`);
+    mutate(commentsApiPath(target));
   };
 
   if (reported) return null;
@@ -309,7 +323,7 @@ function InlineComposer({
 
 function CommentItem({
   comment,
-  postId,
+  target,
   onReplyClick,
   onDelete,
   onBlocked,
@@ -325,7 +339,7 @@ function CommentItem({
   onDiscard,
 }: {
   comment: CommentType;
-  postId: string;
+  target: CommentsTarget;
   onReplyClick: (
     commentId: string,
     authorName: string,
@@ -357,7 +371,7 @@ function CommentItem({
   // See ReplyItem's handleToggleLike — same reasoning.
   const handleToggleLike = async () => {
     await toggle();
-    mutate(`/api/posts/${postId}/comments`);
+    mutate(commentsApiPath(target));
   };
 
   if (reported) return null;
@@ -432,7 +446,7 @@ function CommentItem({
             <ReplyItem
               key={r.id}
               reply={r}
-              postId={postId}
+              target={target}
               onDelete={(id) => onDelete(id, comment.id)}
               onBlocked={onBlocked}
               currentUserId={currentUserId}
@@ -480,17 +494,7 @@ function CommentItem({
   );
 }
 
-export default function CommentsSection({
-  postId,
-  postAuthorId,
-  postAuthorName,
-  postAudienceType,
-}: {
-  postId: string;
-  postAuthorId: string;
-  postAuthorName: string;
-  postAudienceType: AudienceType;
-}) {
+export default function CommentsSection({ target }: { target: CommentsTarget }) {
   const router = useRouter();
   const { user } = useUser();
   const [comments, setComments] = useState<CommentType[]>([]);
@@ -544,7 +548,7 @@ export default function CommentsSection({
   }
 
   function handleBlocked(authorId: string) {
-    if (authorId === postAuthorId) {
+    if (target.kind === "post" && authorId === target.authorId) {
       router.replace("/");
       return;
     }
@@ -556,6 +560,11 @@ export default function CommentsSection({
   const { data: me } = useSWR<{ id: string }>("/api/me");
   const currentUserId = me?.id ?? null;
 
+  const apiPath = commentsApiPath(target);
+  // A post and a track never share an id in practice, but namespacing by
+  // kind keeps the seeded/loading-key comparisons below unambiguous.
+  const targetKey = `${target.kind}:${target.id}`;
+
   // revalidateIfStale: false — comment add/reply/delete are managed via the
   // local `comments` state below (with optimistic updates), so an automatic
   // background revalidation racing an in-flight optimistic update could
@@ -564,25 +573,25 @@ export default function CommentsSection({
   // state (seededForIdRef only reseeds on a fresh mount, i.e. after the
   // write has already settled).
   const { data: commentsData } = useSWR<CommentType[]>(
-    `/api/posts/${postId}/comments`,
+    apiPath,
     { revalidateIfStale: false },
   );
 
-  // Seed local state once per postId when the cached/fetched data arrives —
+  // Seed local state once per target when the cached/fetched data arrives —
   // not on every render, so it doesn't stomp on optimistic add/reply/delete.
   const seededForIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!commentsData || seededForIdRef.current === postId) return;
-    seededForIdRef.current = postId;
+    if (!commentsData || seededForIdRef.current === targetKey) return;
+    seededForIdRef.current = targetKey;
     setComments(
       [...commentsData].sort(
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       ),
     );
-  }, [commentsData, postId]);
+  }, [commentsData, targetKey]);
 
-  const loadingComments = seededForIdRef.current !== postId;
+  const loadingComments = seededForIdRef.current !== targetKey;
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash) {
@@ -625,7 +634,7 @@ export default function CommentsSection({
   // status) — left as-is on the object; it's a different field from ours.
   async function postComment(id: string, content: string, parentId?: string) {
     try {
-      const res = await fetch(`/api/posts/${postId}/comments`, {
+      const res = await fetch(apiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parentId ? { content, parentId } : { content }),
@@ -647,7 +656,7 @@ export default function CommentsSection({
       // (remounting this component) reads the just-posted comment instead
       // of the pre-post snapshot — seededForIdRef already guards against
       // this clobbering the local optimistic state in the current mount.
-      mutate(`/api/posts/${postId}/comments`);
+      mutate(apiPath);
     } catch (err) {
       console.error("Failed to post comment:", err);
       updateLocalComment(id, parentId, (c) => ({
@@ -735,7 +744,7 @@ export default function CommentsSection({
     });
     if (!res.ok) return;
 
-    mutate(`/api/posts/${postId}/comments`);
+    mutate(apiPath);
 
     if (parentId) {
       setComments((prev) =>
@@ -764,17 +773,17 @@ export default function CommentsSection({
             {totalComments}
           </span>
         </div>
-        {postAudienceType === "FRIENDS" && (
+        {target.kind === "post" && target.audienceType === "FRIENDS" && (
           <p className="text-sm italic text-orange-500 mb-4">
-            Comments are visible to all {postAuthorName}'s friends
+            Comments are visible to all {target.authorName}'s friends
           </p>
         )}
-        {postAudienceType === "ALL_USERS" && (
+        {target.kind === "post" && target.audienceType === "ALL_USERS" && (
           <p className="text-sm italic text-orange-500 mb-4">
             Comments are visible to all Rogha users
           </p>
         )}
-        {postAudienceType === "CIRCLE" && (
+        {target.kind === "post" && target.audienceType === "CIRCLE" && (
           <p className="text-sm italic text-orange-500 mb-4">
             Comments are visible to all members of this circle
           </p>
@@ -819,7 +828,7 @@ export default function CommentsSection({
               <CommentItem
                 key={c.id}
                 comment={c}
-                postId={postId}
+                target={target}
                 onReplyClick={handleReplyClick}
                 onDelete={deleteComment}
                 onBlocked={handleBlocked}

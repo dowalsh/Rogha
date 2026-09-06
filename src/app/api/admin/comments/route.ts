@@ -17,6 +17,7 @@ export async function GET() {
       createdAt: true,
       author: { select: { id: true, username: true, email: true } },
       post: { select: { id: true, title: true } },
+      weeklyTrack: { select: { id: true, name: true, artist: true, editionId: true } },
     },
   });
 

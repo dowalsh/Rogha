@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserByClerkId } from "@/actions/user.action";
 import { getAcceptedFriendIds } from "@/lib/friends";
 import { requirePostAccess } from "@/lib/access/postAccess";
+import { requireTrackAccess } from "@/lib/access/trackAccess";
 import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 
 /**
@@ -26,14 +27,18 @@ export async function GET(
     const dbUser = await getUserByClerkId(clerkUser.id);
     if (!dbUser) return new NextResponse("Unauthorized", { status: 401 });
 
-    const commentPost = await prisma.comment.findUnique({
+    const commentTarget = await prisma.comment.findUnique({
       where: { id: params.id },
-      select: { postId: true },
+      select: { postId: true, weeklyTrackId: true },
     });
-    if (!commentPost) return new NextResponse("Not found", { status: 404 });
+    if (!commentTarget) return new NextResponse("Not found", { status: 404 });
 
-    const post = await requirePostAccess(dbUser.id, commentPost.postId);
-    if (!post) return new NextResponse("Not found", { status: 404 });
+    const hasAccess = commentTarget.postId
+      ? await requirePostAccess(dbUser.id, commentTarget.postId)
+      : commentTarget.weeklyTrackId
+        ? await requireTrackAccess(dbUser.id, commentTarget.weeklyTrackId)
+        : null;
+    if (!hasAccess) return new NextResponse("Not found", { status: 404 });
 
     const friendIds = await getAcceptedFriendIds(dbUser.id);
     const allowedIds = [dbUser.id, ...friendIds];

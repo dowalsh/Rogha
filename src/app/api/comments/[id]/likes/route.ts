@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { requirePostAccess } from "@/lib/access/postAccess";
+import { requireTrackAccess } from "@/lib/access/trackAccess";
 
 export async function GET(
   _req: NextRequest,
@@ -12,17 +13,21 @@ export async function GET(
 
   const comment = await prisma.comment.findUnique({
     where: { id },
-    select: { postId: true },
+    select: { postId: true, weeklyTrackId: true },
   });
   if (!comment) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
   }
 
-  // Anonymous is allowed through (ALL_USERS posts are publicly likeable),
-  // but the like list must still respect the parent post's actual audience.
+  // Anonymous is allowed through for posts (ALL_USERS posts are publicly
+  // likeable) but never for tracks, which have no anonymous-visible audience.
   const { user } = await getDbUser().catch(() => ({ user: null }));
-  const post = await requirePostAccess(user?.id ?? null, comment.postId);
-  if (!post) {
+  const hasAccess = comment.postId
+    ? await requirePostAccess(user?.id ?? null, comment.postId)
+    : comment.weeklyTrackId
+      ? await requireTrackAccess(user?.id ?? null, comment.weeklyTrackId)
+      : null;
+  if (!hasAccess) {
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
   }
 

@@ -7,7 +7,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getTopTrackLastWeek } from "@/lib/lastfm";
-import { resolveSpotifyAlbumImage } from "@/lib/spotify";
+import { resolveSpotifyTrackMatch } from "@/lib/spotify";
 import { getAcceptedFriendships } from "@/lib/friends";
 import type { WeeklyJamData, WeeklyJamRow } from "@/lib/jam-preview";
 
@@ -38,10 +38,13 @@ export async function captureWeeklyJamTracks(editionId: string): Promise<void> {
 
       const t = result.track;
       // Prefer Spotify's licensed art over Last.fm's — same precedence as
-      // the admin route (src/app/api/admin/lastfm-top-track/route.ts).
-      const spotifyImageUrl = await resolveSpotifyAlbumImage(t.artist, t.name);
-      const imageUrl = spotifyImageUrl ?? t.imageUrl;
-      const imageSource = spotifyImageUrl ? "spotify" : t.imageSource;
+      // the admin route (src/app/api/admin/lastfm-top-track/route.ts). Also
+      // grabs the matched track's own Spotify URL so "Open in Spotify" can
+      // deep-link straight to the track instead of a search results page —
+      // spotifySearchUrl stays as the fallback when no exact match is found.
+      const spotifyMatch = await resolveSpotifyTrackMatch(t.artist, t.name);
+      const imageUrl = spotifyMatch.imageUrl ?? t.imageUrl;
+      const imageSource = spotifyMatch.imageUrl ? "spotify" : t.imageSource;
 
       const data = {
         name: t.name,
@@ -50,6 +53,7 @@ export async function captureWeeklyJamTracks(editionId: string): Promise<void> {
         imageUrl,
         imageSource,
         spotifySearchUrl: t.spotifySearchUrl,
+        spotifyTrackUrl: spotifyMatch.trackUrl,
         lastfmUrl: t.lastfmUrl,
       };
 
@@ -102,19 +106,23 @@ export async function getWeeklyJamForEdition(
   const tracks = await prisma.weeklyTrack.findMany({
     where: { editionId, userId: { in: candidateIds } },
     select: {
+      id: true,
       userId: true,
       name: true,
       artist: true,
       playCount: true,
       imageUrl: true,
       spotifySearchUrl: true,
+      spotifyTrackUrl: true,
       lastfmUrl: true,
       user: { select: { username: true, image: true } },
+      _count: { select: { comments: { where: { status: "ACTIVE" } } } },
     },
   });
 
   const rows: WeeklyJamRow[] = tracks
     .map((t) => ({
+      trackId: t.id,
       userId: t.userId,
       username: t.user.username,
       image: t.user.image,
@@ -123,8 +131,10 @@ export async function getWeeklyJamForEdition(
       playCount: t.playCount,
       imageUrl: t.imageUrl,
       spotifySearchUrl: t.spotifySearchUrl,
+      spotifyTrackUrl: t.spotifyTrackUrl,
       lastfmUrl: t.lastfmUrl,
       isViewer: t.userId === viewerId,
+      commentCount: t._count.comments,
     }))
     .sort((a, b) => (a.isViewer === b.isViewer ? 0 : a.isViewer ? -1 : 1));
 

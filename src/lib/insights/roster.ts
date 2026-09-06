@@ -58,7 +58,7 @@ export async function getRoster(): Promise<RosterRow[]> {
       where: { firstReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
       _count: { _all: true },
     }),
-    prisma.comment.groupBy({ by: ["postId"], where: { status: "ACTIVE" }, _count: { _all: true } }),
+    prisma.comment.groupBy({ by: ["postId"], where: { status: "ACTIVE", postId: { not: null } }, _count: { _all: true } }),
     prisma.postRead.groupBy({
       by: ["userId"],
       where: { firstReadAt: { notIn: POLLUTED_READ_TIMESTAMPS } },
@@ -83,6 +83,7 @@ export async function getRoster(): Promise<RosterRow[]> {
     if (authorId) receptionByAuthor.set(authorId, (receptionByAuthor.get(authorId) ?? 0) + r._count._all);
   }
   for (const r of commentCountsByPost) {
+    if (!r.postId) continue; // excluded by the where clause; guards the type only
     const authorId = authorByPost.get(r.postId);
     if (authorId) receptionByAuthor.set(authorId, (receptionByAuthor.get(authorId) ?? 0) + r._count._all);
   }

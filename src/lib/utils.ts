@@ -44,7 +44,11 @@ type NotificationWithRelations = {
   postId?: string | null;
   commentId?: string | null;
   post?: { id: string | null } | null;
-  comment?: { id: string | null; postId?: string | null } | null;
+  comment?: {
+    id: string | null;
+    postId?: string | null;
+    weeklyTrack?: { editionId: string } | null;
+  } | null;
   creator?: { username?: string | null } | null;
 };
 
@@ -59,11 +63,16 @@ export function getNotificationLink(
     if (n.commentId) {
       console.log("[getNotificationLink] found commentId:", n.commentId);
       const basePostId = n.postId ?? n.comment?.postId ?? n.post?.id;
-      console.log("[getNotificationLink] resolved basePostId:", basePostId);
+      const editionId = n.comment?.weeklyTrack?.editionId;
+      console.log("[getNotificationLink] resolved basePostId:", basePostId, "editionId:", editionId);
 
       if (basePostId) {
         const url = `/reader/${basePostId}#comment-${n.commentId}`;
         console.log("[getNotificationLink] built comment URL:", url);
+        return url;
+      } else if (editionId) {
+        const url = `/editions/${editionId}/jam#comment-${n.commentId}`;
+        console.log("[getNotificationLink] built jam comment URL:", url);
         return url;
       } else {
         console.warn(

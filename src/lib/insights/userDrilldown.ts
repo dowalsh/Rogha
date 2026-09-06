@@ -120,7 +120,9 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
       },
     }),
     prisma.comment.findMany({
-      where: { authorId: userId },
+      // Post comments only — this drilldown's fields (postId/postTitle) are
+      // post-specific; track comments don't have a natural home here.
+      where: { authorId: userId, postId: { not: null } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -197,8 +199,8 @@ export async function getUserInsights(userId: string): Promise<UserInsights | nu
       content: c.content,
       status: c.status,
       createdAt: c.createdAt,
-      postId: c.post.id,
-      postTitle: c.post.title,
+      postId: c.post!.id,
+      postTitle: c.post!.title,
     })),
     reception: { totalReads, totalComments, totalLikes },
     consumed: {

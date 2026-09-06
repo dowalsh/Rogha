@@ -153,10 +153,10 @@ export function PostLikeFaces({
         aria-pressed={likedByMe}
         aria-label={likedByMe ? "Remove your like" : "Like this post"}
         className={cn(
-          "flex h-11 w-11 items-center justify-center self-center rounded-full border transition-colors",
+          "flex h-9 w-9 items-center justify-center self-start rounded-full border border-border bg-white transition-colors",
           likedByMe
-            ? "border-like-active bg-like-active/10"
-            : "border-border bg-transparent hover:border-muted-foreground/50",
+            ? "border-like-active"
+            : "hover:border-muted-foreground/50",
           (!isSignedIn || isLoadingLikers) && "cursor-not-allowed opacity-50"
         )}
       >

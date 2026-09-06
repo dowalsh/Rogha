@@ -419,9 +419,21 @@ function ReadPostPageInner({
 
       {/* Rendered content or diagnostics */}
       <div className="prose prose-neutral max-w-none break-words">{contentNode}</div>
-      <hr className="my-8 border-t border-muted" />
-      <PostLikeFaces postId={post.id} isSignedIn={!!isSignedIn} />
-      <hr className="my-8 border-t border-muted" />
+
+      {/* Printer's mark — the only thing that closes the post body. No rule:
+          the reader should feel the piece end before anything interactive
+          appears. */}
+      <p
+        aria-hidden="true"
+        className="mt-[18px] mb-11 text-center font-serif text-muted-foreground tracking-[0.4em]"
+      >
+        ···
+      </p>
+
+      <div className="rounded-xl bg-muted px-[18px] py-4">
+        <PostLikeFaces postId={post.id} isSignedIn={!!isSignedIn} />
+      </div>
+
       <div id="comments" className="scroll-mt-24">
         <CommentsSection
           target={{

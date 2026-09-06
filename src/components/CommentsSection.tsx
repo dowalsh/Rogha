@@ -278,10 +278,15 @@ function InlineComposer({
         onInput={(e) => {
           const el = e.currentTarget;
           el.style.height = "auto";
-          el.style.height = `${el.scrollHeight}px`;
+          // Capped so a long comment grows the box, not the whole composer
+          // — past this height it scrolls internally instead of pushing
+          // Cancel/Submit (rendered above it) further down/off screen.
+          const maxHeight = 200;
+          el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+          el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
         }}
         placeholder={placeholder}
-        className="overflow-hidden resize-none"
+        className="max-h-[200px] resize-none overflow-hidden"
       />
     </div>
   );

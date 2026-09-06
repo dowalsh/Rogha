@@ -153,7 +153,7 @@ export function PostLikeFaces({
         aria-pressed={likedByMe}
         aria-label={likedByMe ? "Remove your like" : "Like this post"}
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-full border transition-colors",
+          "flex h-11 w-11 items-center justify-center self-center rounded-full border transition-colors",
           likedByMe
             ? "border-like-active bg-like-active/10"
             : "border-border bg-transparent hover:border-muted-foreground/50",
@@ -162,7 +162,7 @@ export function PostLikeFaces({
       >
         <Heart
           className={cn(
-            "h-4 w-4 transition-colors",
+            "h-5 w-5 transition-colors",
             likedByMe ? "fill-like-active text-like-active" : "text-muted-foreground"
           )}
         />

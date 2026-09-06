@@ -250,9 +250,24 @@ function InlineComposer({
   // Focus on mount (no preventScroll) — iOS lifts this above the keyboard,
   // and since it's the DOM node right after the target comment (or at the
   // top of the thread), whatever it should sit under ends up directly on
-  // top of it. No scroll math needed.
+  // top of it. No scroll math needed... except the browser's auto-scroll-
+  // into-view fires the instant focus() is called, which is *before* the
+  // keyboard has actually opened and shrunk the viewport (KeyboardResize.
+  // Native in capacitor.config.ts). So it scrolls the field into view of
+  // the *old*, full-height viewport, then the keyboard slides up under it
+  // and covers it anyway. Re-scroll once the viewport actually shrinks.
   useEffect(() => {
     textareaRef.current?.focus();
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    function handleResize() {
+      if (document.activeElement === textareaRef.current) {
+        textareaRef.current?.scrollIntoView({ block: "center" });
+      }
+    }
+    viewport.addEventListener("resize", handleResize);
+    return () => viewport.removeEventListener("resize", handleResize);
   }, []);
 
   return (

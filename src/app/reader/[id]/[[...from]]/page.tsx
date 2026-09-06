@@ -16,14 +16,13 @@ import StarterKit from "@tiptap/starter-kit";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 import CommentsSection from "@/components/CommentsSection";
 import { Spinner } from "@/components/Spinner";
-import { LikeButton } from "@/components/LikeButton";
+import { PostLikeFaces } from "@/components/PostLikeFaces";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
 import { RepublishModal, type RepublishTarget } from "@/components/RepublishModal";
 import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { ReaderJumpFab } from "@/components/reader/ReaderJumpFab";
 import { EditionUpNext } from "@/components/reader/EditionUpNext";
-import { useLike } from "@/hooks/useLike";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { AudienceType } from "@/types/index";
 
@@ -203,13 +202,6 @@ function ReadPostPageInner({
     setRevealFading(true);
     setTimeout(() => setEditionRevealed(true), 200);
   };
-
-  const { liked, count, toggle } = useLike({
-    id: post?.id ?? "", // fallback string, won’t be used until post loads
-    type: "post",
-    initialLiked: post?.likedByMe ?? false,
-    initialCount: post?.likeCount ?? 0,
-  });
 
   const [postReported, setPostReported] = useState(false);
   const [republishTarget, setRepublishTarget] = useState<RepublishTarget | null>(null);
@@ -426,15 +418,8 @@ function ReadPostPageInner({
 
       {/* Rendered content or diagnostics */}
       <div className="prose prose-neutral max-w-none break-words">{contentNode}</div>
-      {/* Post Like Button */}
-      <div className="flex justify-center">
-        <LikeButton
-          liked={liked}
-          count={count}
-          onToggle={toggle}
-          fetchLikersUrl={`/api/posts/${post!.id}/likes`}
-        />
-      </div>
+      <hr className="my-8 border-t border-muted" />
+      <PostLikeFaces postId={post.id} isSignedIn={!!isSignedIn} />
       <hr className="my-8 border-t border-muted" />
       <div id="comments" className="scroll-mt-24">
         <CommentsSection

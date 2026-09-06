@@ -51,6 +51,10 @@ const config: Config = withUt({
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        "like-active": {
+          DEFAULT: "hsl(var(--like-active))",
+          foreground: "hsl(var(--like-active-foreground))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -5,7 +5,8 @@ import { ChevronLeft } from "lucide-react";
 import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
 import { markWeeklyJamViewed } from "@/lib/jam";
-import { JamPageBody } from "./JamPageBody";
+import { WeeklyJamRows } from "@/components/jam/WeeklyJamRows";
+import { EditionUpNext } from "@/components/reader/EditionUpNext";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +46,11 @@ export default async function WeeklyJamPage({
         </div>
       </header>
 
-      <JamPageBody
-        rows={rows}
-        viewerConnected={viewerConnected}
+      <WeeklyJamRows rows={rows} viewerConnected={viewerConnected} />
+
+      <EditionUpNext
         editionId={edition.id}
+        currentPostId={`jam:${edition.id}`}
         backHref={`/editions/${edition.id}`}
       />
     </div>

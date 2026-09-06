@@ -302,6 +302,16 @@ function InlineComposer({
         // it always did; only the rendered/visible height is clamped.
         className="max-h-[200px] resize-none overflow-y-auto"
       />
+      {/* Reserves trailing scroll room for as long as (and only as long as)
+          this composer exists — mounted/unmounted in the exact same commit
+          as the textarea itself, so there's no cross-component signal or
+          timing gap for the native keyboard-avoidance scroll to race
+          against, and no way for it to linger after the composer closes.
+          Without it, a composer opened near the end of a short thread has
+          nowhere left to scroll: that native scroll (KeyboardResize.Native
+          in capacitor.config.ts) can only move the page up to the end of
+          its actual content. */}
+      <div aria-hidden className="h-80" />
     </div>
   );
 }
@@ -480,20 +490,7 @@ function CommentItem({
   );
 }
 
-export default function CommentsSection({
-  target,
-  onComposerOpenChange,
-}: {
-  target: CommentsTarget;
-  // Called synchronously with the state-setting call that opens/closes a
-  // composer (not from an effect watching activeComposer) — so a parent
-  // rendering a keyboard-space buffer commits it in the *same* render pass
-  // as the composer itself, before InlineComposer's mount effect calls
-  // focus(). The native keyboard-avoidance scroll only gets one shot at
-  // this, computed off whatever's already in the DOM/painted by the time
-  // focus() runs — an effect-driven update lands a frame too late.
-  onComposerOpenChange?: (open: boolean) => void;
-}) {
+export default function CommentsSection({ target }: { target: CommentsTarget }) {
   const router = useRouter();
   const { user } = useUser();
   const [comments, setComments] = useState<CommentType[]>([]);
@@ -525,7 +522,6 @@ export default function CommentsSection({
   }, []);
 
   function openNewComment() {
-    onComposerOpenChange?.(true);
     setActiveComposer({ kind: "new" });
   }
 
@@ -534,7 +530,6 @@ export default function CommentsSection({
     authorName: string,
     parentId: string,
   ) {
-    onComposerOpenChange?.(true);
     setActiveComposer({ kind: "reply", id: commentId, name: authorName, parentId });
     setPulsingId(commentId);
     setTimeout(
@@ -544,7 +539,6 @@ export default function CommentsSection({
   }
 
   function closeComposer() {
-    onComposerOpenChange?.(false);
     setActiveComposer(null);
     setNewComment("");
   }

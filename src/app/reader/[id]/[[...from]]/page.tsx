@@ -23,7 +23,6 @@ import { RepublishModal, type RepublishTarget } from "@/components/RepublishModa
 import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { ReaderJumpFab } from "@/components/reader/ReaderJumpFab";
 import { EditionUpNext } from "@/components/reader/EditionUpNext";
-import { KeyboardSpaceBuffer } from "@/components/KeyboardSpaceBuffer";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { AudienceType } from "@/types/index";
 
@@ -124,7 +123,6 @@ function ReadPostPageInner({
   } | null>(null);
   const [editionStatusChecked, setEditionStatusChecked] = useState(false);
   const [editionRevealed, setEditionRevealed] = useState(true);
-  const [composerOpen, setComposerOpen] = useState(false);
   const [revealFading, setRevealFading] = useState(false);
 
   const { isLoaded, isSignedIn, user } = useUser();
@@ -444,7 +442,6 @@ function ReadPostPageInner({
             authorName: post.author?.username ?? "post author",
             audienceType: post.audienceType,
           }}
-          onComposerOpenChange={setComposerOpen}
         />
       </div>
       {post.editionId && (
@@ -454,7 +451,6 @@ function ReadPostPageInner({
           backHref={fallbackBackHref}
         />
       )}
-      <KeyboardSpaceBuffer active={composerOpen} />
       <ReaderJumpFab commentsAnchorId="comments" />
     </div>
   );

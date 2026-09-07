@@ -59,7 +59,7 @@ export default async function WeeklyJamPage({
           near the end of a short row list leaves the keyboard covering it,
           since the native keyboard-avoidance scroll can't move the page
           past the end of its actual content. */}
-      <div aria-hidden className="h-28" />
+      <div aria-hidden className="h-14" />
     </div>
   );
 }

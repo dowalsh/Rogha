@@ -757,7 +757,11 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
           would be redundant; jump straight into the composer/list. */}
       {target.kind === "post" && (
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
+          {/* Separate, tighter anchor than the outer #comments div — jump
+              navigation centers on this specific header rather than
+              scrollIntoView-ing the whole (variable-height) comments
+              section, which would just re-land back at its top edge. */}
+          <div id="comments-header" className="flex items-center gap-2 scroll-mt-24">
             <h2 className="text-2xl font-bold">Comments</h2>
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
               {totalComments}
@@ -796,29 +800,35 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
         )}
         {/* New top-level comment — inline, in-place at the top of the
             thread, same convention as replies. Reads as "almost like the
-            first comment" rather than a separate pill/bar. */}
-        {activeComposer?.kind === "new" ? (
-          <InlineComposer
-            placeholder="Write a comment..."
-            value={newComment}
-            onChange={setNewComment}
-            onCancel={closeComposer}
-            onSubmit={submitComposer}
-          />
-        ) : (
-          <button
-            onClick={openNewComment}
-            className="flex w-full items-center gap-2 text-left"
-          >
-            <Avatar className="h-9 w-9 border shrink-0">
-              <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
-              <AvatarFallback>?</AvatarFallback>
-            </Avatar>
-            <span className="text-sm italic text-muted-foreground">
-              Add a comment…
-            </span>
-          </button>
-        )}
+            first comment" rather than a separate pill/bar. min-h below
+            matches InlineComposer's own rendered height (Cancel/Submit row +
+            gap + textarea's min-h-[60px]) so opening it doesn't shift
+            everything below it — the collapsed prompt reserves the same
+            footprint up front instead of growing into it. */}
+        <div className="flex min-h-[100px] flex-col justify-center">
+          {activeComposer?.kind === "new" ? (
+            <InlineComposer
+              placeholder="Write a comment..."
+              value={newComment}
+              onChange={setNewComment}
+              onCancel={closeComposer}
+              onSubmit={submitComposer}
+            />
+          ) : (
+            <button
+              onClick={openNewComment}
+              className="flex w-full items-center gap-2 text-left"
+            >
+              <Avatar className="h-9 w-9 border shrink-0">
+                <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
+                <AvatarFallback>?</AvatarFallback>
+              </Avatar>
+              <span className="text-sm italic text-muted-foreground">
+                Add a comment…
+              </span>
+            </button>
+          )}
+        </div>
 
         {loadingComments ? (
           <div className="flex justify-center p-4">

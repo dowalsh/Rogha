@@ -187,11 +187,17 @@ function ReadPostPageInner({
   }, [post]);
 
   const scrollToComments = () => {
-    document.getElementById("comments")?.scrollIntoView({
+    // Center the "Comments" header itself, not the whole (variable-height)
+    // comments section — scrollIntoView-ing the outer container just lands
+    // back at its top edge, same as "start".
+    const target =
+      document.getElementById("comments-header") ??
+      document.getElementById("comments");
+    target?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ? "auto"
         : "smooth",
-      block: "start",
+      block: "center",
     });
   };
 

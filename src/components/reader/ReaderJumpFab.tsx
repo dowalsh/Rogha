@@ -60,9 +60,15 @@ export function ReaderJumpFab({ commentsAnchorId }: { commentsAnchorId: string }
 
   const handleClick = () => {
     if (state === "above") {
-      document.getElementById(commentsAnchorId)?.scrollIntoView({
+      // Center the "Comments" header itself, not the whole (variable-height)
+      // comments section — scrollIntoView-ing the outer container just lands
+      // back at its top edge, same as "start".
+      const target =
+        document.getElementById("comments-header") ??
+        document.getElementById(commentsAnchorId);
+      target?.scrollIntoView({
         behavior: reducedMotion ? "auto" : "smooth",
-        block: "start",
+        block: "center",
       });
     } else {
       window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });

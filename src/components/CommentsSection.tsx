@@ -302,16 +302,6 @@ function InlineComposer({
         // it always did; only the rendered/visible height is clamped.
         className="max-h-[200px] resize-none overflow-y-auto"
       />
-      {/* Reserves trailing scroll room for as long as (and only as long as)
-          this composer exists — mounted/unmounted in the exact same commit
-          as the textarea itself, so there's no cross-component signal or
-          timing gap for the native keyboard-avoidance scroll to race
-          against, and no way for it to linger after the composer closes.
-          Without it, a composer opened near the end of a short thread has
-          nowhere left to scroll: that native scroll (KeyboardResize.Native
-          in capacitor.config.ts) can only move the page up to the end of
-          its actual content. */}
-      <div aria-hidden className="h-80" />
     </div>
   );
 }

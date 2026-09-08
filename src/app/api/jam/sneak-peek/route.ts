@@ -2,14 +2,15 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { getDbUser } from "@/lib/getDbUser";
-import { getTopTrackLastWeek } from "@/lib/lastfm";
-import { resolveSpotifyAlbumImage } from "@/lib/spotify";
+import { getTopArtistLastWeek, getTopTrackLastWeek } from "@/lib/lastfm";
+import { resolveSpotifyAlbumImage, resolveSpotifyArtistMatch } from "@/lib/spotify";
 
-// On-demand, un-persisted look at the viewer's own top track so far this
-// week (Last.fm's 7day period is already a trailing window, so this is
+// On-demand, un-persisted look at the viewer's own top track/artist so far
+// this week (Last.fm's 7day period is already a trailing window, so this is
 // naturally "this week to date" rather than a completed week) — unlike
-// captureWeeklyJamTracks (src/lib/jam.ts), this never writes a WeeklyTrack
-// row, it's just for the "sneak peek" button in WeeklyJamExplainer.
+// captureWeeklyJamTracks/captureWeeklyJamArtists (src/lib/jam.ts), this never
+// writes a WeeklyTrack/WeeklyArtist row, it's just for the "sneak peek"
+// button in WeeklyJamExplainer.
 export async function GET() {
   const { user, error } = await getDbUser();
   if (error) return NextResponse.json({ error: error.code }, { status: error.status });
@@ -23,12 +24,16 @@ export async function GET() {
     return NextResponse.json({ error: "NOT_CONFIGURED" }, { status: 500 });
   }
 
-  const result = await getTopTrackLastWeek(user.lastfmUsername, apiKey);
-  if ("error" in result) {
+  const [trackResult, artistResult] = await Promise.all([
+    getTopTrackLastWeek(user.lastfmUsername, apiKey),
+    getTopArtistLastWeek(user.lastfmUsername, apiKey),
+  ]);
+
+  if ("error" in trackResult) {
     return NextResponse.json({ error: "LASTFM_ERROR" }, { status: 502 });
   }
 
-  const track = result.track;
+  const track = trackResult.track;
   if (track) {
     const spotifyImageUrl = await resolveSpotifyAlbumImage(track.artist, track.name);
     if (spotifyImageUrl) {
@@ -37,5 +42,17 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ track });
+  const artist = "error" in artistResult ? null : artistResult.artist;
+  let artistImageUrl: string | null = null;
+  let artistSpotifyUrl: string | null = null;
+  if (artist) {
+    const spotifyMatch = await resolveSpotifyArtistMatch(artist.name);
+    artistImageUrl = spotifyMatch.imageUrl;
+    artistSpotifyUrl = spotifyMatch.artistUrl;
+  }
+
+  return NextResponse.json({
+    track,
+    artist: artist ? { ...artist, imageUrl: artistImageUrl, spotifyArtistUrl: artistSpotifyUrl } : null,
+  });
 }

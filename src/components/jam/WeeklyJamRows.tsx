@@ -53,7 +53,7 @@ function JamRow({
   onToggleComments: () => void;
 }) {
   return (
-    <div className="py-2">
+    <div className="py-3">
       {/* The whole row toggles the thread — Open in Spotify stops
           propagation so it opens the link instead of also toggling. */}
       <div
@@ -69,57 +69,75 @@ function JamRow({
         }}
         className="cursor-pointer"
       >
-        <div className="flex items-center gap-3">
-          {row.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={row.imageUrl}
-              alt={`${row.name} album art`}
-              className="h-12 w-12 shrink-0 rounded object-cover"
-            />
-          ) : (
-            <div className="h-12 w-12 shrink-0 rounded bg-muted" />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">
-              {row.isViewer ? "You" : row.username}
-            </p>
-            <p className="truncate text-sm text-muted-foreground">
-              {row.name} — {row.artist}
-            </p>
-            <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
-            {row.topArtist && (
-              <p className="mt-1 truncate text-xs text-muted-foreground">
-                Top artist:{" "}
-                {row.topArtist.spotifyArtistUrl ? (
-                  <Link
-                    href={row.topArtist.spotifyArtistUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="font-medium text-foreground hover:underline"
-                  >
-                    {row.topArtist.name}
-                  </Link>
-                ) : (
-                  <span className="font-medium text-foreground">{row.topArtist.name}</span>
-                )}{" "}
-                ({row.topArtist.playCount} plays)
-              </p>
+        <p className="mb-2 truncate text-sm font-medium">
+          {row.isViewer ? "You" : row.username}
+        </p>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            {row.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={row.imageUrl}
+                alt={`${row.name} album art`}
+                className="h-12 w-12 shrink-0 rounded object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 shrink-0 rounded bg-muted" />
             )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">Top Song</p>
+              <p className="truncate text-sm">
+                {row.name} — {row.artist}
+              </p>
+              <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
+            </div>
+            <Link
+              href={row.spotifyTrackUrl ?? row.spotifySearchUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 text-xs text-blue-600 hover:underline"
+            >
+              Open in Spotify
+            </Link>
           </div>
-          <Link
-            href={row.spotifyTrackUrl ?? row.spotifySearchUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0 text-xs text-blue-600 hover:underline"
-          >
-            Open in Spotify
-          </Link>
+
+          {row.topArtist && (
+            <div className="flex items-center gap-3">
+              {row.topArtist.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={row.topArtist.imageUrl}
+                  alt={`${row.topArtist.name} photo`}
+                  className="h-12 w-12 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-12 w-12 shrink-0 rounded-full bg-muted" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">Top Artist</p>
+                <p className="truncate text-sm">{row.topArtist.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {row.topArtist.playCount} plays this week
+                </p>
+              </div>
+              {row.topArtist.spotifyArtistUrl && (
+                <Link
+                  href={row.topArtist.spotifyArtistUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 text-xs text-blue-600 hover:underline"
+                >
+                  Open in Spotify
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
           <MessageCircle className="h-3.5 w-3.5" />
           {row.commentCount}
           <ChevronDown

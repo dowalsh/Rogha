@@ -457,12 +457,6 @@ function ReadPostPageInner({
           backHref={fallbackBackHref}
         />
       )}
-      {/* Fixed bottom buffer — without it, a composer opened near the end of
-          a short thread has nowhere left to scroll: the native
-          keyboard-avoidance scroll (KeyboardResize.Native) can only move the
-          page up to the end of its actual content, so on a short page the
-          keyboard still covers the field no matter what. */}
-      <div aria-hidden className="h-14" />
       <ReaderJumpFab commentsAnchorId="comments" />
     </div>
   );

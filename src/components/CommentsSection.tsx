@@ -800,35 +800,29 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
         )}
         {/* New top-level comment — inline, in-place at the top of the
             thread, same convention as replies. Reads as "almost like the
-            first comment" rather than a separate pill/bar. min-h below
-            matches InlineComposer's own rendered height (Cancel/Submit row +
-            gap + textarea's min-h-[60px]) so opening it doesn't shift
-            everything below it — the collapsed prompt reserves the same
-            footprint up front instead of growing into it. */}
-        <div className="flex min-h-[100px] flex-col justify-center">
-          {activeComposer?.kind === "new" ? (
-            <InlineComposer
-              placeholder="Write a comment..."
-              value={newComment}
-              onChange={setNewComment}
-              onCancel={closeComposer}
-              onSubmit={submitComposer}
-            />
-          ) : (
-            <button
-              onClick={openNewComment}
-              className="flex w-full items-center gap-2 text-left"
-            >
-              <Avatar className="h-9 w-9 border shrink-0">
-                <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
-                <AvatarFallback>?</AvatarFallback>
-              </Avatar>
-              <span className="text-sm italic text-muted-foreground">
-                Add a comment…
-              </span>
-            </button>
-          )}
-        </div>
+            first comment" rather than a separate pill/bar. */}
+        {activeComposer?.kind === "new" ? (
+          <InlineComposer
+            placeholder="Write a comment..."
+            value={newComment}
+            onChange={setNewComment}
+            onCancel={closeComposer}
+            onSubmit={submitComposer}
+          />
+        ) : (
+          <button
+            onClick={openNewComment}
+            className="flex w-full items-center gap-2 text-left"
+          >
+            <Avatar className="h-9 w-9 border shrink-0">
+              <AvatarImage src={user?.imageUrl ?? "/avatar.png"} />
+              <AvatarFallback>?</AvatarFallback>
+            </Avatar>
+            <span className="text-sm italic text-muted-foreground">
+              Add a comment…
+            </span>
+          </button>
+        )}
 
         {loadingComments ? (
           <div className="flex justify-center p-4">

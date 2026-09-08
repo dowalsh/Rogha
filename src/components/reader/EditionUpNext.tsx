@@ -103,7 +103,10 @@ export function EditionUpNext({
         }
       : null;
 
-  const items = jamItem ? [...postItems, jamItem] : postItems;
+  const items =
+    jamItem && jamItem.id !== currentPostId
+      ? [...postItems, jamItem]
+      : postItems;
   const unread = items.filter((i) => !i.readByMe);
   const read = items.filter((i) => i.readByMe);
 

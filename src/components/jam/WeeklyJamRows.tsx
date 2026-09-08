@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, ChevronDown, MessageCircle } from "lucide-react";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
 import { WeeklyJamExplainer, type ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
+import CommentsSection from "@/components/CommentsSection";
+import { cn } from "@/lib/utils";
 
 type WeeklyJamRowsProps = {
   rows: WeeklyJamRow[];
@@ -40,36 +43,120 @@ function ConnectButton({
   );
 }
 
-function JamRow({ row }: { row: WeeklyJamRow }) {
+function JamRow({
+  row,
+  expanded,
+  onToggleComments,
+}: {
+  row: WeeklyJamRow;
+  expanded: boolean;
+  onToggleComments: () => void;
+}) {
   return (
-    <div className="flex items-center gap-3 py-2">
-      {row.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={row.imageUrl}
-          alt={`${row.name} album art`}
-          className="h-12 w-12 shrink-0 rounded object-cover"
-        />
-      ) : (
-        <div className="h-12 w-12 shrink-0 rounded bg-muted" />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
+    <div className="py-3">
+      {/* The whole row toggles the thread — Open in Spotify stops
+          propagation so it opens the link instead of also toggling. */}
+      <div
+        onClick={onToggleComments}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleComments();
+          }
+        }}
+        className="cursor-pointer"
+      >
+        <p className="mb-2 truncate text-sm font-medium">
           {row.isViewer ? "You" : row.username}
         </p>
-        <p className="truncate text-sm text-muted-foreground">
-          {row.name} — {row.artist}
-        </p>
-        <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            {row.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={row.imageUrl}
+                alt={`${row.name} album art`}
+                className="h-12 w-12 shrink-0 rounded object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 shrink-0 rounded bg-muted" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">Top Song</p>
+              <p className="truncate text-sm">
+                {row.name} — {row.artist}
+              </p>
+              <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
+            </div>
+            <Link
+              href={row.spotifyTrackUrl ?? row.spotifySearchUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 text-xs text-blue-600 hover:underline"
+            >
+              Open in Spotify
+            </Link>
+          </div>
+
+          {row.topArtist && (
+            <div className="flex items-center gap-3">
+              {row.topArtist.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={row.topArtist.imageUrl}
+                  alt={`${row.topArtist.name} photo`}
+                  className="h-12 w-12 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-12 w-12 shrink-0 rounded-full bg-muted" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">Top Artist</p>
+                <p className="truncate text-sm">{row.topArtist.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {row.topArtist.playCount} plays this week
+                </p>
+              </div>
+              {row.topArtist.spotifyArtistUrl && (
+                <Link
+                  href={row.topArtist.spotifyArtistUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 text-xs text-blue-600 hover:underline"
+                >
+                  Open in Spotify
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+          <MessageCircle className="h-3.5 w-3.5" />
+          {row.commentCount}
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+              expanded && "rotate-180",
+            )}
+          />
+        </div>
       </div>
-      <Link
-        href={row.spotifySearchUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="shrink-0 text-xs text-blue-600 hover:underline"
-      >
-        Open in Spotify
-      </Link>
+
+      {/* Lazy-mounted — only fetches/renders once this row's thread has
+          been opened, so collapsed rows don't fire comment requests. Each
+          row's expanded state is independent (no accordion). */}
+      {expanded && (
+        <div className="mt-2">
+          <CommentsSection target={{ kind: "track", id: row.trackId }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -82,12 +169,33 @@ export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
     .filter((row) => !row.isViewer)
     .map((row) => ({ userId: row.userId, username: row.username, image: row.image }));
 
+  // Independent expand/collapse per row — multiple threads can be open at
+  // once, no accordion collapsing.
+  const [expandedTrackIds, setExpandedTrackIds] = useState<Set<string>>(new Set());
+
+  function toggleComments(trackId: string) {
+    setExpandedTrackIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(trackId)) {
+        next.delete(trackId);
+      } else {
+        next.add(trackId);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-3">
       {rows.length > 0 ? (
         <div className="divide-y">
           {rows.map((row) => (
-            <JamRow key={row.userId} row={row} />
+            <JamRow
+              key={row.userId}
+              row={row}
+              expanded={expandedTrackIds.has(row.trackId)}
+              onToggleComments={() => toggleComments(row.trackId)}
+            />
           ))}
         </div>
       ) : (

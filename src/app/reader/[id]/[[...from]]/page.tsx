@@ -187,11 +187,17 @@ function ReadPostPageInner({
   }, [post]);
 
   const scrollToComments = () => {
-    document.getElementById("comments")?.scrollIntoView({
+    // Center the "Comments" header itself, not the whole (variable-height)
+    // comments section — scrollIntoView-ing the outer container just lands
+    // back at its top edge, same as "start".
+    const target =
+      document.getElementById("comments-header") ??
+      document.getElementById("comments");
+    target?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
         ? "auto"
         : "smooth",
-      block: "start",
+      block: "center",
     });
   };
 
@@ -418,15 +424,30 @@ function ReadPostPageInner({
 
       {/* Rendered content or diagnostics */}
       <div className="prose prose-neutral max-w-none break-words">{contentNode}</div>
-      <hr className="my-8 border-t border-muted" />
-      <PostLikeFaces postId={post.id} isSignedIn={!!isSignedIn} />
-      <hr className="my-8 border-t border-muted" />
+
+      {/* Printer's mark — the only thing that closes the post body. No rule:
+          the reader should feel the piece end before anything interactive
+          appears. */}
+      <p
+        aria-hidden="true"
+        className="mt-[18px] mb-11 text-center font-serif text-muted-foreground tracking-[0.4em]"
+      >
+        ···
+      </p>
+
+      <div className="rounded-xl bg-muted px-[18px] py-4">
+        <PostLikeFaces postId={post.id} isSignedIn={!!isSignedIn} />
+      </div>
+
       <div id="comments" className="scroll-mt-24">
         <CommentsSection
-          postId={post.id}
-          postAuthorId={post.author?.id ?? ""}
-          postAuthorName={post.author?.username ?? "post author"}
-          postAudienceType={post.audienceType}
+          target={{
+            kind: "post",
+            id: post.id,
+            authorId: post.author?.id ?? "",
+            authorName: post.author?.username ?? "post author",
+            audienceType: post.audienceType,
+          }}
         />
       </div>
       {post.editionId && (

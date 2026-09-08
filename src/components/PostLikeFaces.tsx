@@ -113,15 +113,15 @@ export function PostLikeFaces({
   const rowB = twoRowMode ? ordered.filter((_, i) => i % 2 === 1) : [];
 
   return (
-    <div className="flex flex-col items-start gap-3">
-      <div ref={containerRef} className="w-full min-h-[34px]">
+    <div className="flex flex-col items-center gap-3">
+      <div ref={containerRef} className="w-full min-h-[34px] flex justify-center">
         {isLoadingLikers ? null : ordered.length === 0 ? (
           <p className="font-serif italic text-sm text-muted-foreground">
             No likes yet. Yours would be the first.
           </p>
         ) : (
           <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="w-max">
+            <div className="w-max mx-auto">
               <div className="flex" style={{ gap: GAP }}>
                 <AnimatePresence initial={false}>
                   {rowA.map((liker) => (
@@ -153,10 +153,10 @@ export function PostLikeFaces({
         aria-pressed={likedByMe}
         aria-label={likedByMe ? "Remove your like" : "Like this post"}
         className={cn(
-          "flex h-11 w-11 items-center justify-center self-center rounded-full border transition-colors",
+          "flex h-9 w-9 items-center justify-center self-center rounded-full border border-border bg-white transition-colors",
           likedByMe
-            ? "border-like-active bg-like-active/10"
-            : "border-border bg-transparent hover:border-muted-foreground/50",
+            ? "border-like-active"
+            : "hover:border-muted-foreground/50",
           (!isSignedIn || isLoadingLikers) && "cursor-not-allowed opacity-50"
         )}
       >

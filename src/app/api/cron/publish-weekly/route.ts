@@ -7,7 +7,7 @@ import { getWeekStartUTC } from "@/lib/utils";
 import { getDbUser } from "@/lib/getDbUser";
 import { triggerPublishedEditionEmail } from "@/lib/emails/triggers";
 import { backfillMissingHeroThumbnails } from "@/lib/heroThumbnails";
-import { captureWeeklyJamTracks } from "@/lib/jam";
+import { captureWeeklyJamArtists, captureWeeklyJamTracks } from "@/lib/jam";
 import { computeAndStoreSealedEditionSummary } from "@/lib/insights/edition";
 
 function isAdminEmail(email?: string | null) {
@@ -138,6 +138,7 @@ async function handlePublish(req: NextRequest) {
     // of whether this call actually published anything new.
     try {
       await captureWeeklyJamTracks(result.editionId);
+      await captureWeeklyJamArtists(result.editionId);
       console.log("[cron] weekly jam capture done", { editionId: result.editionId });
     } catch (err) {
       console.error("[cron] weekly jam capture failed", err);

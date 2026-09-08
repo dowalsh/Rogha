@@ -33,11 +33,15 @@ gated to the Edition and to accepted friends).
   compact card appears in the Editions listing's rich preview and a plain
   text row in the archive list. Clicking it opens a dedicated detail page
   (`/editions/[id]/jam`) mirroring the post reader's layout — hero image,
-  header, body — but read-only (no comments/likes, per
-  [Explicitly out](#explicitly-out-deliberately-for-v1)).
+  header, body. Per-song comment threads shipped in
+  [2026-09-06-weekly-jam-track-comments.md](./2026-09-06-weekly-jam-track-comments.md);
+  the "read-only" framing below is otherwise unchanged.
 - **The detail page body.** Per-viewer: shows the viewer's accepted friends
   (plus the viewer) who opted in and have data this week. Each row = track
-  name, artist, play count, and an "Open in Spotify" search link.
+  name, artist, play count, and an "Open in Spotify" link — deep-links
+  straight to the exact matched track when Spotify search finds one, falling
+  back to a search-results link otherwise (see the comments spec above for
+  why this changed alongside per-song threads).
 - **Connect CTA.** A "Connect your Music" button, shown on the detail page
   **only if the viewer is not connected**. It opens an explainer popup (see
   [Connect flow](#connect-flow--explainer)).
@@ -52,10 +56,13 @@ gated to the Edition and to accepted friends).
 ## Explicitly out (deliberately, for v1)
 
 Veto/override of the auto-pick; manual song choice; multiple tracks per
-person; the "one line of why" blurb; comments or reactions on tracks;
+person; the "one line of why" blurb;
 head-to-head / brackets / guess-the-friend; collaborative playlist stitching;
 streaks; circle-scoped audiences (MVP is friends-only); exact edition-week
 alignment (see [Capture](#capture)); backfill.
+
+Comments on tracks shipped — see
+[2026-09-06-weekly-jam-track-comments.md](./2026-09-06-weekly-jam-track-comments.md).
 
 Album artwork was originally planned as out-of-scope (see
 [Compliance](#compliance-gates--decisions-before-ship)) but shipped as part
@@ -184,8 +191,7 @@ response.
 ## Later, not now
 
 - Auto-pick **veto/override** before the Sunday sweep.
-- **Top-N tracks**, a "why" blurb, and **comments/reactions** on tracks (reuse
-  the existing Comment / PostLike machinery).
+- **Top-N tracks** and a "why" blurb.
 - **Exact edition-week alignment** (`getWeeklyTrackChart`).
 - **Circle-scoped** Jams; **profile / friends-list** ambient placement of the
   same `WeeklyTrack`.

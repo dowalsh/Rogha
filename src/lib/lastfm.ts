@@ -26,6 +26,22 @@ type LastfmTopTracksResponse = {
   toptracks?: { track?: LastfmRawTrack | LastfmRawTrack[] };
 };
 
+export type LastfmArtist = {
+  name: string;
+  playCount: number;
+  lastfmUrl: string;
+};
+
+type LastfmRawArtist = {
+  name: string;
+  playcount: string;
+  url: string;
+};
+
+type LastfmTopArtistsResponse = {
+  topartists?: { artist?: LastfmRawArtist | LastfmRawArtist[] };
+};
+
 function pickImageUrl(images: LastfmImage[] | undefined): string | null {
   if (!images) return null;
   const bySize = new Map(images.map((img) => [img.size, img["#text"]]));
@@ -82,4 +98,47 @@ export async function getTopTrackLastWeek(
   if (!track) return { track: null };
 
   return { track: normalizeTrack(track) };
+}
+
+export async function getTopArtistLastWeek(
+  username: string,
+  apiKey: string,
+): Promise<{ artist: LastfmArtist | null } | { error: "LASTFM_ERROR" }> {
+  const url = new URL(LASTFM_BASE_URL);
+  url.searchParams.set("method", "user.gettopartists");
+  url.searchParams.set("user", username);
+  url.searchParams.set("period", "7day");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("api_key", apiKey);
+  url.searchParams.set("format", "json");
+
+  let res: Response;
+  try {
+    res = await fetch(url, { cache: "no-store" });
+  } catch {
+    return { error: "LASTFM_ERROR" };
+  }
+
+  let body: LastfmTopArtistsResponse | LastfmErrorResponse;
+  try {
+    body = await res.json();
+  } catch {
+    return { error: "LASTFM_ERROR" };
+  }
+
+  if ("error" in body) return { error: "LASTFM_ERROR" };
+
+  const rawArtist = body.topartists?.artist;
+  if (!rawArtist) return { artist: null };
+
+  const artist = Array.isArray(rawArtist) ? rawArtist[0] : rawArtist;
+  if (!artist) return { artist: null };
+
+  return {
+    artist: {
+      name: artist.name,
+      playCount: Number(artist.playcount),
+      lastfmUrl: artist.url,
+    },
+  };
 }

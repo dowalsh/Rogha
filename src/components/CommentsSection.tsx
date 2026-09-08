@@ -14,6 +14,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { AudienceType } from "@/types/index";
 import { cn } from "@/lib/utils";
 
+// What this thread is attached to — a post (reader page, full audience
+// banner + block-redirect-home behavior) or a Weekly Jam track (song row,
+// no audience banner since track visibility is always "friends who can see
+// this Jam", not a configurable audience type).
+export type CommentsTarget =
+  | { kind: "post"; id: string; authorId: string; authorName: string; audienceType: AudienceType }
+  | { kind: "track"; id: string };
+
+function commentsApiPath(target: CommentsTarget) {
+  return target.kind === "post"
+    ? `/api/posts/${target.id}/comments`
+    : `/api/tracks/${target.id}/comments`;
+}
+
 interface Author {
   id: string;
   username: string;
@@ -133,7 +147,7 @@ function FailedCommentActions({
 // Flat, one level deep — replies never recurse further (no reply-to-a-reply).
 function ReplyItem({
   reply,
-  postId,
+  target,
   onDelete,
   onBlocked,
   currentUserId,
@@ -141,7 +155,7 @@ function ReplyItem({
   onDiscard,
 }: {
   reply: CommentType;
-  postId: string;
+  target: CommentsTarget;
   onDelete: (id: string) => void;
   onBlocked: (authorId: string) => void;
   currentUserId: string | null;
@@ -163,7 +177,7 @@ function ReplyItem({
   // reseeds from the pre-toggle cached snapshot and the like appears lost.
   const handleToggleLike = async () => {
     await toggle();
-    mutate(`/api/posts/${postId}/comments`);
+    mutate(commentsApiPath(target));
   };
 
   if (reported) return null;
@@ -281,7 +295,12 @@ function InlineComposer({
           el.style.height = `${el.scrollHeight}px`;
         }}
         placeholder={placeholder}
-        className="overflow-hidden resize-none"
+        // max-h + overflow-y-auto do the capping/scrolling purely in CSS —
+        // the JS above still measures/sets the full unbounded scrollHeight
+        // (unchanged from before the cap existed), so the browser's own
+        // keyboard-avoidance scroll on focus sees the same growth behavior
+        // it always did; only the rendered/visible height is clamped.
+        className="max-h-[200px] resize-none overflow-y-auto"
       />
     </div>
   );
@@ -289,7 +308,7 @@ function InlineComposer({
 
 function CommentItem({
   comment,
-  postId,
+  target,
   onReplyClick,
   onDelete,
   onBlocked,
@@ -305,7 +324,7 @@ function CommentItem({
   onDiscard,
 }: {
   comment: CommentType;
-  postId: string;
+  target: CommentsTarget;
   onReplyClick: (
     commentId: string,
     authorName: string,
@@ -337,7 +356,7 @@ function CommentItem({
   // See ReplyItem's handleToggleLike — same reasoning.
   const handleToggleLike = async () => {
     await toggle();
-    mutate(`/api/posts/${postId}/comments`);
+    mutate(commentsApiPath(target));
   };
 
   if (reported) return null;
@@ -412,7 +431,7 @@ function CommentItem({
             <ReplyItem
               key={r.id}
               reply={r}
-              postId={postId}
+              target={target}
               onDelete={(id) => onDelete(id, comment.id)}
               onBlocked={onBlocked}
               currentUserId={currentUserId}
@@ -425,8 +444,9 @@ function CommentItem({
 
       {/* inline, in-place reply composer — renders right after this
           thread's replies so the target is directly above it by DOM
-          order, replacing the Reply button while active */}
-      {!comment.deliveryStatus &&
+          order, replacing the Reply button while active. Track threads
+          don't support replies at all, so this never renders for them. */}
+      {target.kind === "post" && !comment.deliveryStatus &&
         (isReplying ? (
           <div className="pl-9 mt-2">
             <InlineComposer
@@ -460,17 +480,7 @@ function CommentItem({
   );
 }
 
-export default function CommentsSection({
-  postId,
-  postAuthorId,
-  postAuthorName,
-  postAudienceType,
-}: {
-  postId: string;
-  postAuthorId: string;
-  postAuthorName: string;
-  postAudienceType: AudienceType;
-}) {
+export default function CommentsSection({ target }: { target: CommentsTarget }) {
   const router = useRouter();
   const { user } = useUser();
   const [comments, setComments] = useState<CommentType[]>([]);
@@ -524,7 +534,7 @@ export default function CommentsSection({
   }
 
   function handleBlocked(authorId: string) {
-    if (authorId === postAuthorId) {
+    if (target.kind === "post" && authorId === target.authorId) {
       router.replace("/");
       return;
     }
@@ -536,6 +546,11 @@ export default function CommentsSection({
   const { data: me } = useSWR<{ id: string }>("/api/me");
   const currentUserId = me?.id ?? null;
 
+  const apiPath = commentsApiPath(target);
+  // A post and a track never share an id in practice, but namespacing by
+  // kind keeps the seeded/loading-key comparisons below unambiguous.
+  const targetKey = `${target.kind}:${target.id}`;
+
   // revalidateIfStale: false — comment add/reply/delete are managed via the
   // local `comments` state below (with optimistic updates), so an automatic
   // background revalidation racing an in-flight optimistic update could
@@ -544,25 +559,25 @@ export default function CommentsSection({
   // state (seededForIdRef only reseeds on a fresh mount, i.e. after the
   // write has already settled).
   const { data: commentsData } = useSWR<CommentType[]>(
-    `/api/posts/${postId}/comments`,
+    apiPath,
     { revalidateIfStale: false },
   );
 
-  // Seed local state once per postId when the cached/fetched data arrives —
+  // Seed local state once per target when the cached/fetched data arrives —
   // not on every render, so it doesn't stomp on optimistic add/reply/delete.
   const seededForIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!commentsData || seededForIdRef.current === postId) return;
-    seededForIdRef.current = postId;
+    if (!commentsData || seededForIdRef.current === targetKey) return;
+    seededForIdRef.current = targetKey;
     setComments(
       [...commentsData].sort(
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       ),
     );
-  }, [commentsData, postId]);
+  }, [commentsData, targetKey]);
 
-  const loadingComments = seededForIdRef.current !== postId;
+  const loadingComments = seededForIdRef.current !== targetKey;
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash) {
@@ -605,7 +620,7 @@ export default function CommentsSection({
   // status) — left as-is on the object; it's a different field from ours.
   async function postComment(id: string, content: string, parentId?: string) {
     try {
-      const res = await fetch(`/api/posts/${postId}/comments`, {
+      const res = await fetch(apiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parentId ? { content, parentId } : { content }),
@@ -627,7 +642,7 @@ export default function CommentsSection({
       // (remounting this component) reads the just-posted comment instead
       // of the pre-post snapshot — seededForIdRef already guards against
       // this clobbering the local optimistic state in the current mount.
-      mutate(`/api/posts/${postId}/comments`);
+      mutate(apiPath);
     } catch (err) {
       console.error("Failed to post comment:", err);
       updateLocalComment(id, parentId, (c) => ({
@@ -715,7 +730,7 @@ export default function CommentsSection({
     });
     if (!res.ok) return;
 
-    mutate(`/api/posts/${postId}/comments`);
+    mutate(apiPath);
 
     if (parentId) {
       setComments((prev) =>
@@ -736,32 +751,53 @@ export default function CommentsSection({
   );
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-8">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold">Comments</h2>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-            {totalComments}
-          </span>
+    <div className={cn("mx-auto max-w-2xl", target.kind === "post" ? "space-y-8 py-8" : "space-y-6")}>
+      {/* Track threads skip the header entirely — the row above already
+          shows the comment count, so a second "Comments N" label + divider
+          would be redundant; jump straight into the composer/list. */}
+      {target.kind === "post" && (
+        <div className="space-y-2">
+          {/* Separate, tighter anchor than the outer #comments div — jump
+              navigation centers on this specific header rather than
+              scrollIntoView-ing the whole (variable-height) comments
+              section, which would just re-land back at its top edge. */}
+          <div id="comments-header" className="flex items-center gap-2 scroll-mt-24">
+            <h2 className="text-2xl font-bold">Comments</h2>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+              {totalComments}
+            </span>
+          </div>
+          {target.audienceType === "FRIENDS" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              Comments are visible to all {target.authorName}'s friends
+            </p>
+          )}
+          {target.audienceType === "ALL_USERS" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              Comments are visible to all Rogha users
+            </p>
+          )}
+          {target.audienceType === "CIRCLE" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              Comments are visible to all members of this circle
+            </p>
+          )}
         </div>
-        {postAudienceType === "FRIENDS" && (
-          <p className="text-sm italic text-orange-500 mb-4">
-            Comments are visible to all {postAuthorName}'s friends
-          </p>
-        )}
-        {postAudienceType === "ALL_USERS" && (
-          <p className="text-sm italic text-orange-500 mb-4">
-            Comments are visible to all Rogha users
-          </p>
-        )}
-        {postAudienceType === "CIRCLE" && (
-          <p className="text-sm italic text-orange-500 mb-4">
-            Comments are visible to all members of this circle
-          </p>
-        )}
-      </div>
+      )}
 
-      <div className="space-y-6 pb-8">
+      <div
+        className={cn(
+          "space-y-6 pb-8",
+          // Mirrors the reply-grouping style (CommentItem's replies block
+          // below) — a vertical line groups the composer + top-level
+          // comments under the song row they hang off of, same visual
+          // language as a reply thread groups under its parent comment.
+          target.kind === "track" && "relative pl-9",
+        )}
+      >
+        {target.kind === "track" && (
+          <div className="absolute left-4 top-0 bottom-2 w-px bg-border" />
+        )}
         {/* New top-level comment — inline, in-place at the top of the
             thread, same convention as replies. Reads as "almost like the
             first comment" rather than a separate pill/bar. */}
@@ -799,7 +835,7 @@ export default function CommentsSection({
               <CommentItem
                 key={c.id}
                 comment={c}
-                postId={postId}
+                target={target}
                 onReplyClick={handleReplyClick}
                 onDelete={deleteComment}
                 onBlocked={handleBlocked}

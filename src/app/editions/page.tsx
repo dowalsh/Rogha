@@ -12,7 +12,6 @@ import { EditionsListSkeleton } from "@/components/editions/EditionsListSkeleton
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
 import { jamPreviewFromRows, type WeeklyJamData } from "@/lib/jam-preview";
-import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -397,9 +396,6 @@ function StoryLead({ item, editionId }: { item: PreviewItem; editionId: string }
           )}
           <h2 className="text-4xl font-black leading-tight group-hover:underline">The Weekly Jam</h2>
         </Link>
-        <div className="absolute top-0 right-0">
-          <WeeklyJamInfoDot />
-        </div>
       </div>
     );
   }
@@ -443,9 +439,6 @@ function StoryCard({ item, editionId }: { item: PreviewItem; editionId: string }
           )}
           <h3 className="text-base font-semibold leading-snug group-hover:underline">The Weekly Jam</h3>
         </Link>
-        <div className="absolute top-1 right-1 z-10">
-          <WeeklyJamInfoDot />
-        </div>
       </div>
     );
   }

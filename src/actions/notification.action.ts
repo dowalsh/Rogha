@@ -68,6 +68,7 @@ export async function getNotifications() {
             content: true,
             createdAt: true,
             postId: true,
+            weeklyTrack: { select: { editionId: true } },
           },
         },
       },
@@ -155,14 +156,33 @@ export async function createLikeNotification({
     });
   }
 }
+// The reader (post) or Jam (track) page a comment/reply notification
+// should deep-link to, sans the "#comment-…" fragment the callers append.
+async function resolveCommentTargetPath(comment: {
+  postId: string | null;
+  weeklyTrackId: string | null;
+}): Promise<string | null> {
+  if (comment.postId) return `/reader/${comment.postId}`;
+  if (comment.weeklyTrackId) {
+    const track = await prisma.weeklyTrack.findUnique({
+      where: { id: comment.weeklyTrackId },
+      select: { editionId: true },
+    });
+    if (track) return `/editions/${track.editionId}/jam`;
+  }
+  return null;
+}
+
 export async function createCommentNotification({
   commenterId,
   postId,
+  trackId,
   parentCommentId,
   newCommentId,
 }: {
   commenterId: string;
   postId?: string;
+  trackId?: string;
   parentCommentId?: string;
   newCommentId: string;
 }) {
@@ -175,7 +195,7 @@ export async function createCommentNotification({
   // get comment info
   const newComment = await prisma.comment.findUnique({
     where: { id: newCommentId },
-    select: { id: true, content: true, postId: true },
+    select: { id: true, content: true, postId: true, weeklyTrackId: true },
   });
 
   if (!commenter || !newComment) return null;
@@ -220,6 +240,51 @@ export async function createCommentNotification({
         title: "New comment",
         body: `${commenter.username} commented on "${post.title ?? "your post"}"`,
         url: `/reader/${postId}#comment-${newCommentId}`,
+      });
+    }
+
+    return notif;
+  }
+
+  if (trackId) {
+    const track = await prisma.weeklyTrack.findUnique({
+      where: { id: trackId },
+      include: { user: true }, // we need recipient's email
+    });
+
+    if (!track || track.userId === commenterId) return null;
+
+    const notif = await prisma.notification.create({
+      data: {
+        userId: track.userId,
+        creatorId: commenterId,
+        type: "COMMENT",
+        commentId: newCommentId,
+      },
+    });
+
+    try {
+      const emailPrefs = await getUserEmailPrefs(track.userId);
+      if (emailPrefs.emailEnabled && emailPrefs.emailComments) {
+        await triggerCommentNotificationEmail({
+          to: track.user.email,
+          actorName: commenter.username,
+          commentText: newComment.content,
+          url: `${process.env.APP_URL}/open/editions/${track.editionId}/jam#comment-${newComment.id}`,
+          postTitle: `${track.name} — ${track.artist}`,
+          isReply: false,
+        });
+      }
+    } catch (err) {
+      console.error("[COMMENT_EMAIL_ERROR]", err);
+    }
+
+    const pushPrefs = await getUserPushPrefs(track.userId);
+    if (pushPrefs.pushEnabled && pushPrefs.pushComments) {
+      await sendPushToUser(track.userId, {
+        title: "New comment",
+        body: `${commenter.username} commented on "${track.name}"`,
+        url: `/editions/${track.editionId}/jam#comment-${newCommentId}`,
       });
     }
 
@@ -284,6 +349,7 @@ export async function createCommentNotification({
       },
     });
     const replyPrefsMap = new Map(replyPrefRows.map((p) => [p.userId, p]));
+    const targetPath = await resolveCommentTargetPath(newComment);
 
     for (const uid of participantIds) {
       const participant = threadComments.find(
@@ -295,6 +361,8 @@ export async function createCommentNotification({
       const shouldEmail = !p || (p.emailEnabled && p.emailReplies);
       if (!shouldEmail) continue;
 
+      if (!targetPath) continue;
+
       try {
         console.log("Sending email to:", participant.email);
 
@@ -302,7 +370,7 @@ export async function createCommentNotification({
           to: participant.email,
           actorName: commenter.username,
           commentText: newComment.content,
-          url: `${process.env.APP_URL}/open/reader/${newComment.postId}#comment-${newComment.id}`,
+          url: `${process.env.APP_URL}/open${targetPath}#comment-${newComment.id}`,
           isReply: true,
         });
       } catch (err) {
@@ -314,7 +382,7 @@ export async function createCommentNotification({
         await sendPushToUser(uid, {
           title: "New reply",
           body: `${commenter.username} replied in a thread`,
-          url: `/reader/${newComment.postId}#comment-${newCommentId}`,
+          url: `${targetPath}#comment-${newCommentId}`,
         });
       }
     }

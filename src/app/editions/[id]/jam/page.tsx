@@ -6,7 +6,7 @@ import { getDbUser } from "@/lib/getDbUser";
 import { getPublishedEditionById } from "@/lib/editions";
 import { markWeeklyJamViewed } from "@/lib/jam";
 import { WeeklyJamRows } from "@/components/jam/WeeklyJamRows";
-import { WeeklyJamInfoDot } from "@/components/jam/WeeklyJamInfoDot";
+import { EditionUpNext } from "@/components/reader/EditionUpNext";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,6 @@ export default async function WeeklyJamPage({
       <header className="space-y-3">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold leading-tight">The Weekly Jam</h1>
-          <WeeklyJamInfoDot />
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{editionLabel}</span>
@@ -48,6 +47,12 @@ export default async function WeeklyJamPage({
       </header>
 
       <WeeklyJamRows rows={rows} viewerConnected={viewerConnected} />
+
+      <EditionUpNext
+        editionId={edition.id}
+        currentPostId={`jam:${edition.id}`}
+        backHref={`/editions/${edition.id}`}
+      />
     </div>
   );
 }

@@ -17,11 +17,28 @@ type AdminComment = {
   status: CommentStatus;
   createdAt: string;
   author: { id: string; username: string; email: string };
-  post: { id: string; title: string | null };
+  post: { id: string; title: string | null } | null;
+  weeklyTrack: { id: string; name: string; artist: string; editionId: string } | null;
 };
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString();
+}
+
+// A comment attaches to exactly one of post/weeklyTrack — renders whichever
+// is set, linking to the reader or the Jam page respectively.
+function CommentTargetLink({ comment }: { comment: AdminComment }) {
+  if (comment.post) {
+    return <PostLink id={comment.post.id} title={comment.post.title} />;
+  }
+  if (comment.weeklyTrack) {
+    return (
+      <a href={`/editions/${comment.weeklyTrack.editionId}/jam`} className="hover:underline">
+        {comment.weeklyTrack.name} — {comment.weeklyTrack.artist}
+      </a>
+    );
+  }
+  return <span className="italic text-muted-foreground">—</span>;
 }
 
 export function CommentsList() {
@@ -74,7 +91,7 @@ export function CommentsList() {
             </div>
             <UserLink id={c.author.id} username={c.author.username} email={c.author.email} />
             <div className="text-xs text-muted-foreground truncate">
-              on <PostLink id={c.post.id} title={c.post.title} />
+              on <CommentTargetLink comment={c} />
             </div>
             <div className="text-xs text-muted-foreground">{fmt(c.createdAt)}</div>
             {c.status !== "REMOVED" && (
@@ -109,7 +126,7 @@ export function CommentsList() {
                   <UserLink id={c.author.id} username={c.author.username} email={c.author.email} />
                 </td>
                 <td className="py-3 pr-4 text-xs text-muted-foreground max-w-[160px] truncate">
-                  <PostLink id={c.post.id} title={c.post.title} />
+                  <CommentTargetLink comment={c} />
                 </td>
                 <td className="py-3 pr-4"><StatusBadge status={c.status} /></td>
                 <td className="py-3 pr-4 text-xs text-muted-foreground whitespace-nowrap">{fmt(c.createdAt)}</td>

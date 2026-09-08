@@ -19,6 +19,18 @@ export type WeeklyJamRow = {
   lastfmUrl: string;
   isViewer: boolean;
   commentCount: number;
+  // Top artist of the week — separately captured from Last.fm, so it can be
+  // absent even when the top track isn't (e.g. Last.fm returned one but not
+  // the other for that user that week).
+  topArtist: WeeklyJamArtist | null;
+};
+
+export type WeeklyJamArtist = {
+  name: string;
+  playCount: number;
+  imageUrl: string | null;
+  spotifyArtistUrl: string | null;
+  lastfmUrl: string;
 };
 
 export type WeeklyJamData = {

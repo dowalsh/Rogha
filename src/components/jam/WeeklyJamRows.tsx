@@ -88,6 +88,25 @@ function JamRow({
               {row.name} — {row.artist}
             </p>
             <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
+            {row.topArtist && (
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                Top artist:{" "}
+                {row.topArtist.spotifyArtistUrl ? (
+                  <Link
+                    href={row.topArtist.spotifyArtistUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    {row.topArtist.name}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-foreground">{row.topArtist.name}</span>
+                )}{" "}
+                ({row.topArtist.playCount} plays)
+              </p>
+            )}
           </div>
           <Link
             href={row.spotifyTrackUrl ?? row.spotifySearchUrl}

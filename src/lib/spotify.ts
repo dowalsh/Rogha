@@ -17,6 +17,13 @@ type SpotifySearchResponse = {
       album?: { images?: SpotifyImage[] };
     }>;
   };
+  artists?: {
+    items?: Array<{
+      id?: string;
+      external_urls?: { spotify?: string };
+      images?: SpotifyImage[];
+    }>;
+  };
 };
 
 // Module-level cache: fine for a single-admin spike (one warm server
@@ -158,5 +165,47 @@ export async function resolveSpotifyTrackMatch(
   return {
     imageUrl: pickImageUrl(item?.album?.images) ?? null,
     trackUrl: item?.external_urls?.spotify ?? (item?.id ? `https://open.spotify.com/track/${item.id}` : null),
+  };
+}
+
+/**
+ * Best-effort exact-artist lookup: same idea as resolveSpotifyTrackMatch but
+ * for an artist name — returns their Spotify photo and profile URL. Returns
+ * nulls on any failure (missing credentials, network error, no match).
+ */
+export async function resolveSpotifyArtistMatch(
+  artist: string,
+): Promise<{ imageUrl: string | null; artistUrl: string | null }> {
+  const token = await getAccessToken();
+  if (!token) return { imageUrl: null, artistUrl: null };
+
+  const url = new URL(SEARCH_URL);
+  url.searchParams.set("q", `artist:${artist}`);
+  url.searchParams.set("type", "artist");
+  url.searchParams.set("limit", "1");
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+  } catch {
+    return { imageUrl: null, artistUrl: null };
+  }
+
+  if (!res.ok) return { imageUrl: null, artistUrl: null };
+
+  let body: SpotifySearchResponse;
+  try {
+    body = await res.json();
+  } catch {
+    return { imageUrl: null, artistUrl: null };
+  }
+
+  const item = body.artists?.items?.[0];
+  return {
+    imageUrl: pickImageUrl(item?.images) ?? null,
+    artistUrl: item?.external_urls?.spotify ?? (item?.id ? `https://open.spotify.com/artist/${item.id}` : null),
   };
 }

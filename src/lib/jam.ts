@@ -1,13 +1,14 @@
 // src/lib/jam.ts
 //
-// Weekly Jam: per-user, per-edition "top track of the week," auto-synced
-// from Last.fm (see docs/specs/2026-08-04-weekly-jam-mvp.md). Two halves:
-// capture (run from the Sunday cron, writes WeeklyTrack rows) and read
-// (used by the Edition page to render the Jam card for a viewer).
+// Weekly Jam: per-user, per-edition "top track of the week" (and top artist
+// of the week), auto-synced from Last.fm (see
+// docs/specs/2026-08-04-weekly-jam-mvp.md). Two halves: capture (run from
+// the Sunday cron, writes WeeklyTrack/WeeklyArtist rows) and read (used by
+// the Edition page to render the Jam card for a viewer).
 
 import { prisma } from "@/lib/prisma";
-import { getTopTrackLastWeek } from "@/lib/lastfm";
-import { resolveSpotifyTrackMatch } from "@/lib/spotify";
+import { getTopArtistLastWeek, getTopTrackLastWeek } from "@/lib/lastfm";
+import { resolveSpotifyArtistMatch, resolveSpotifyTrackMatch } from "@/lib/spotify";
 import { getAcceptedFriendships } from "@/lib/friends";
 import type { WeeklyJamData, WeeklyJamRow } from "@/lib/jam-preview";
 
@@ -68,6 +69,53 @@ export async function captureWeeklyJamTracks(editionId: string): Promise<void> {
   }
 }
 
+/**
+ * Fetches each opted-in user's top artist of the last 7 days and upserts a
+ * WeeklyArtist row for this edition. Same best-effort semantics as
+ * captureWeeklyJamTracks — a failure for one user never blocks the rest, and
+ * this must never throw in a way that blocks the edition publish it runs
+ * after. A separate Last.fm call from the top track (user.gettopartists vs.
+ * user.gettoptracks), so it's kept as its own capture pass.
+ */
+export async function captureWeeklyJamArtists(editionId: string): Promise<void> {
+  const apiKey = process.env.LASTFM_API_KEY;
+  if (!apiKey) return; // not configured — silent no-op
+
+  const participants = await prisma.user.findMany({
+    where: { jamEnabled: true, lastfmUsername: { not: null } },
+    select: { id: true, lastfmUsername: true },
+  });
+
+  for (const user of participants) {
+    try {
+      const result = await getTopArtistLastWeek(user.lastfmUsername!, apiKey);
+      if ("error" in result || !result.artist) continue;
+
+      const a = result.artist;
+      // Last.fm's artist images have been blank/placeholder for years —
+      // Spotify is the only real source here, same precedence as tracks.
+      const spotifyMatch = await resolveSpotifyArtistMatch(a.name);
+
+      const data = {
+        name: a.name,
+        playCount: a.playCount,
+        imageUrl: spotifyMatch.imageUrl,
+        imageSource: spotifyMatch.imageUrl ? "spotify" : null,
+        spotifyArtistUrl: spotifyMatch.artistUrl,
+        lastfmUrl: a.lastfmUrl,
+      };
+
+      await prisma.weeklyArtist.upsert({
+        where: { editionId_userId: { editionId, userId: user.id } },
+        create: { editionId, userId: user.id, ...data },
+        update: { ...data, capturedAt: new Date() },
+      });
+    } catch (err) {
+      console.error("[captureWeeklyJamArtists] user failed, skipping", user.id, err);
+    }
+  }
+}
+
 // ── Read ─────────────────────────────────────────────────────────────────
 
 /**
@@ -103,39 +151,66 @@ export async function getWeeklyJamForEdition(
     : friendships.map((f) => f.friendId);
   const candidateIds = [viewerId, ...friendIds].filter((id) => !blockedIds.has(id));
 
-  const tracks = await prisma.weeklyTrack.findMany({
-    where: { editionId, userId: { in: candidateIds } },
-    select: {
-      id: true,
-      userId: true,
-      name: true,
-      artist: true,
-      playCount: true,
-      imageUrl: true,
-      spotifySearchUrl: true,
-      spotifyTrackUrl: true,
-      lastfmUrl: true,
-      user: { select: { username: true, image: true } },
-      _count: { select: { comments: { where: { status: "ACTIVE" } } } },
-    },
-  });
+  const [tracks, artists] = await Promise.all([
+    prisma.weeklyTrack.findMany({
+      where: { editionId, userId: { in: candidateIds } },
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        artist: true,
+        playCount: true,
+        imageUrl: true,
+        spotifySearchUrl: true,
+        spotifyTrackUrl: true,
+        lastfmUrl: true,
+        user: { select: { username: true, image: true } },
+        _count: { select: { comments: { where: { status: "ACTIVE" } } } },
+      },
+    }),
+    prisma.weeklyArtist.findMany({
+      where: { editionId, userId: { in: candidateIds } },
+      select: {
+        userId: true,
+        name: true,
+        playCount: true,
+        imageUrl: true,
+        spotifyArtistUrl: true,
+        lastfmUrl: true,
+      },
+    }),
+  ]);
+
+  const artistByUserId = new Map(artists.map((a) => [a.userId, a]));
 
   const rows: WeeklyJamRow[] = tracks
-    .map((t) => ({
-      trackId: t.id,
-      userId: t.userId,
-      username: t.user.username,
-      image: t.user.image,
-      name: t.name,
-      artist: t.artist,
-      playCount: t.playCount,
-      imageUrl: t.imageUrl,
-      spotifySearchUrl: t.spotifySearchUrl,
-      spotifyTrackUrl: t.spotifyTrackUrl,
-      lastfmUrl: t.lastfmUrl,
-      isViewer: t.userId === viewerId,
-      commentCount: t._count.comments,
-    }))
+    .map((t) => {
+      const a = artistByUserId.get(t.userId);
+      return {
+        trackId: t.id,
+        userId: t.userId,
+        username: t.user.username,
+        image: t.user.image,
+        name: t.name,
+        artist: t.artist,
+        playCount: t.playCount,
+        imageUrl: t.imageUrl,
+        spotifySearchUrl: t.spotifySearchUrl,
+        spotifyTrackUrl: t.spotifyTrackUrl,
+        lastfmUrl: t.lastfmUrl,
+        isViewer: t.userId === viewerId,
+        commentCount: t._count.comments,
+        topArtist: a
+          ? {
+              name: a.name,
+              playCount: a.playCount,
+              imageUrl: a.imageUrl,
+              spotifyArtistUrl: a.spotifyArtistUrl,
+              lastfmUrl: a.lastfmUrl,
+            }
+          : null,
+      };
+    })
     .sort((a, b) => (a.isViewer === b.isViewer ? 0 : a.isViewer ? -1 : 1));
 
   return {

@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ChevronDown, MessageCircle } from "lucide-react";
+import { Check, ChevronDown, MessageCircle, Sparkles } from "lucide-react";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
-import { WeeklyJamExplainer, type ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
+import {
+  WeeklyJamExplainer,
+  type ConnectedFriend,
+} from "@/components/jam/WeeklyJamExplainer";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import CommentsSection from "@/components/CommentsSection";
 import { cn } from "@/lib/utils";
 
@@ -90,8 +98,34 @@ function JamRow({
               <p className="truncate text-sm">
                 {row.name} — {row.artist}
               </p>
-              <p className="text-xs text-muted-foreground">{row.playCount} plays this week</p>
+              <p className="text-xs text-muted-foreground">
+                {row.playCount} plays this week
+              </p>
             </div>
+            {row.inspiredBy && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Inspiration"
+                    className="shrink-0 text-amber-500 hover:text-amber-400"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-64 text-sm"
+                >
+                  <p className="font-medium">Inspired?</p>
+                  <p className="mt-1 text-muted-foreground">
+                    This song featured in {row.inspiredBy?.username ?? ""}
+                    &apos;s weekly jam previously.
+                  </p>
+                </PopoverContent>
+              </Popover>
+            )}
             <Link
               href={row.spotifyTrackUrl ?? row.spotifySearchUrl}
               target="_blank"
@@ -167,11 +201,17 @@ function JamRow({
 export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
   const connectedFriends: ConnectedFriend[] = rows
     .filter((row) => !row.isViewer)
-    .map((row) => ({ userId: row.userId, username: row.username, image: row.image }));
+    .map((row) => ({
+      userId: row.userId,
+      username: row.username,
+      image: row.image,
+    }));
 
   // Independent expand/collapse per row — multiple threads can be open at
   // once, no accordion collapsing.
-  const [expandedTrackIds, setExpandedTrackIds] = useState<Set<string>>(new Set());
+  const [expandedTrackIds, setExpandedTrackIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   function toggleComments(trackId: string) {
     setExpandedTrackIds((prev) => {
@@ -205,13 +245,21 @@ export function WeeklyJamRows({ rows, viewerConnected }: WeeklyJamRowsProps) {
       )}
 
       <div className="pt-1">
-        <ConnectButton viewerConnected={viewerConnected} connectedFriends={connectedFriends} />
+        <ConnectButton
+          viewerConnected={viewerConnected}
+          connectedFriends={connectedFriends}
+        />
       </div>
 
       {rows.length > 0 && (
         <p className="pt-1 text-[10px] text-muted-foreground">
           Track data powered by{" "}
-          <Link href="https://www.last.fm" target="_blank" rel="noreferrer" className="hover:underline">
+          <Link
+            href="https://www.last.fm"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline"
+          >
             AudioScrobbler
           </Link>
         </p>

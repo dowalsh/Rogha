@@ -182,6 +182,7 @@ export async function getWeeklyJamForEdition(
   ]);
 
   const artistByUserId = new Map(artists.map((a) => [a.userId, a]));
+  const inspiredByUserId = await getInspirationByUserId(tracks, editionId);
 
   const rows: WeeklyJamRow[] = tracks
     .map((t) => {
@@ -209,6 +210,7 @@ export async function getWeeklyJamForEdition(
               lastfmUrl: a.lastfmUrl,
             }
           : null,
+        inspiredBy: inspiredByUserId.get(t.userId) ?? null,
       };
     })
     .sort((a, b) => (a.isViewer === b.isViewer ? 0 : a.isViewer ? -1 : 1));
@@ -217,6 +219,69 @@ export async function getWeeklyJamForEdition(
     rows,
     viewerConnected: Boolean(viewer?.jamEnabled && viewer?.lastfmUsername),
   };
+}
+
+/**
+ * For each row owner in `tracks`, checks whether their top track this week
+ * matches the top track ONE OF THEIR OWN FRIENDS had in an earlier edition
+ * — the "sparkle" callout ("someone is quite the trendsetter"). Visibility
+ * is gated by the row owner's friend graph, not the viewer's — the viewer
+ * doesn't need to know the inspiring friend, only the row owner does.
+ * Matches on name+artist, case-insensitively, ignoring the current edition.
+ */
+async function getInspirationByUserId(
+  tracks: { userId: string; name: string; artist: string }[],
+  editionId: string,
+): Promise<Map<string, { username: string }>> {
+  if (tracks.length === 0) return new Map();
+
+  const rowUserIds = tracks.map((t) => t.userId);
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [{ aId: { in: rowUserIds } }, { bId: { in: rowUserIds } }],
+    },
+    select: { aId: true, bId: true },
+  });
+
+  const friendIdsByRowOwner = new Map<string, Set<string>>();
+  for (const f of friendships) {
+    if (rowUserIds.includes(f.aId)) {
+      const set = friendIdsByRowOwner.get(f.aId) ?? new Set<string>();
+      set.add(f.bId);
+      friendIdsByRowOwner.set(f.aId, set);
+    }
+    if (rowUserIds.includes(f.bId)) {
+      const set = friendIdsByRowOwner.get(f.bId) ?? new Set<string>();
+      set.add(f.aId);
+      friendIdsByRowOwner.set(f.bId, set);
+    }
+  }
+
+  const allFriendIds = Array.from(
+    new Set(Array.from(friendIdsByRowOwner.values()).flatMap((s) => Array.from(s))),
+  );
+  if (allFriendIds.length === 0) return new Map();
+
+  const priorTracks = await prisma.weeklyTrack.findMany({
+    where: { userId: { in: allFriendIds }, editionId: { not: editionId } },
+    select: { userId: true, name: true, artist: true, user: { select: { username: true } } },
+  });
+
+  const result = new Map<string, { username: string }>();
+  for (const t of tracks) {
+    if (result.has(t.userId)) continue;
+    const friendIds = friendIdsByRowOwner.get(t.userId);
+    if (!friendIds) continue;
+    const match = priorTracks.find(
+      (p) =>
+        friendIds.has(p.userId) &&
+        p.name.toLowerCase() === t.name.toLowerCase() &&
+        p.artist.toLowerCase() === t.artist.toLowerCase(),
+    );
+    if (match) result.set(t.userId, { username: match.user.username });
+  }
+  return result;
 }
 
 /**

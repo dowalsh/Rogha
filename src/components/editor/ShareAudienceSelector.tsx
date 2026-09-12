@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import useSWR, { mutate } from "swr";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -14,15 +14,11 @@ import {
 } from "@/components/ui/sheet";
 import { NewCircleDialog } from "@/components/NewCircleDialog";
 import { createCircle } from "@/actions/circle.action";
-import { mutate } from "swr";
 import { cn } from "@/lib/utils";
 
-type ShareCircle = {
-  id: string;
-  name: string;
-  memberCount: number;
-  members: { id: string; username: string; image: string | null }[];
-};
+type Member = { id: string; username: string; image: string | null };
+type ShareCircle = { id: string; name: string; memberCount: number; members: Member[] };
+type FriendsItem = { user: { id: string; username: string | null; image: string | null } };
 
 const FACE_LIMIT = 5;
 
@@ -31,14 +27,16 @@ function initialsFor(username: string) {
 }
 
 function FaceRow({
-  circle,
+  members,
+  memberCount,
   onOpenMembers,
 }: {
-  circle: ShareCircle;
+  members: Member[];
+  memberCount: number;
   onOpenMembers: () => void;
 }) {
-  const shown = circle.members.slice(0, FACE_LIMIT);
-  const overflow = circle.memberCount - shown.length;
+  const shown = members.slice(0, FACE_LIMIT);
+  const overflow = memberCount - shown.length;
 
   return (
     <button
@@ -69,13 +67,22 @@ function FaceRow({
   );
 }
 
-function CircleCard({
-  circle,
+// Shared card shape for a circle or "All Friends" — same face-row + member-
+// popup pattern for both, per feedback that All Friends shouldn't look like
+// a lesser option.
+function AudienceCard({
+  title,
+  subtitle,
+  memberCount,
+  members,
   selected,
   onToggle,
   onOpenMembers,
 }: {
-  circle: ShareCircle;
+  title: string;
+  subtitle: string;
+  memberCount: number;
+  members: Member[];
   selected: boolean;
   onToggle: () => void;
   onOpenMembers: () => void;
@@ -99,10 +106,8 @@ function CircleCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[15px] font-semibold">{circle.name}</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            {circle.memberCount} {circle.memberCount === 1 ? "person" : "people"}
-          </div>
+          <div className="text-[15px] font-semibold">{title}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div>
         </div>
         <span
           className={cn(
@@ -119,184 +124,129 @@ function CircleCard({
           )}
         </span>
       </div>
-      {circle.memberCount > 0 && (
+      {memberCount > 0 && (
         <div className="mt-[11px]">
-          <FaceRow circle={circle} onOpenMembers={onOpenMembers} />
+          <FaceRow members={members} memberCount={memberCount} onOpenMembers={onOpenMembers} />
         </div>
       )}
     </div>
   );
 }
 
+// Inline audience picker, embedded directly in the composer (not a separate
+// screen) — circles are multi-select cards, "All Friends" is a standalone
+// mutually-exclusive card with the same face-row/member-popup treatment.
 export function ShareAudienceSelector({
-  open,
-  onBack,
   audienceType,
   circleIds,
   onChange,
-  posting,
-  onPost,
+  disabled,
 }: {
-  open: boolean;
-  onBack: () => void;
   audienceType: "FRIENDS" | "CIRCLE";
   circleIds: string[];
   onChange: (audienceType: "FRIENDS" | "CIRCLE", circleIds: string[]) => void;
-  posting: boolean;
-  onPost: () => void;
+  disabled?: boolean;
 }) {
-  const { data: circles, isLoading } = useSWR<ShareCircle[]>(
-    open ? "/api/circles/share-picker" : null,
+  const { data: circles, isLoading } = useSWR<ShareCircle[]>("/api/circles/share-picker");
+  const { data: friendsData } = useSWR<{ items: FriendsItem[] }>(
+    "/api/friends?box=accepted&limit=100",
   );
-  const [membersOpenFor, setMembersOpenFor] = useState<ShareCircle | null>(null);
+  const friends: Member[] =
+    friendsData?.items.map((i) => ({
+      id: i.user.id,
+      username: i.user.username ?? "friend",
+      image: i.user.image,
+    })) ?? [];
+
+  const [membersPopup, setMembersPopup] = useState<{ title: string; members: Member[] } | null>(
+    null,
+  );
   const [newCircleOpen, setNewCircleOpen] = useState(false);
 
-  if (!open) return null;
-
-  const hasAudience =
-    audienceType === "FRIENDS" || (audienceType === "CIRCLE" && circleIds.length > 0);
-
   const toggleCircle = (id: string) => {
+    if (disabled) return;
     const next = new Set(circleIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
     onChange("CIRCLE", Array.from(next));
   };
 
-  const selectAllFriends = () => onChange("FRIENDS", []);
+  const selectAllFriends = () => {
+    if (disabled) return;
+    onChange("FRIENDS", []);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      {/* Nav row */}
-      <div
-        className="flex items-center px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3"
-      >
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-1 text-sm text-muted-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back
-        </button>
-        <span className="flex-1 text-center text-sm font-semibold">Share</span>
-        <span className="w-[52px]" />
-      </div>
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Audience</label>
+      <p className="text-xs text-muted-foreground">
+        Pick a circle, or a few. Nobody outside them will see it.
+      </p>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 pb-6">
-        {/* Question block */}
-        <div className="mb-6 space-y-1.5">
-          <h1 className="font-serif text-[22px] font-semibold leading-snug">Who sees this?</h1>
-          <p className="font-serif text-sm italic text-muted-foreground">
-            Pick a circle, or a few. Nobody outside them will see it.
+      {isLoading ? (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : !circles || circles.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border p-5 text-center">
+          <p className="text-sm text-muted-foreground">
+            No circles yet. Ask a friend to add you to one, or start your own.
           </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            disabled={disabled}
+            onClick={() => setNewCircleOpen(true)}
+          >
+            Create your own circle
+          </Button>
         </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : !circles || circles.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-5 text-center">
-            <p className="text-sm text-muted-foreground">
-              No circles yet. Ask a friend to add you to one, or start your own.
-            </p>
-            <Button
-              variant="outline"
-              className="mt-3"
-              onClick={() => setNewCircleOpen(true)}
-            >
-              Create your own circle
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {circles.map((circle) => (
-              <CircleCard
-                key={circle.id}
-                circle={circle}
-                selected={audienceType === "CIRCLE" && circleIds.includes(circle.id)}
-                onToggle={() => toggleCircle(circle.id)}
-                onOpenMembers={() => setMembersOpenFor(circle)}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Or divider */}
-        <div className="my-5 flex items-center justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-            Or
-          </span>
+      ) : (
+        <div className="space-y-2">
+          {circles.map((circle) => (
+            <AudienceCard
+              key={circle.id}
+              title={circle.name}
+              subtitle={`${circle.memberCount} ${circle.memberCount === 1 ? "person" : "people"}`}
+              memberCount={circle.memberCount}
+              members={circle.members}
+              selected={audienceType === "CIRCLE" && circleIds.includes(circle.id)}
+              onToggle={() => toggleCircle(circle.id)}
+              onOpenMembers={() => setMembersPopup({ title: circle.name, members: circle.members })}
+            />
+          ))}
         </div>
+      )}
 
-        {/* All Friends row */}
-        <div
-          role="checkbox"
-          aria-checked={audienceType === "FRIENDS"}
-          tabIndex={0}
-          onClick={selectAllFriends}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              selectAllFriends();
-            }
-          }}
-          className={cn(
-            "cursor-pointer rounded-xl border px-4 py-3 transition-colors duration-150",
-            audienceType === "FRIENDS"
-              ? "border-foreground bg-muted"
-              : "border-border bg-background",
-          )}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[15px] font-semibold">All Friends</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                On its own, not with circles
-              </div>
-            </div>
-            <span
-              className={cn(
-                "mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border",
-                audienceType === "FRIENDS"
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-input text-transparent",
-              )}
-            >
-              {audienceType === "FRIENDS" && (
-                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={3}>
-                  <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </span>
-          </div>
-        </div>
+      {/* Or divider */}
+      <div className="flex items-center justify-center py-1">
+        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+          Or
+        </span>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-border bg-muted px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <Button
-          onClick={onPost}
-          disabled={!hasAudience || posting}
-          className="h-10 w-full rounded-xl"
-        >
-          {posting ? "Posting…" : "Post"}
-        </Button>
-      </div>
+      <AudienceCard
+        title="All Friends"
+        subtitle="On its own, not with circles"
+        memberCount={friends.length}
+        members={friends}
+        selected={audienceType === "FRIENDS"}
+        onToggle={selectAllFriends}
+        onOpenMembers={() => setMembersPopup({ title: "All Friends", members: friends })}
+      />
 
-      {/* Member popup */}
-      <Sheet open={!!membersOpenFor} onOpenChange={(v) => !v && setMembersOpenFor(null)}>
+      {/* Member popup — same for a circle or All Friends */}
+      <Sheet open={!!membersPopup} onOpenChange={(v) => !v && setMembersPopup(null)}>
         <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="font-serif">
-              {membersOpenFor?.name}, {membersOpenFor?.memberCount}{" "}
-              {membersOpenFor?.memberCount === 1 ? "person" : "people"}
+              {membersPopup?.title}, {membersPopup?.members.length}{" "}
+              {membersPopup?.members.length === 1 ? "person" : "people"}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-2 divide-y divide-border">
-            {membersOpenFor?.members.map((m) => (
+            {membersPopup?.members.map((m) => (
               <div key={m.id} className="flex items-center gap-3 py-3">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={m.image ?? undefined} alt={m.username} />
@@ -307,7 +257,7 @@ export function ShareAudienceSelector({
             ))}
           </div>
           <SheetFooter>
-            <Button variant="outline" onClick={() => setMembersOpenFor(null)}>
+            <Button variant="outline" onClick={() => setMembersPopup(null)}>
               Done
             </Button>
           </SheetFooter>

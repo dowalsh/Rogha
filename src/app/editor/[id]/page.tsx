@@ -92,7 +92,6 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [status, setStatus] = useState<PostStatus>("DRAFT");
   const [audienceType, setAudienceType] = useState<AudienceType>("FRIENDS");
   const [circleIds, setCircleIds] = useState<string[]>([]);
-  const [shareSelectorOpen, setShareSelectorOpen] = useState(false);
   const [officialKind, setOfficialKind] = useState<OfficialKind>(null);
   const [notifyAllUsers, setNotifyAllUsers] = useState(false);
   const [sundayLiveJoinAvailable, setSundayLiveJoinAvailable] = useState(false);
@@ -526,9 +525,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           from the Submit button below; this is just a summary + admin-only
           escape hatch to ALL_USERS. */}
       {officialKind === null && (
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Audience</label>
-
+        <div className="space-y-3">
           {isAdmin && (
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -546,24 +543,16 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           )}
 
           {audienceType !== "ALL_USERS" && (
-            <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-              <span className="text-muted-foreground">
-                {audienceType === "CIRCLE"
-                  ? circleIds.length > 0
-                    ? `Circle · ${circleIds.length} selected`
-                    : "No circle selected yet"
-                  : "All Friends"}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShareSelectorOpen(true)}
-                disabled={editorLocked}
-              >
-                Choose audience
-              </Button>
-            </div>
+            <ShareAudienceSelector
+              audienceType={audienceType === "CIRCLE" ? "CIRCLE" : "FRIENDS"}
+              circleIds={circleIds}
+              onChange={(nextAudienceType, nextCircleIds) => {
+                setAudienceType(nextAudienceType);
+                setCircleIds(nextCircleIds);
+                setSaved(false);
+              }}
+              disabled={editorLocked}
+            />
           )}
         </div>
       )}
@@ -630,15 +619,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => {
-              // Unsubmit and ALL_USERS (admin) posts submit directly — the
-              // share screen only owns the FRIENDS/CIRCLE audience decision.
-              if (status === "SUBMITTED" || audienceType === "ALL_USERS") {
-                void handleToggleSubmit();
-              } else {
-                setShareSelectorOpen(true);
-              }
-            }}
+            onClick={handleToggleSubmit}
             title={
               status === "SUBMITTED"
                 ? "Unsubmit"
@@ -668,23 +649,6 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           </Button>
         )}
       </div>
-
-      <ShareAudienceSelector
-        open={shareSelectorOpen}
-        onBack={() => setShareSelectorOpen(false)}
-        audienceType={audienceType === "CIRCLE" ? "CIRCLE" : "FRIENDS"}
-        circleIds={circleIds}
-        onChange={(nextAudienceType, nextCircleIds) => {
-          setAudienceType(nextAudienceType);
-          setCircleIds(nextCircleIds);
-          setSaved(false);
-        }}
-        posting={isSaving}
-        onPost={async () => {
-          const ok = await handleToggleSubmit();
-          if (ok) setShareSelectorOpen(false);
-        }}
-      />
     </div>
   );
 }

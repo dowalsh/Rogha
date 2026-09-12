@@ -23,6 +23,11 @@ export type WeeklyJamRow = {
   // absent even when the top track isn't (e.g. Last.fm returned one but not
   // the other for that user that week).
   topArtist: WeeklyJamArtist | null;
+  // Set when this row's top track was previously the top track of one of
+  // THIS row owner's friends, in an earlier edition — the "sparkle" callout.
+  // Visibility is gated by the row itself (i.e. the viewer doesn't need to
+  // be friends with the inspiring person, only the row owner does).
+  inspiredBy: { username: string } | null;
 };
 
 export type WeeklyJamArtist = {

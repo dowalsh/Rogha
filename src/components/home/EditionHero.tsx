@@ -74,8 +74,8 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
         </div>
 
         {hero.teaserThumbUrls.length > 0 && (
-          <div className="flex gap-2">
-            {hero.teaserThumbUrls.slice(0, 6).map((url, i) => (
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+            {hero.teaserThumbUrls.map((url, i) => (
               <div
                 key={i}
                 className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted"

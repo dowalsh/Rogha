@@ -72,8 +72,9 @@ model Circle {
   description String?
   createdAt   DateTime @default(now())
 
-  members CircleMember[]
-  posts   Post[]         @relation("PostCircle")
+  members     CircleMember[]
+  posts       Post[]         @relation("PostCircle") // legacy single-circle relation, superseded by postCircles
+  postCircles PostCircle[]
 }
 
 model CircleMember {
@@ -86,6 +87,21 @@ model CircleMember {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([circleId, userId])
+}
+
+// Multi-circle sharing: one row per (post, target circle), the many-to-many
+// audience for a CIRCLE post. See docs/specs (multi-circle sharing spec).
+// Post.circleId/circle are kept as a deprecated legacy single-circle field —
+// no longer written by new code, superseded by this join table.
+model PostCircle {
+  postId   String
+  circleId String
+
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+
+  @@id([postId, circleId])
+  @@index([circleId])
 }
 
 model Edition {
@@ -259,8 +275,9 @@ model Post {
   notifications Notification[]
 
   audienceType AudienceType @default(FRIENDS)
-  circleId     String?
+  circleId     String? // deprecated — legacy single-circle FK, superseded by postCircles; kept for rollback safety
   circle       Circle?      @relation("PostCircle", fields: [circleId], references: [id], onDelete: SetNull)
+  postCircles  PostCircle[]
 
   officialKind   OfficialKind? // null = a normal post (default)
   notifyAllUsers Boolean         @default(false) // admin-set; only meaningful when officialKind != null

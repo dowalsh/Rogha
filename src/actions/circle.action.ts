@@ -93,6 +93,40 @@ export async function getCirclesForUser() {
   }
 }
 
+// Lightweight payload for the composer's share screen (multi-circle sharing
+// spec) — just what the circle cards + face rows + member popup need, unlike
+// getCirclesForUser() which also loads each circle's published-post history
+// for its other callers (CirclesCarousel, CircleDialog).
+export async function getCirclesForSharePicker() {
+  const userId = await getDbUserId();
+  if (!userId) return [];
+
+  const memberships = await prisma.circleMember.findMany({
+    where: { userId, status: "JOINED" },
+    include: {
+      circle: {
+        include: {
+          members: {
+            where: { status: "JOINED" },
+            orderBy: { joinedAt: "asc" },
+            include: {
+              user: { select: { id: true, username: true, image: true } },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { joinedAt: "desc" },
+  });
+
+  return memberships.map(({ circle }) => ({
+    id: circle.id,
+    name: circle.name,
+    memberCount: circle.members.length,
+    members: circle.members.map((m) => m.user),
+  }));
+}
+
 export async function addMemberToCircle({
   circleId,
   friendId,

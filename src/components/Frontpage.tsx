@@ -14,8 +14,10 @@ type Post = {
   title?: string | null;
   author?: { id: string; username?: string | null; image?: string | null } | null;
   audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
-  circleId?: string | null;
-  circle?: { id: string; name: string } | null;
+  // Per-viewer "Shared to ..." label for CIRCLE posts — precomputed
+  // server-side so a reader never learns the names of circles they aren't
+  // in (see multi-circle sharing spec).
+  circleLabel?: string | null;
   heroImageUrl?: string | null;
   officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
 };
@@ -61,7 +63,7 @@ function getAudienceLabel(post: Post): string {
     case "FRIENDS":
       return "Friends";
     case "CIRCLE":
-      return post.circle?.name ? `Circle · ${post.circle.name}` : "Circle";
+      return post.circleLabel ?? "Circle";
     default:
       return "";
   }

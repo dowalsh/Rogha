@@ -5,7 +5,11 @@ import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
 import { getReadMapForPosts } from "@/lib/postReads";
-import { buildAudienceCandidateWhere, getRecipientPostIds } from "@/lib/access/postAccess";
+import {
+  buildAudienceCandidateWhere,
+  getRecipientPostIds,
+  buildReaderCircleLabel,
+} from "@/lib/access/postAccess";
 import { getWeeklyJamForEdition, hasViewedWeeklyJam } from "@/lib/jam";
 
 type DbUser = { id: string };
@@ -222,7 +226,7 @@ export async function getPublishedEditions(user: DbUser) {
           createdAt: true,
           authorId: true,
           audienceType: true,
-          circleId: true,
+          postCircles: { select: { circleId: true } },
           officialKind: true,
           author: {
             select: { id: true, username: true, image: true },
@@ -239,8 +243,10 @@ export async function getPublishedEditions(user: DbUser) {
         if (p.authorId === user.id) return true;
         if (p.audienceType === "ALL_USERS") return true;
         if (p.audienceType === "CIRCLE") {
-          const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
-          return joinedAt !== undefined && joinedAt <= (ed.publishedAt ?? p.createdAt);
+          return p.postCircles.some((pc) => {
+            const joinedAt = circleJoinedMap.get(pc.circleId);
+            return joinedAt !== undefined && joinedAt <= (ed.publishedAt ?? p.createdAt);
+          });
         }
         if (p.audienceType === "RECIPIENTS") {
           return recipientPostIdSet.has(p.id);
@@ -324,9 +330,8 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       createdAt: true,
       authorId: true,
       audienceType: true,
-      circleId: true,
+      postCircles: { select: { circleId: true, circle: { select: { id: true, name: true } } } },
       officialKind: true,
-      circle: { select: { id: true, name: true } },
       author: { select: { id: true, clerkId: true, username: true, image: true } },
       heroImageUrl: true,
       heroThumbUrl: true,
@@ -363,8 +368,11 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       if (p.audienceType === "CIRCLE") {
         // Membership must predate the edition going live, so joining a
         // circle doesn't grant retroactive access to its whole history.
-        const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
-        return joinedAt !== undefined && joinedAt <= (edition.publishedAt ?? p.createdAt);
+        // Evaluated per target circle, then unioned.
+        return p.postCircles.some((pc) => {
+          const joinedAt = circleJoinedMap.get(pc.circleId);
+          return joinedAt !== undefined && joinedAt <= (edition.publishedAt ?? p.createdAt);
+        });
       }
       if (p.audienceType === "RECIPIENTS") {
         return recipientPostIdSet.has(p.id);
@@ -377,11 +385,25 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
         friendshipDate <= (edition.publishedAt ?? p.createdAt)
       );
     })
-    .map(({ _count, likes, ...p }) => ({
+    .map(({ _count, likes, postCircles, ...p }) => ({
       ...p,
       editionId: edition.id,
       likeCount: _count.likes,
       likedByMe: likes.length > 0,
+      // Per-reader "Shared to ..." label — never the raw target-circle list,
+      // so a reader can't learn the names of circles they aren't in.
+      circleLabel:
+        p.audienceType === "CIRCLE"
+          ? buildReaderCircleLabel(
+              p.authorId === user.id,
+              postCircles.map((pc) => pc.circle),
+              new Set(
+                postCircles
+                  .map((pc) => pc.circleId)
+                  .filter((cid) => circleJoinedMap.has(cid)),
+              ),
+            )
+          : null,
     }));
 
   // Unread first (so "pick up where you left off" surfaces unread stories

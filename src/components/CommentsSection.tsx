@@ -19,7 +19,14 @@ import { cn } from "@/lib/utils";
 // no audience banner since track visibility is always "friends who can see
 // this Jam", not a configurable audience type).
 export type CommentsTarget =
-  | { kind: "post"; id: string; authorId: string; authorName: string; audienceType: AudienceType }
+  | {
+      kind: "post";
+      id: string;
+      authorId: string;
+      authorName: string;
+      audienceType: AudienceType;
+      circleLabel?: string | null;
+    }
   | { kind: "track"; id: string };
 
 function commentsApiPath(target: CommentsTarget) {
@@ -779,7 +786,8 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
           )}
           {target.audienceType === "CIRCLE" && (
             <p className="text-sm italic text-orange-500 mb-4">
-              Comments are visible to all members of this circle
+              {target.circleLabel ? `${target.circleLabel}. ` : ""}
+              Comments are visible to everyone who received this post.
             </p>
           )}
         </div>

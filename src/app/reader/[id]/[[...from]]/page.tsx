@@ -43,6 +43,7 @@ type PostDTO = {
   likeCount: number;
   likedByMe: boolean;
   audienceType: AudienceType;
+  circleLabel?: string | null;
   edition?: { publishedAt: string | null } | null;
   newCommentCount?: number | null;
   republishedFromPostId?: string | null;
@@ -367,6 +368,9 @@ function ReadPostPageInner({
               ).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`}
           </span>
         )}
+        {post.audienceType === "CIRCLE" && post.circleLabel && (
+          <p className="text-sm italic text-muted-foreground">{post.circleLabel}</p>
+        )}
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{authorName}</span>
           {post.edition?.publishedAt && (
@@ -447,6 +451,7 @@ function ReadPostPageInner({
             authorId: post.author?.id ?? "",
             authorName: post.author?.username ?? "post author",
             audienceType: post.audienceType,
+            circleLabel: post.circleLabel,
           }}
         />
       </div>

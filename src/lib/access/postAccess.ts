@@ -31,7 +31,12 @@ export function buildAudienceCandidateWhere(
     { authorId: userId },
     { audienceType: "ALL_USERS" },
     { AND: [{ audienceType: "FRIENDS" }, { authorId: { in: friendIds } }] },
-    { AND: [{ audienceType: "CIRCLE" }, { circleId: { in: circleIds } }] },
+    {
+      AND: [
+        { audienceType: "CIRCLE" },
+        { postCircles: { some: { circleId: { in: circleIds } } } },
+      ],
+    },
     { AND: [{ audienceType: "RECIPIENTS" }, { id: { in: recipientPostIds } }] },
   ];
 }
@@ -53,7 +58,7 @@ export type MinimalPost = {
   authorId: string;
   status: string; // "DRAFT" | "SUBMITTED" | "PUBLISHED" | ...
   audienceType: AudienceType;
-  circleId: string | null;
+  circleIds: string[]; // every circle this post targets (multi-circle sharing)
   createdAt: Date;
   publishedAt: Date | null; // the post's edition.publishedAt, not post.createdAt
 };
@@ -68,7 +73,10 @@ function canViewPostPolicy(args: {
   viewerId: string | null;
   post: MinimalPost;
   friendshipAcceptedAt: Date | null; // null = not a friend
-  circleJoinedAt: Date | null; // null = not a joined circle member
+  // true if the viewer joined at least one of the post's target circles
+  // before it published — the union-then-temporal-gate rule (see
+  // multi-circle sharing spec).
+  hasQualifyingCircleMembership: boolean;
   isBlocked: boolean; // viewer<->author block, either direction
   isReported: boolean; // viewer reported this specific post
   isRecipient: boolean; // viewer is a named PostRecipient of this post
@@ -77,7 +85,7 @@ function canViewPostPolicy(args: {
     viewerId,
     post,
     friendshipAcceptedAt,
-    circleJoinedAt,
+    hasQualifyingCircleMembership,
     isBlocked,
     isReported,
     isRecipient,
@@ -114,14 +122,12 @@ function canViewPostPolicy(args: {
       );
 
     case "CIRCLE":
-      // Same reasoning as FRIENDS: must be a current member AND membership
-      // must predate the post going live, so joining a circle doesn't grant
-      // retroactive access to its entire published history.
-      return (
-        !!viewerId &&
-        circleJoinedAt !== null &&
-        circleJoinedAt <= (post.publishedAt ?? post.createdAt)
-      );
+      // Same reasoning as FRIENDS: must be a current member of at least one
+      // target circle, AND that membership must predate the post going
+      // live, so joining a circle doesn't grant retroactive access to its
+      // entire published history. Evaluated per circle then unioned — see
+      // hasQualifyingCircleMembership.
+      return !!viewerId && hasQualifyingCircleMembership;
 
     case "RECIPIENTS":
       // The named recipient list *is* the visibility boundary — no
@@ -155,7 +161,7 @@ export async function resolveVisiblePosts(args: {
         viewerId: null,
         post,
         friendshipAcceptedAt: null,
-        circleJoinedAt: null,
+        hasQualifyingCircleMembership: false,
         isBlocked: false,
         isReported: false,
         isRecipient: false,
@@ -165,9 +171,7 @@ export async function resolveVisiblePosts(args: {
 
   const authorIds = Array.from(new Set(posts.map((p) => p.authorId)));
   const postIds = posts.map((p) => p.id);
-  const circleIds = Array.from(
-    new Set(posts.map((p) => p.circleId).filter((id): id is string => !!id)),
-  );
+  const circleIds = Array.from(new Set(posts.flatMap((p) => p.circleIds)));
 
   const [friendships, blocks, reports, joinedCircles, recipientOf] = await Promise.all([
     getAcceptedFriendships(viewerId),
@@ -208,17 +212,23 @@ export async function resolveVisiblePosts(args: {
   const circleJoinedMap = new Map(joinedCircles.map((c) => [c.circleId, c.joinedAt]));
   const recipientPostIds = new Set(recipientOf.map((r) => r.postId));
 
-  return posts.filter((post) =>
-    canViewPostPolicy({
+  return posts.filter((post) => {
+    const publishedAt = post.publishedAt ?? post.createdAt;
+    const hasQualifyingCircleMembership = post.circleIds.some((cid) => {
+      const joinedAt = circleJoinedMap.get(cid);
+      return joinedAt !== undefined && joinedAt <= publishedAt;
+    });
+
+    return canViewPostPolicy({
       viewerId,
       post,
       friendshipAcceptedAt: friendMap.get(post.authorId) ?? null,
-      circleJoinedAt: post.circleId ? circleJoinedMap.get(post.circleId) ?? null : null,
+      hasQualifyingCircleMembership,
       isBlocked: blockedAuthorIds.has(post.authorId),
       isReported: reportedPostIds.has(post.id),
       isRecipient: recipientPostIds.has(post.id),
-    }),
-  );
+    });
+  });
 }
 
 //
@@ -247,9 +257,9 @@ export async function requirePostAccess(
       authorId: true,
       status: true,
       audienceType: true,
-      circleId: true,
       createdAt: true,
       edition: { select: { publishedAt: true } },
+      postCircles: { select: { circleId: true } },
     },
   });
 
@@ -257,9 +267,10 @@ export async function requirePostAccess(
     return null;
   }
 
-  const { edition, ...postFields } = post;
+  const { edition, postCircles, ...postFields } = post;
   const allowed = await canViewPost(viewerId, {
     ...postFields,
+    circleIds: postCircles.map((pc) => pc.circleId),
     publishedAt: edition?.publishedAt ?? null,
   });
 
@@ -308,10 +319,10 @@ export async function getRepublishEligibleFriends(
       },
       select: { blockerId: true, blockedId: true },
     }),
-    originalPost.audienceType === "CIRCLE" && originalPost.circleId
+    originalPost.audienceType === "CIRCLE" && originalPost.circleIds.length > 0
       ? prisma.circleMember.findMany({
           where: {
-            circleId: originalPost.circleId,
+            circleId: { in: originalPost.circleIds },
             status: "JOINED",
             userId: { in: friendIds },
           },
@@ -327,9 +338,17 @@ export async function getRepublishEligibleFriends(
   const blockedFriendIds = new Set(
     blocks.flatMap((b) => [b.blockerId, b.blockedId]).filter((id) => id !== authorId),
   );
-  const circleJoinedMap = new Map(circleJoined.map((c) => [c.userId, c.joinedAt]));
+  // A friend may be a member of several target circles — earliest joinedAt
+  // per friend is enough since the temporal gate only needs "any qualifying
+  // membership", not which specific circle it came from.
+  const circleJoinedMap = new Map<string, Date>();
+  for (const c of circleJoined) {
+    const existing = circleJoinedMap.get(c.userId);
+    if (!existing || c.joinedAt < existing) circleJoinedMap.set(c.userId, c.joinedAt);
+  }
   const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
   const userMap = new Map(users.map((u) => [u.id, u]));
+  const publishedAt = originalPost.publishedAt ?? originalPost.createdAt;
 
   // Most-recently-accepted friend first — the friend you just added (the
   // friend-accept nudge's whole reason for existing) naturally floats to
@@ -337,11 +356,12 @@ export async function getRepublishEligibleFriends(
   const eligibleFriendIds = friendIds
     .filter((friendId) => !blockedFriendIds.has(friendId))
     .filter((friendId) => {
+      const joinedAt = circleJoinedMap.get(friendId);
       const canSee = canViewPostPolicy({
         viewerId: friendId,
         post: originalPost,
         friendshipAcceptedAt: friendMap.get(friendId) ?? null,
-        circleJoinedAt: circleJoinedMap.get(friendId) ?? null,
+        hasQualifyingCircleMembership: joinedAt !== undefined && joinedAt <= publishedAt,
         isBlocked: false,
         isReported: false,
         isRecipient: false,
@@ -357,4 +377,36 @@ export async function getRepublishEligibleFriends(
   return eligibleFriendIds
     .map((id) => userMap.get(id))
     .filter((u): u is RepublishEligibleFriend => !!u);
+}
+
+//
+// --------------------------------------------------
+// 5️⃣ PER-READER VISIBILITY LABEL (multi-circle sharing)
+// --------------------------------------------------
+//
+
+/**
+ * The "Shared to ..." label for a CIRCLE post, built per-viewer so a reader
+ * never learns the names of target circles they don't belong to — see the
+ * multi-circle sharing spec's per-reader visibility label. Callers must
+ * only pass `targetCircles` the caller already knows are safe to reveal
+ * (i.e. it's the author, or the full target-circle list truncated to the
+ * reader's own intersection before calling this).
+ */
+export function buildReaderCircleLabel(
+  isAuthor: boolean,
+  targetCircles: { id: string; name: string }[],
+  readerJoinedCircleIds: Set<string>,
+): string | null {
+  if (targetCircles.length === 0) return null;
+
+  const visibleNames = isAuthor
+    ? targetCircles.map((c) => c.name)
+    : targetCircles.filter((c) => readerJoinedCircleIds.has(c.id)).map((c) => c.name);
+
+  if (visibleNames.length === 0) return null;
+
+  const hidesSome = visibleNames.length < targetCircles.length;
+  const joined = visibleNames.join(", ");
+  return hidesSome ? `Shared to ${joined}, and more` : `Shared to ${joined}`;
 }

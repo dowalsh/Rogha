@@ -53,6 +53,9 @@ export async function getUserPosts(userId: string) {
             publishedAt: true,
           },
         },
+        postCircles: {
+          select: { circleId: true },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -148,6 +151,7 @@ export async function getProfileForViewer(
       viewerId,
       posts: rawPosts.map((p) => ({
         ...p,
+        circleIds: p.postCircles.map((pc) => pc.circleId),
         publishedAt: p.edition?.publishedAt ?? null,
       })),
     });

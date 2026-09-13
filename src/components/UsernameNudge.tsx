@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { useUser } from "@clerk/nextjs";
 import Nudge from "@/components/Nudge";
+import { useSuppressNudges } from "@/hooks/useSuppressNudges";
 
 type Me = { username: string };
 
@@ -18,12 +19,13 @@ export default function UsernameNudge() {
   const { isSignedIn } = useUser();
   const { data } = useSWR<Me>(isSignedIn ? "/api/me" : null);
   const [dismissed, setDismissed] = useState(true);
+  const suppressed = useSuppressNudges();
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  if (!data || dismissed) return null;
+  if (!data || dismissed || suppressed) return null;
 
   return (
     <Nudge

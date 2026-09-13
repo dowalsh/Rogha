@@ -75,7 +75,7 @@ function AudienceCard({
   onOpenMembers,
 }: {
   title: React.ReactNode;
-  subtitle: string;
+  subtitle?: string;
   memberCount: number;
   members: Member[];
   selected: boolean;
@@ -102,7 +102,9 @@ function AudienceCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[15px] font-semibold">{title}</div>
-          <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div>
+          {subtitle && (
+            <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div>
+          )}
         </div>
         <span
           className={cn(
@@ -223,7 +225,6 @@ export function ShareAudienceSelector({
 
       <AudienceCard
         title="All Friends"
-        subtitle="On its own, not with circles"
         memberCount={friends.length}
         members={friends}
         selected={audienceType === "FRIENDS"}

@@ -18,6 +18,27 @@ type EditionHeroProps = {
   comingNext: ComingNextData;
 };
 
+function ThumbStrip({ urls, blurred }: { urls: string[]; blurred: boolean }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+      {urls.map((url, i) => (
+        <div
+          key={i}
+          className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt=""
+            className={cn("h-full w-full scale-110 object-cover", blurred && "blur-sm")}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ComingSundaySlot({
   comingNext,
   collapsed,
@@ -73,23 +94,7 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
           <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
 
-        {hero.teaserThumbUrls.length > 0 && (
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
-            {hero.teaserThumbUrls.map((url, i) => (
-              <div
-                key={i}
-                className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={url}
-                  alt=""
-                  className="h-full w-full scale-110 object-cover blur-sm"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+        <ThumbStrip urls={hero.teaserThumbUrls} blurred />
 
         <Button asChild>
           <Link href={`/editions/${hero.editionId}`}>Open this week</Link>
@@ -123,6 +128,8 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
           </div>
         </div>
 
+        <ThumbStrip urls={hero.readThumbUrls} blurred={false} />
+
         <Button asChild>
           <Link href={`/editions/${hero.editionId}`}>
             Finish the {hero.unreadPostIds.length} you missed
@@ -149,6 +156,8 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
           Reread
         </Link>
       </div>
+
+      <ThumbStrip urls={hero.readThumbUrls} blurred={false} />
 
       <ComingSundaySlot comingNext={comingNext} collapsed={false} />
     </section>

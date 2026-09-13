@@ -48,6 +48,8 @@ type FullEdition = {
     circle?: { id: string; name: string } | null;
     author?: { id: string; username?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;
+    heroThumbUrl?: string | null;
+    heroThumbBlurUrl?: string | null;
   }>;
   weeklyJam?: WeeklyJamData | null;
 };
@@ -367,17 +369,22 @@ function EditionsArchive({ editions }: { editions: EditionRow[] }) {
 
 // ── Latest Edition teaser ────────────────────────────────────────────────────
 
-// This is intentionally a lightweight teaser — headline, count, blurred
-// thumbnail strip — not the full story grid. The actual reveal-with-
-// social-proof ritual (EditionRevealOverlay) lives on the edition page
-// itself; duplicating it here made /editions feel like the edition page
-// before you'd actually navigated to it.
+// This is intentionally a lightweight teaser — headline, count, thumbnail
+// strip — not the full story grid. The actual reveal-with-social-proof
+// ritual (EditionRevealOverlay) lives on the edition page itself;
+// duplicating it here made /editions feel like the edition page before
+// you'd actually navigated to it.
+//
+// Pre-open, thumbs use the heavily-blurred `heroThumbBlurUrl` to build
+// suspense (same asset the home hero uses). Once opened — even partially —
+// we switch to the clear `heroThumbUrl` so the teaser stays interesting
+// without re-hiding stories the viewer has already read.
 function LatestEditionTeaser({ edition }: { edition: FullEdition }) {
   const dateLabel = formatWeekDate(edition.weekStart);
   const hasJam = (edition.weeklyJam?.rows.length ?? 0) > 0;
   const totalCount = edition.posts.length + (hasJam ? 1 : 0);
   const thumbUrls = edition.posts
-    .map((post) => post.heroImageUrl)
+    .map((post) => (edition.hasOpened ? post.heroThumbUrl : post.heroThumbBlurUrl))
     .filter((url): url is string => !!url);
 
   if (totalCount === 0) {
@@ -388,19 +395,34 @@ function LatestEditionTeaser({ edition }: { edition: FullEdition }) {
     );
   }
 
+  const thumbStrip = thumbUrls.length > 0 && (
+    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+      {thumbUrls.map((url, i) => (
+        <div key={i} className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt="" className="h-full w-full scale-110 object-cover" />
+        </div>
+      ))}
+    </div>
+  );
+
   if (edition.hasOpened) {
     return (
-      <div className="rounded-xl border p-6 space-y-2">
-        <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-serif text-xl font-bold">This week's edition</p>
-          <Link
-            href={`/editions/${edition.id}`}
-            className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            Reread
-          </Link>
+      <div className="rounded-xl border p-6 space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-serif text-xl font-bold">This week's edition</p>
+            <Link
+              href={`/editions/${edition.id}`}
+              className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Reread
+            </Link>
+          </div>
         </div>
+
+        {thumbStrip}
       </div>
     );
   }
@@ -415,16 +437,7 @@ function LatestEditionTeaser({ edition }: { edition: FullEdition }) {
         </p>
       </div>
 
-      {thumbUrls.length > 0 && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
-          {thumbUrls.map((url, i) => (
-            <div key={i} className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="h-full w-full scale-110 object-cover blur-sm" />
-            </div>
-          ))}
-        </div>
-      )}
+      {thumbStrip}
 
       <Button asChild>
         <Link href={`/editions/${edition.id}`}>Open this week</Link>

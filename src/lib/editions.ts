@@ -8,7 +8,7 @@ import { getReadMapForPosts } from "@/lib/postReads";
 import {
   buildAudienceCandidateWhere,
   getRecipientPostIds,
-  buildReaderCircleLabel,
+  buildReaderVisibleCircles,
 } from "@/lib/access/postAccess";
 import { getWeeklyJamForEdition, hasViewedWeeklyJam } from "@/lib/jam";
 import { hashToIndex } from "@/lib/jam-preview";
@@ -396,16 +396,12 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
         friendshipDate <= (edition.publishedAt ?? p.createdAt)
       );
     })
-    .map(({ _count, likes, postCircles, ...p }) => ({
-      ...p,
-      editionId: edition.id,
-      likeCount: _count.likes,
-      likedByMe: likes.length > 0,
-      // Per-reader "Shared to ..." label — never the raw target-circle list,
+    .map(({ _count, likes, postCircles, ...p }) => {
+      // Per-reader visible circle list — never the raw target-circle list,
       // so a reader can't learn the names of circles they aren't in.
-      circleLabel:
+      const { circles, hiddenCount } =
         p.audienceType === "CIRCLE"
-          ? buildReaderCircleLabel(
+          ? buildReaderVisibleCircles(
               p.authorId === user.id,
               postCircles.map((pc) => pc.circle),
               new Set(
@@ -414,8 +410,16 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
                   .filter((cid) => circleJoinedMap.has(cid)),
               ),
             )
-          : null,
-    }));
+          : { circles: [], hiddenCount: 0 };
+      return {
+        ...p,
+        editionId: edition.id,
+        likeCount: _count.likes,
+        likedByMe: likes.length > 0,
+        circles,
+        hiddenCircleCount: hiddenCount,
+      };
+    });
 
   // Unread first (so "pick up where you left off" surfaces unread stories
   // immediately), read after — each group keeping its existing recency order.

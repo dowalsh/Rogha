@@ -9,7 +9,7 @@ import {
   createPublishNotifications,
 } from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
-import { canViewPost, buildReaderCircleLabel } from "@/lib/access/postAccess";
+import { canViewPost, buildReaderVisibleCircles } from "@/lib/access/postAccess";
 import { isContentBlocked, extractTextFromDoc } from "@/lib/contentFilter";
 import { generateHeroThumbnails } from "@/lib/heroThumbnails";
 import {
@@ -77,7 +77,7 @@ export async function GET(
 
     // Base response with counts. postCircles/target circle names are never
     // spread raw into the response — a reader must never learn the names of
-    // circles they aren't in, so circleIds/circleLabel are attached below,
+    // circles they aren't in, so circleIds/circles are attached below,
     // scoped to what this specific viewer is allowed to see.
     let baseResponse: any = {
       ...postWithoutCircles,
@@ -154,20 +154,17 @@ export async function GET(
         });
         readerJoinedCircleIds = new Set(joined.map((j) => j.circleId));
       }
-      baseResponse.circleLabel = buildReaderCircleLabel(
+      const { circles, hiddenCount } = buildReaderVisibleCircles(
         isAuthor,
         targetCircles,
         readerJoinedCircleIds,
       );
+      baseResponse.circles = circles;
+      baseResponse.hiddenCircleCount = hiddenCount;
       // Only the author needs the full target-circle id list (to prefill
-      // the share screen for editing) — a reader only ever gets the label.
+      // the share screen for editing) — a reader only ever gets `circles`,
+      // already scoped to what they're allowed to see.
       if (isAuthor) baseResponse.circleIds = circleIds;
-      // Comments-section banner needs to distinguish "one circle" (pill +
-      // member popup) from "several circles" (generic line, names withheld)
-      // without leaking names the reader isn't allowed to see. Only ever
-      // attached when there's exactly one target circle — viewing this post
-      // at all already proves membership in it.
-      baseResponse.soleCircle = targetCircles.length === 1 ? targetCircles[0] : null;
     }
 
     console.log("[GET] Returning post to authorized viewer");

@@ -12,6 +12,7 @@ import { LikeHeart, LikeCount } from "./LikeButton";
 import { ContentOverflowMenu } from "./ContentOverflowMenu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CircleMembersSheet } from "@/components/CircleMembersSheet";
+import { CircleAudienceLine } from "@/components/circles/CirclePill";
 import type { AudienceType } from "@/types/index";
 import { cn } from "@/lib/utils";
 
@@ -26,12 +27,13 @@ export type CommentsTarget =
       authorId: string;
       authorName: string;
       audienceType: AudienceType;
-      // Set only when this post targets exactly one circle — safe to
-      // reveal since viewing the post already proves membership in it.
-      // When it targets several, this stays null/absent and the banner
-      // just says "multiple circles" (names withheld, per
-      // buildReaderCircleLabel).
-      soleCircle?: { id: string; name: string } | null;
+      // Circles this specific viewer is allowed to see among the post's
+      // targets (scoped server-side, per buildReaderVisibleCircles) —
+      // never the raw target-circle list, so a reader can't learn the
+      // names of circles they aren't in. `hiddenCircleCount` flags that
+      // the post also targets circles this viewer isn't in.
+      circles?: { id: string; name: string }[];
+      hiddenCircleCount?: number;
     }
   | { kind: "track"; id: string };
 
@@ -509,22 +511,24 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
     { kind: "new" } | { kind: "reply"; id: string; name: string; parentId: string } | null
   >(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
-  const [showCircleMembers, setShowCircleMembers] = useState(false);
+  const [openCircleMembersId, setOpenCircleMembersId] = useState<string | null>(null);
 
-  // Lazily fetched only when there's a single target circle to name — the
-  // same endpoint the composer's audience picker uses, scoped to circles
-  // the viewer belongs to (which this one must be, to be viewing the post).
-  const soleCircle =
-    target.kind === "post" && target.audienceType === "CIRCLE"
-      ? target.soleCircle ?? null
-      : null;
+  const visibleCircles =
+    target.kind === "post" && target.audienceType === "CIRCLE" ? target.circles ?? [] : [];
+  const hiddenCircleCount =
+    target.kind === "post" && target.audienceType === "CIRCLE" ? target.hiddenCircleCount ?? 0 : 0;
+
+  // Lazily fetched only when there's a circle pill to back with a member
+  // list — the same endpoint the composer's audience picker uses, scoped to
+  // circles the viewer belongs to (which these all must be, to be visible).
   const { data: shareCircles } = useSWR<
     { id: string; name: string; members: { id: string; username: string; image: string | null }[] }[]
-  >(soleCircle ? "/api/circles/share-picker" : null);
-  const soleCircleMembersSheet = showCircleMembers
+  >(visibleCircles.length > 0 ? "/api/circles/share-picker" : null);
+  const openCircle = visibleCircles.find((c) => c.id === openCircleMembersId) ?? null;
+  const circleMembersSheetTarget = openCircle
     ? {
-        title: soleCircle?.name ?? "",
-        members: shareCircles?.find((c) => c.id === soleCircle?.id)?.members ?? [],
+        title: openCircle.name,
+        members: shareCircles?.find((c) => c.id === openCircle.id)?.members ?? [],
       }
     : null;
 
@@ -808,31 +812,22 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
               Comments are visible to all Rogha users
             </p>
           )}
-          {target.audienceType === "CIRCLE" && soleCircle && (
-            <p className="flex flex-wrap items-center gap-1.5 text-sm italic text-muted-foreground mb-4">
-              <span>Comments visible to</span>
-              <button
-                type="button"
-                onClick={() => setShowCircleMembers(true)}
-                className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold not-italic text-muted-foreground hover:text-foreground"
-              >
-                {soleCircle.name}
-              </button>
-              <span>only.</span>
-            </p>
-          )}
-          {target.audienceType === "CIRCLE" && !soleCircle && (
-            <p className="text-sm italic text-orange-500 mb-4">
-              Comments visible to multiple circles
-            </p>
+          {target.audienceType === "CIRCLE" && (
+            <CircleAudienceLine
+              circles={visibleCircles}
+              hiddenCount={hiddenCircleCount}
+              prefix="Comments visible to"
+              onCircleClick={(circle) => setOpenCircleMembersId(circle.id)}
+              className="mb-4"
+            />
           )}
         </div>
       )}
 
       {target.kind === "post" && (
         <CircleMembersSheet
-          target={soleCircleMembersSheet}
-          onClose={() => setShowCircleMembers(false)}
+          target={circleMembersSheetTarget}
+          onClose={() => setOpenCircleMembersId(null)}
         />
       )}
 

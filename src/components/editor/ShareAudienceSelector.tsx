@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CircleMembersSheet } from "@/components/CircleMembersSheet";
 import { NewCircleDialog } from "@/components/NewCircleDialog";
+import { CirclePill } from "@/components/circles/CirclePill";
 import { createCircle } from "@/actions/circle.action";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +74,7 @@ function AudienceCard({
   onToggle,
   onOpenMembers,
 }: {
-  title: string;
+  title: React.ReactNode;
   subtitle: string;
   memberCount: number;
   members: Member[];
@@ -201,7 +202,7 @@ export function ShareAudienceSelector({
           {circles.map((circle) => (
             <AudienceCard
               key={circle.id}
-              title={circle.name}
+              title={<CirclePill name={circle.name} />}
               subtitle={`${circle.memberCount} ${circle.memberCount === 1 ? "person" : "people"}`}
               memberCount={circle.memberCount}
               members={circle.members}

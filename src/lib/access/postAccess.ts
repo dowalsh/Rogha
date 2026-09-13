@@ -386,27 +386,23 @@ export async function getRepublishEligibleFriends(
 //
 
 /**
- * The "Shared to ..." label for a CIRCLE post, built per-viewer so a reader
- * never learns the names of target circles they don't belong to — see the
- * multi-circle sharing spec's per-reader visibility label. Callers must
- * only pass `targetCircles` the caller already knows are safe to reveal
- * (i.e. it's the author, or the full target-circle list truncated to the
- * reader's own intersection before calling this).
+ * The circles a CIRCLE post/thread is visible to, filtered per-viewer so a
+ * reader never learns the names of target circles they don't belong to —
+ * see the multi-circle sharing spec's per-reader visibility label. The
+ * author sees every target circle; anyone else sees only the intersection
+ * with `readerJoinedCircleIds`. `hiddenCount` is how many target circles
+ * got filtered out, so callers can flag "you're not seeing everyone here".
  */
-export function buildReaderCircleLabel(
+export function buildReaderVisibleCircles(
   isAuthor: boolean,
   targetCircles: { id: string; name: string }[],
   readerJoinedCircleIds: Set<string>,
-): string | null {
-  if (targetCircles.length === 0) return null;
+): { circles: { id: string; name: string }[]; hiddenCount: number } {
+  if (targetCircles.length === 0) return { circles: [], hiddenCount: 0 };
 
-  const visibleNames = isAuthor
-    ? targetCircles.map((c) => c.name)
-    : targetCircles.filter((c) => readerJoinedCircleIds.has(c.id)).map((c) => c.name);
+  const visible = isAuthor
+    ? targetCircles
+    : targetCircles.filter((c) => readerJoinedCircleIds.has(c.id));
 
-  if (visibleNames.length === 0) return null;
-
-  const hidesSome = visibleNames.length < targetCircles.length;
-  const joined = visibleNames.join(", ");
-  return hidesSome ? `Shared to ${joined}, and more` : `Shared to ${joined}`;
+  return { circles: visible, hiddenCount: targetCircles.length - visible.length };
 }

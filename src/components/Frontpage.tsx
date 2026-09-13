@@ -7,6 +7,7 @@ import Link from "next/link";
 import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { ContentOverflowMenu } from "@/components/ContentOverflowMenu";
 import { jamPreviewFromRows, type WeeklyJamRow } from "@/lib/jam-preview";
+import { CirclePillGroup, type CircleRef } from "@/components/circles/CirclePill";
 
 // Front page posts as they arrive from the Edition page
 type Post = {
@@ -14,10 +15,11 @@ type Post = {
   title?: string | null;
   author?: { id: string; username?: string | null; image?: string | null } | null;
   audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
-  // Per-viewer "Shared to ..." label for CIRCLE posts — precomputed
+  // Per-viewer visible target circles for CIRCLE posts — precomputed
   // server-side so a reader never learns the names of circles they aren't
   // in (see multi-circle sharing spec).
-  circleLabel?: string | null;
+  circles?: CircleRef[];
+  hiddenCircleCount?: number;
   heroImageUrl?: string | null;
   officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
 };
@@ -62,11 +64,20 @@ function getAudienceLabel(post: Post): string {
       return "All users";
     case "FRIENDS":
       return "Friends";
-    case "CIRCLE":
-      return post.circleLabel?.replace(/^Shared to /, "") ?? "Circle";
     default:
       return "";
   }
+}
+
+// CIRCLE posts render as pills (the shared circle-name identity) capped at
+// 2, folding the rest into a static "+N" — these preview cards are dense
+// and a tap opens the post itself, so overflow doesn't need to be clickable.
+function AudienceLabel({ post }: { post: Post }) {
+  if (post.audienceType === "CIRCLE") {
+    if (!post.circles || post.circles.length === 0) return <span>Circle</span>;
+    return <CirclePillGroup circles={post.circles} max={2} />;
+  }
+  return <span>{getAudienceLabel(post)}</span>;
 }
 
 function getAuthorName(post: Post): string {
@@ -127,7 +138,7 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{authorName}</span>
               <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
-              <span>{getAudienceLabel(post)}</span>
+              <AudienceLabel post={post} />
             </div>
           </article>
         </Link>
@@ -166,7 +177,7 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{authorName}</span>
               <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
-              <span>{getAudienceLabel(post)}</span>
+              <AudienceLabel post={post} />
             </div>
           </div>
         </article>
@@ -237,7 +248,7 @@ function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>{authorName}</span>
             <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-            <span>{getAudienceLabel(post)}</span>
+            <AudienceLabel post={post} />
           </div>
         </article>
       </Link>
@@ -266,7 +277,7 @@ function TertiaryStory({ post }: { post: Post }) {
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>{authorName}</span>
             <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-            <span>{getAudienceLabel(post)}</span>
+            <AudienceLabel post={post} />
           </div>
         </div>
 

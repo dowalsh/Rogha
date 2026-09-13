@@ -117,7 +117,7 @@ export function PostLikeFaces({
       <div ref={containerRef} className="w-full min-h-[34px] flex justify-center">
         {isLoadingLikers ? null : ordered.length === 0 ? (
           <p className="font-serif italic text-sm text-muted-foreground">
-            No likes yet. Yours would be the first.
+            No likes yet.
           </p>
         ) : (
           <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

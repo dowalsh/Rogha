@@ -63,7 +63,7 @@ function getAudienceLabel(post: Post): string {
     case "FRIENDS":
       return "Friends";
     case "CIRCLE":
-      return post.circleLabel ?? "Circle";
+      return post.circleLabel?.replace(/^Shared to /, "") ?? "Circle";
     default:
       return "";
   }
@@ -80,7 +80,7 @@ function jamHref(editionId: string): string {
 
 function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: FrontpageItem; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
   if (item.kind === "jam") {
-    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows);
+    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows, item.editionId);
     return (
       <section className="border-b pb-8 relative">
         <Link href={jamHref(item.editionId)} className="group block w-full">
@@ -182,7 +182,7 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
 
 function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: FrontpageItem; currentUserId?: string | null; onReported: () => void; onBlocked: () => void }) {
   if (item.kind === "jam") {
-    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows);
+    const { ownImageUrl } = jamPreviewFromRows(item.jam.rows, item.editionId);
     return (
       <div className="relative h-full">
         <Link href={jamHref(item.editionId)} className="group block h-full">

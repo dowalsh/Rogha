@@ -455,7 +455,7 @@ export async function createFriendRequestAcceptedNotification({
 
 type AudiencePost = {
   audienceType: string; // "ALL_USERS" | "FRIENDS" | "CIRCLE"
-  circleId: string | null;
+  circleIds: string[];
   officialKind: string | null;
   notifyAllUsers: boolean;
 };
@@ -493,11 +493,11 @@ async function resolveAudienceRecipientIds(
     recipientIds = friendships.map((f) => (f.aId === userId ? f.bId : f.aId));
   }
 
-  // CIRCLE => only circle members
-  if (post.audienceType === "CIRCLE" && post.circleId) {
+  // CIRCLE => deduped union of every target circle's members
+  if (post.audienceType === "CIRCLE" && post.circleIds.length > 0) {
     const members = await prisma.circleMember.findMany({
       where: {
-        circleId: post.circleId,
+        circleId: { in: post.circleIds },
         status: "JOINED",
       },
       select: { userId: true },
@@ -522,15 +522,18 @@ export async function createSubmitNotifications({
     where: { id: postId },
     select: {
       audienceType: true,
-      circleId: true,
       officialKind: true,
       notifyAllUsers: true,
+      postCircles: { select: { circleId: true } },
     },
   });
 
   if (!post) return;
 
-  const uniqueRecipientIds = await resolveAudienceRecipientIds(userId, post);
+  const uniqueRecipientIds = await resolveAudienceRecipientIds(userId, {
+    ...post,
+    circleIds: post.postCircles.map((pc) => pc.circleId),
+  });
 
   if (uniqueRecipientIds.length === 0) return;
 
@@ -639,15 +642,18 @@ export async function createPublishNotifications({
     where: { id: postId },
     select: {
       audienceType: true,
-      circleId: true,
       officialKind: true,
       notifyAllUsers: true,
+      postCircles: { select: { circleId: true } },
     },
   });
 
   if (!post) return;
 
-  const uniqueRecipientIds = await resolveAudienceRecipientIds(userId, post);
+  const uniqueRecipientIds = await resolveAudienceRecipientIds(userId, {
+    ...post,
+    circleIds: post.postCircles.map((pc) => pc.circleId),
+  });
 
   if (uniqueRecipientIds.length === 0) return;
 

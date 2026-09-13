@@ -9,6 +9,7 @@ import { CircleDialog } from "./CircleDialog";
 import { getCirclesForUser, createCircle } from "@/actions/circle.action";
 import { motion } from "framer-motion";
 import { NewCircleDialog } from "./NewCircleDialog";
+import { CirclePill } from "@/components/circles/CirclePill";
 
 export function CirclesCarousel() {
   const [circles, setCircles] = useState<any[]>([]);
@@ -73,7 +74,7 @@ export function CirclesCarousel() {
               className="relative w-32 h-32 p-3 flex flex-col items-center justify-center cursor-pointer hover:shadow-md transition rounded-full"
             >
               <div className="text-center">
-                <h3 className="font-medium text-sm leading-tight">{circle.name}</h3>
+                <CirclePill name={circle.name} />
                 <p className="text-xs text-muted-foreground mt-1">
                   {circle.members.length} members
                 </p>

@@ -43,17 +43,38 @@ export type WeeklyJamData = {
   viewerConnected: boolean;
 };
 
+// Deterministic string hash so the same edition always picks the same
+// "random" cover across renders/reloads/viewers, instead of flickering.
+export function hashToIndex(seed: string, length: number): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h) % length;
+}
+
 /**
  * Derives the compact "post-like" preview shown for the Jam on the Edition
- * front page and the Editions listing: the viewer's own track art (never a
- * friend's), and whether there's anything to show at all.
+ * front page and the Editions listing: a track/artist image picked at random
+ * from the whole group's jam (not just the viewer's own — so non-connected
+ * viewers, who have no row of their own, still get a cover), stable per
+ * edition, and whether there's anything to show at all.
  */
-export function jamPreviewFromRows(rows: WeeklyJamRow[]): {
+export function jamPreviewFromRows(
+  rows: WeeklyJamRow[],
+  editionId: string
+): {
   hasData: boolean;
   ownImageUrl: string | null;
 } {
+  const candidateImages = rows
+    .map((r) => r.imageUrl ?? r.topArtist?.imageUrl ?? null)
+    .filter((url): url is string => url != null);
   return {
     hasData: rows.length > 0,
-    ownImageUrl: rows.find((r) => r.isViewer)?.imageUrl ?? null,
+    ownImageUrl:
+      candidateImages.length > 0
+        ? candidateImages[hashToIndex(editionId, candidateImages.length)]
+        : null,
   };
 }

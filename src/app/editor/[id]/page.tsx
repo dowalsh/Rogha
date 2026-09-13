@@ -14,6 +14,7 @@ import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { Spinner } from "@/components/Spinner";
 import { ShareLinkControls } from "@/components/ShareLinkControls";
 import { EditorSkeleton } from "@/components/editor/EditorSkeleton";
+import { ShareAudienceSelector } from "@/components/editor/ShareAudienceSelector";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import toast from "react-hot-toast";
 import { FetchError } from "@/lib/swr";
@@ -26,7 +27,7 @@ type PostData = {
   status?: PostStatus;
   heroImageUrl?: string | null;
   audienceType?: AudienceType;
-  circleId?: string | null;
+  circleIds?: string[];
   officialKind?: OfficialKind;
   notifyAllUsers?: boolean;
   sundayLiveJoin?: { available: boolean };
@@ -90,7 +91,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [doc, setDoc] = useState<Content>("");
   const [status, setStatus] = useState<PostStatus>("DRAFT");
   const [audienceType, setAudienceType] = useState<AudienceType>("FRIENDS");
-  const [circleId, setCircleId] = useState<string | null>(null);
+  const [circleIds, setCircleIds] = useState<string[]>([]);
   const [officialKind, setOfficialKind] = useState<OfficialKind>(null);
   const [notifyAllUsers, setNotifyAllUsers] = useState(false);
   const [sundayLiveJoinAvailable, setSundayLiveJoinAvailable] = useState(false);
@@ -148,18 +149,13 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       setHeroImageUrl(postData.heroImageUrl);
     else setHeroImageUrl(null);
     if (postData.audienceType) setAudienceType(postData.audienceType);
-    setCircleId(postData.circleId ?? null);
+    setCircleIds(postData.circleIds ?? []);
     setOfficialKind(postData.officialKind ?? null);
     setNotifyAllUsers(postData.notifyAllUsers ?? false);
     setSundayLiveJoinAvailable(postData.sundayLiveJoin?.available ?? false);
 
     setSaved(true);
   }, [postData, params.id]);
-
-  // Load my circles — shared SWR cache means this is instant if the user
-  // already visited another page that fetched the same list.
-  const { data: myCircles = [] } =
-    useSWR<Array<{ id: string; name: string }>>("/api/circles");
 
   const { data: me } = useSWR<{
     signoffEmoji?: string | null;
@@ -194,7 +190,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           status,
           heroImageUrl,
           audienceType,
-          circleId: audienceType === "CIRCLE" ? circleId : null,
+          circleIds: audienceType === "CIRCLE" ? circleIds : [],
           officialKind,
           notifyAllUsers,
         }),
@@ -214,11 +210,13 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // Toggle DRAFT ⇄ SUBMITTED, or DRAFT → PUBLISHED for a Sunday live join
-  // (see docs/specs/2026-08-13-sunday-live-join.md).
+  // Called directly for Unsubmit (SUBMITTED → DRAFT — a reversal, not a new
+  // audience decision), and from ShareAudienceSelector's Post button for the
+  // DRAFT → SUBMITTED/PUBLISHED transition, once an audience is chosen.
+  // (see docs/specs/2026-08-13-sunday-live-join.md for the live-join fork).
   // Note: allow Unsubmit even when editorLocked (because SUBMITTED locks the editor)
-  const handleToggleSubmit = async () => {
-    if (status === "PUBLISHED" || status === "ARCHIVED") return;
+  const handleToggleSubmit = async (): Promise<boolean> => {
+    if (status === "PUBLISHED" || status === "ARCHIVED") return false;
 
     const isUnsubmit = status === "SUBMITTED";
     const publishingNow =
@@ -229,16 +227,15 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         ? "PUBLISHED"
         : "SUBMITTED";
 
-    // guard: if circle is selected audience, require a circleId
-    if (audienceType === "CIRCLE" && !circleId) {
-      alert("Please select a circle before submitting.");
-      console.log("Submit blocked: no circle selected for CIRCLE audience");
-      return;
+    // guard: if circle is selected audience, require at least one circle
+    if (audienceType === "CIRCLE" && circleIds.length === 0) {
+      toast.error("Please select a circle before submitting.");
+      return false;
     }
 
     if (next === "SUBMITTED" && title.trim().length === 0) {
       toast.error("Please add a title before submitting.");
-      return;
+      return false;
     }
 
     try {
@@ -250,7 +247,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       const saveOk = await handleSave();
       if (!saveOk) {
         toast.error("Failed to save changes. Please try again.");
-        return;
+        return false;
       }
 
       const res = await fetch(`/api/posts/${params.id}`, {
@@ -262,7 +259,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           status: next,
           heroImageUrl,
           audienceType,
-          circleId: audienceType === "CIRCLE" ? circleId : null,
+          circleIds: audienceType === "CIRCLE" ? circleIds : [],
           officialKind,
           notifyAllUsers,
         }),
@@ -270,7 +267,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         toast.error(body.error ?? "Failed to submit. Please try again.");
-        return;
+        return false;
       }
       const updated = await res.json().catch(() => null);
       await mutate(`/api/posts/${params.id}`);
@@ -292,9 +289,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       } else if (next === "PUBLISHED") {
         toast.success(emoji ? `Published live! ${emoji}` : "Published live!");
       }
+      return true;
     } catch (err) {
       console.error("Failed to toggle submit:", err);
       toast.error("Failed to submit. Please try again.");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -480,7 +479,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
                 onChange={() => {
                   setOfficialKind("EDITORS_NOTE");
                   setAudienceType("ALL_USERS");
-                  setCircleId(null);
+                  setCircleIds([]);
                   setSaved(false);
                 }}
                 disabled={editorLocked}
@@ -495,7 +494,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
                 onChange={() => {
                   setOfficialKind("COMMUNITY_FEATURE");
                   setAudienceType("ALL_USERS");
-                  setCircleId(null);
+                  setCircleIds([]);
                   setSaved(false);
                 }}
                 disabled={editorLocked}
@@ -521,81 +520,39 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
-      {/* Audience selection — hidden for official posts, which are always ALL_USERS */}
+      {/* Audience — hidden for official posts, which are always ALL_USERS.
+          FRIENDS/CIRCLE selection happens in ShareAudienceSelector, opened
+          from the Submit button below; this is just a summary + admin-only
+          escape hatch to ALL_USERS. */}
       {officialKind === null && (
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Audience</label>
-
-          <div className="flex flex-wrap gap-3">
+        <div className="space-y-3">
+          {isAdmin && (
             <label className="flex items-center gap-2 text-sm">
               <input
-                type="radio"
-                name="audience"
-                value="FRIENDS"
-                checked={audienceType === "FRIENDS"}
-                onChange={() => {
-                  setAudienceType("FRIENDS");
-                  setCircleId(null);
-                  setSaved(false);
-                }}
-                disabled={editorLocked}
-              />
-              All Friends
-            </label>
-
-            {isAdmin && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="audience"
-                  value="ALL_USERS"
-                  checked={audienceType === "ALL_USERS"}
-                  onChange={() => {
-                    setAudienceType("ALL_USERS");
-                    setCircleId(null);
-                    setSaved(false);
-                  }}
-                  disabled={editorLocked}
-                />
-                All Rogha Users
-              </label>
-            )}
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="audience"
-                value="CIRCLE"
-                checked={audienceType === "CIRCLE"}
-                onChange={() => {
-                  setAudienceType("CIRCLE");
-                  setSaved(false);
-                }}
-                disabled={editorLocked}
-              />
-              Circle
-            </label>
-          </div>
-
-          {audienceType === "CIRCLE" && (
-            <div className="flex items-center gap-2">
-              <select
-                className="w-full rounded-md border px-3 py-2 text-base md:text-sm"
-                value={circleId ?? ""}
+                type="checkbox"
+                checked={audienceType === "ALL_USERS"}
                 onChange={(e) => {
-                  setCircleId(e.target.value || null);
+                  setAudienceType(e.target.checked ? "ALL_USERS" : "FRIENDS");
+                  setCircleIds([]);
                   setSaved(false);
                 }}
                 disabled={editorLocked}
-              >
-                <option value="">Select a circle…</option>
-                {myCircles.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              />
+              All Rogha Users (admin)
+            </label>
+          )}
+
+          {audienceType !== "ALL_USERS" && (
+            <ShareAudienceSelector
+              audienceType={audienceType === "CIRCLE" ? "CIRCLE" : "FRIENDS"}
+              circleIds={circleIds}
+              onChange={(nextAudienceType, nextCircleIds) => {
+                setAudienceType(nextAudienceType);
+                setCircleIds(nextCircleIds);
+                setSaved(false);
+              }}
+              disabled={editorLocked}
+            />
           )}
         </div>
       )}

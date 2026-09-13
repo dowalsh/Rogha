@@ -11,6 +11,8 @@ import { useLike } from "@/hooks/useLike";
 import { LikeHeart, LikeCount } from "./LikeButton";
 import { ContentOverflowMenu } from "./ContentOverflowMenu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CircleMembersSheet } from "@/components/CircleMembersSheet";
+import { CircleAudienceLine } from "@/components/circles/CirclePill";
 import type { AudienceType } from "@/types/index";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +21,24 @@ import { cn } from "@/lib/utils";
 // no audience banner since track visibility is always "friends who can see
 // this Jam", not a configurable audience type).
 export type CommentsTarget =
-  | { kind: "post"; id: string; authorId: string; authorName: string; audienceType: AudienceType }
+  | {
+      kind: "post";
+      id: string;
+      authorId: string;
+      authorName: string;
+      audienceType: AudienceType;
+      // Circles this specific viewer is allowed to see among the post's
+      // targets (scoped server-side, per buildReaderVisibleCircles) —
+      // never the raw target-circle list, so a reader can't learn the
+      // names of circles they aren't in. `hiddenCircleCount` flags that
+      // the post also targets circles this viewer isn't in.
+      circles?: { id: string; name: string }[];
+      hiddenCircleCount?: number;
+      // Only meaningful for audienceType "RECIPIENTS" (republish) — the
+      // size of the named recipient list, to distinguish "sole recipient"
+      // from "several friends" in the audience label.
+      recipientCount?: number;
+    }
   | { kind: "track"; id: string };
 
 function commentsApiPath(target: CommentsTarget) {
@@ -496,6 +515,26 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
     { kind: "new" } | { kind: "reply"; id: string; name: string; parentId: string } | null
   >(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
+  const [openCircleMembersId, setOpenCircleMembersId] = useState<string | null>(null);
+
+  const visibleCircles =
+    target.kind === "post" && target.audienceType === "CIRCLE" ? target.circles ?? [] : [];
+  const hiddenCircleCount =
+    target.kind === "post" && target.audienceType === "CIRCLE" ? target.hiddenCircleCount ?? 0 : 0;
+
+  // Lazily fetched only when there's a circle pill to back with a member
+  // list — the same endpoint the composer's audience picker uses, scoped to
+  // circles the viewer belongs to (which these all must be, to be visible).
+  const { data: shareCircles } = useSWR<
+    { id: string; name: string; members: { id: string; username: string; image: string | null }[] }[]
+  >(visibleCircles.length > 0 ? "/api/circles/share-picker" : null);
+  const openCircle = visibleCircles.find((c) => c.id === openCircleMembersId) ?? null;
+  const circleMembersSheetTarget = openCircle
+    ? {
+        title: openCircle.name,
+        members: shareCircles?.find((c) => c.id === openCircle.id)?.members ?? [],
+      }
+    : null;
 
   // Dragging the thread while the keyboard is up should dismiss it (like
   // Mail/Messages) rather than fight it — blur lets the keyboard hide and
@@ -769,7 +808,14 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
           </div>
           {target.audienceType === "FRIENDS" && (
             <p className="text-sm italic text-orange-500 mb-4">
-              Comments are visible to all {target.authorName}'s friends
+              Comments visible to all {target.authorName}'s friends
+            </p>
+          )}
+          {target.audienceType === "RECIPIENTS" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              {target.recipientCount === 1
+                ? `Comments only visible to you and ${target.authorName}`
+                : `Comments visible to some friends of ${target.authorName}`}
             </p>
           )}
           {target.audienceType === "ALL_USERS" && (
@@ -778,11 +824,22 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
             </p>
           )}
           {target.audienceType === "CIRCLE" && (
-            <p className="text-sm italic text-orange-500 mb-4">
-              Comments are visible to all members of this circle
-            </p>
+            <CircleAudienceLine
+              circles={visibleCircles}
+              hiddenCount={hiddenCircleCount}
+              prefix="Comments visible to"
+              onCircleClick={(circle) => setOpenCircleMembersId(circle.id)}
+              className="mb-4"
+            />
           )}
         </div>
+      )}
+
+      {target.kind === "post" && (
+        <CircleMembersSheet
+          target={circleMembersSheetTarget}
+          onClose={() => setOpenCircleMembersId(null)}
+        />
       )}
 
       <div

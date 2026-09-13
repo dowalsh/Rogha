@@ -9,7 +9,7 @@ import {
   createPublishNotifications,
 } from "@/actions/notification.action";
 import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
-import { canViewPost } from "@/lib/access/postAccess";
+import { canViewPost, buildReaderVisibleCircles } from "@/lib/access/postAccess";
 import { isContentBlocked, extractTextFromDoc } from "@/lib/contentFilter";
 import { generateHeroThumbnails } from "@/lib/heroThumbnails";
 import {
@@ -38,7 +38,7 @@ export async function GET(
         status: true,
         authorId: true,
         audienceType: true,
-        circleId: true,
+        postCircles: { select: { circleId: true, circle: { select: { id: true, name: true } } } },
         officialKind: true,
         notifyAllUsers: true,
         editionId: true,
@@ -55,7 +55,7 @@ export async function GET(
           select: { edition: { select: { publishedAt: true } } },
         },
         republishMessage: true,
-        _count: { select: { likes: true } },
+        _count: { select: { likes: true, recipients: true } },
         likes: { select: { id: true, userId: true } },
       },
     });
@@ -71,10 +71,18 @@ export async function GET(
     // compute — see docs/specs/2026-08-13-sunday-live-join.md.
     const openLiveJoinEdition = await getOpenLiveJoinEdition();
 
-    // Base response with counts
+    const circleIds = post.postCircles.map((pc) => pc.circleId);
+    const targetCircles = post.postCircles.map((pc) => pc.circle);
+    const { postCircles: _postCircles, ...postWithoutCircles } = post;
+
+    // Base response with counts. postCircles/target circle names are never
+    // spread raw into the response — a reader must never learn the names of
+    // circles they aren't in, so circleIds/circles are attached below,
+    // scoped to what this specific viewer is allowed to see.
     let baseResponse: any = {
-      ...post,
+      ...postWithoutCircles,
       likeCount: post._count.likes,
+      recipientCount: post._count.recipients,
       likedByMe: false,
       readByMe: false,
       newCommentCount: null as number | null,
@@ -85,6 +93,7 @@ export async function GET(
     // Try to resolve user (don't error if missing)
     const { user } = await getDbUser().catch(() => ({ user: null }));
     console.log("[GET] Current user:", user ? user.id : "none");
+    const isAuthor = user?.id === post.authorId;
 
     // If we have a user, check if they liked / read
     if (user) {
@@ -127,7 +136,7 @@ export async function GET(
       authorId: post.authorId,
       status: post.status,
       audienceType: post.audienceType,
-      circleId: post.circleId,
+      circleIds,
       createdAt: post.createdAt,
       publishedAt: post.edition?.publishedAt ?? null,
     });
@@ -135,6 +144,28 @@ export async function GET(
     if (!allowed) {
       console.log("[GET] Unauthorized to view this post");
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
+    }
+
+    if (post.audienceType === "CIRCLE") {
+      let readerJoinedCircleIds = new Set<string>();
+      if (!isAuthor && user && circleIds.length > 0) {
+        const joined = await prisma.circleMember.findMany({
+          where: { userId: user.id, status: "JOINED", circleId: { in: circleIds } },
+          select: { circleId: true },
+        });
+        readerJoinedCircleIds = new Set(joined.map((j) => j.circleId));
+      }
+      const { circles, hiddenCount } = buildReaderVisibleCircles(
+        isAuthor,
+        targetCircles,
+        readerJoinedCircleIds,
+      );
+      baseResponse.circles = circles;
+      baseResponse.hiddenCircleCount = hiddenCount;
+      // Only the author needs the full target-circle id list (to prefill
+      // the share screen for editing) — a reader only ever gets `circles`,
+      // already scoped to what they're allowed to see.
+      if (isAuthor) baseResponse.circleIds = circleIds;
     }
 
     console.log("[GET] Returning post to authorized viewer");
@@ -193,8 +224,9 @@ export async function PUT(
       incomingOfficialKind != null
         ? "ALL_USERS"
         : (body.audienceType as string | undefined);
-    const incomingCircleId =
-      (body.circleId as string | null | undefined) ?? null;
+    const incomingCircleIds: string[] = Array.isArray(body.circleIds)
+      ? body.circleIds.filter((c: unknown): c is string => typeof c === "string")
+      : [];
 
     if (!incomingAudience || !allowedAudience.has(incomingAudience)) {
       return NextResponse.json(
@@ -208,11 +240,25 @@ export async function PUT(
         { status: 403 },
       );
     }
-    if (incomingAudience === "CIRCLE" && !incomingCircleId) {
+    if (incomingAudience === "CIRCLE" && incomingCircleIds.length === 0) {
       return NextResponse.json(
-        { error: "circleId required for CIRCLE" },
+        { error: "At least one circleId is required for CIRCLE" },
         { status: 400 },
       );
+    }
+    if (incomingAudience === "CIRCLE") {
+      const memberships = await prisma.circleMember.findMany({
+        where: { userId: user.id, status: "JOINED", circleId: { in: incomingCircleIds } },
+        select: { circleId: true },
+      });
+      const joinedIds = new Set(memberships.map((m) => m.circleId));
+      const notAMember = incomingCircleIds.some((cid) => !joinedIds.has(cid));
+      if (notAMember) {
+        return NextResponse.json(
+          { error: "You can only post to circles you're a member of" },
+          { status: 403 },
+        );
+      }
     }
 
     const isPublishNow = body.status === "PUBLISHED";
@@ -267,7 +313,7 @@ export async function PUT(
       heroImageUrl: body.heroImageUrl,
       ...thumbUpdate,
       audienceType: incomingAudience,
-      circleId: incomingAudience === "CIRCLE" ? incomingCircleId : null,
+      circleId: null, // deprecated — multi-circle audience lives in PostCircle rows now
       officialKind: incomingOfficialKind ?? null,
       notifyAllUsers:
         incomingOfficialKind != null ? incomingNotifyAllUsers : false,
@@ -314,6 +360,16 @@ export async function PUT(
         where: { id },
         data: updateData,
       });
+
+      // Multi-circle audience lives in PostCircle rows, not a scalar column
+      // — replace the full set on every save (cheap: circle counts per post
+      // are small, and this only runs when the post is actually saved).
+      await tx.postCircle.deleteMany({ where: { postId: id } });
+      if (incomingAudience === "CIRCLE") {
+        await tx.postCircle.createMany({
+          data: incomingCircleIds.map((circleId) => ({ postId: id, circleId })),
+        });
+      }
 
       if (livePublished) {
         await recordActivityEvent({

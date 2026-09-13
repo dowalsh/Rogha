@@ -306,7 +306,7 @@ export async function getBuzzPosts(
           authorId: true,
           status: true,
           audienceType: true,
-          circleId: true,
+          postCircles: { select: { circleId: true } },
           createdAt: true,
           heroThumbUrl: true,
           author: { select: { id: true, username: true } },
@@ -336,7 +336,7 @@ export async function getBuzzPosts(
       authorId: e.post!.authorId,
       status: e.post!.status,
       audienceType: e.post!.audienceType,
-      circleId: e.post!.circleId,
+      circleIds: e.post!.postCircles.map((pc) => pc.circleId),
       createdAt: e.post!.createdAt,
       publishedAt: e.post!.edition?.publishedAt ?? null,
     }));

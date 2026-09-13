@@ -71,7 +71,10 @@ function SignInInner() {
 
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div
+      className="flex items-center justify-center"
+      style={{ minHeight: "calc(100dvh - 4rem - env(safe-area-inset-top))" }}
+    >
       <Suspense>
         <SignInInner />
       </Suspense>

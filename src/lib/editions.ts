@@ -5,8 +5,13 @@ import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { getAcceptedFriendships } from "@/lib/friends";
 import { getReadMapForPosts } from "@/lib/postReads";
-import { buildAudienceCandidateWhere, getRecipientPostIds } from "@/lib/access/postAccess";
+import {
+  buildAudienceCandidateWhere,
+  getRecipientPostIds,
+  buildReaderVisibleCircles,
+} from "@/lib/access/postAccess";
 import { getWeeklyJamForEdition, hasViewedWeeklyJam } from "@/lib/jam";
+import { hashToIndex } from "@/lib/jam-preview";
 
 type DbUser = { id: string };
 
@@ -222,7 +227,7 @@ export async function getPublishedEditions(user: DbUser) {
           createdAt: true,
           authorId: true,
           audienceType: true,
-          circleId: true,
+          postCircles: { select: { circleId: true } },
           officialKind: true,
           author: {
             select: { id: true, username: true, image: true },
@@ -239,8 +244,10 @@ export async function getPublishedEditions(user: DbUser) {
         if (p.authorId === user.id) return true;
         if (p.audienceType === "ALL_USERS") return true;
         if (p.audienceType === "CIRCLE") {
-          const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
-          return joinedAt !== undefined && joinedAt <= (ed.publishedAt ?? p.createdAt);
+          return p.postCircles.some((pc) => {
+            const joinedAt = circleJoinedMap.get(pc.circleId);
+            return joinedAt !== undefined && joinedAt <= (ed.publishedAt ?? p.createdAt);
+          });
         }
         if (p.audienceType === "RECIPIENTS") {
           return recipientPostIdSet.has(p.id);
@@ -254,9 +261,19 @@ export async function getPublishedEditions(user: DbUser) {
         where: { editionId: ed.id, userId: { in: jamCandidateIds } },
         select: { userId: true, imageUrl: true },
       });
+      // Random pick across the whole group (not just the viewer's own row) so
+      // non-connected viewers still get a cover — see jamPreviewFromRows for
+      // the client-safe version of this same logic, kept deterministic per
+      // edition so it doesn't flicker across reloads.
+      const jamImages = jamTracks
+        .map((t) => t.imageUrl)
+        .filter((url): url is string => url != null);
       const weeklyJam = {
         hasData: jamTracks.length > 0,
-        ownImageUrl: jamTracks.find((t) => t.userId === user.id)?.imageUrl ?? null,
+        ownImageUrl:
+          jamImages.length > 0
+            ? jamImages[hashToIndex(ed.id, jamImages.length)]
+            : null,
       };
 
       // Official posts (Editor's Note / Community Feature) sort last,
@@ -324,9 +341,8 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       createdAt: true,
       authorId: true,
       audienceType: true,
-      circleId: true,
+      postCircles: { select: { circleId: true, circle: { select: { id: true, name: true } } } },
       officialKind: true,
-      circle: { select: { id: true, name: true } },
       author: { select: { id: true, clerkId: true, username: true, image: true } },
       heroImageUrl: true,
       heroThumbUrl: true,
@@ -363,8 +379,11 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
       if (p.audienceType === "CIRCLE") {
         // Membership must predate the edition going live, so joining a
         // circle doesn't grant retroactive access to its whole history.
-        const joinedAt = p.circleId ? circleJoinedMap.get(p.circleId) : undefined;
-        return joinedAt !== undefined && joinedAt <= (edition.publishedAt ?? p.createdAt);
+        // Evaluated per target circle, then unioned.
+        return p.postCircles.some((pc) => {
+          const joinedAt = circleJoinedMap.get(pc.circleId);
+          return joinedAt !== undefined && joinedAt <= (edition.publishedAt ?? p.createdAt);
+        });
       }
       if (p.audienceType === "RECIPIENTS") {
         return recipientPostIdSet.has(p.id);
@@ -377,12 +396,30 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
         friendshipDate <= (edition.publishedAt ?? p.createdAt)
       );
     })
-    .map(({ _count, likes, ...p }) => ({
-      ...p,
-      editionId: edition.id,
-      likeCount: _count.likes,
-      likedByMe: likes.length > 0,
-    }));
+    .map(({ _count, likes, postCircles, ...p }) => {
+      // Per-reader visible circle list — never the raw target-circle list,
+      // so a reader can't learn the names of circles they aren't in.
+      const { circles, hiddenCount } =
+        p.audienceType === "CIRCLE"
+          ? buildReaderVisibleCircles(
+              p.authorId === user.id,
+              postCircles.map((pc) => pc.circle),
+              new Set(
+                postCircles
+                  .map((pc) => pc.circleId)
+                  .filter((cid) => circleJoinedMap.has(cid)),
+              ),
+            )
+          : { circles: [], hiddenCount: 0 };
+      return {
+        ...p,
+        editionId: edition.id,
+        likeCount: _count.likes,
+        likedByMe: likes.length > 0,
+        circles,
+        hiddenCircleCount: hiddenCount,
+      };
+    });
 
   // Unread first (so "pick up where you left off" surfaces unread stories
   // immediately), read after — each group keeping its existing recency order.

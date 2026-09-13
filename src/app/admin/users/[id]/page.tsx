@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { UserLink } from "@/components/admin/UserLink";
 import { PostLink } from "@/components/admin/PostLink";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { CirclePillGroup } from "@/components/circles/CirclePill";
 import type { UserInsights } from "@/lib/insights/userDrilldown";
 
 function fmtDateTime(iso: string | null): string {
@@ -116,9 +117,7 @@ export default function UserDetailPage() {
               <Stat label="Circles" value={data.network.circles.length} />
             </div>
             {data.network.circles.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {data.network.circles.map((c) => c.name).join(", ")}
-              </p>
+              <CirclePillGroup circles={data.network.circles} max={6} />
             )}
             {data.network.friendsList.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-1">

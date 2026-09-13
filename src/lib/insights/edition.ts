@@ -67,7 +67,7 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
         authorId: true,
         content: true,
         audienceType: true,
-        circleId: true,
+        postCircles: { select: { circleId: true } },
         createdAt: true,
       },
     }),
@@ -161,7 +161,7 @@ export async function computeEditionSummary(editionId: string): Promise<EditionS
     authorId: p.authorId,
     status: "PUBLISHED",
     audienceType: p.audienceType,
-    circleId: p.circleId,
+    circleIds: p.postCircles.map((pc) => pc.circleId),
     createdAt: p.createdAt,
     publishedAt: target.publishedAt,
   }));

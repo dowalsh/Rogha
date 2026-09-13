@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { X, Search } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
+import { CirclePill } from "@/components/circles/CirclePill";
 import {
   addMemberToCircle,
   removeMemberFromCircle,
@@ -128,7 +129,9 @@ export function CircleDialog({
     >
       <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{circle?.name ?? "Circle"}</DialogTitle>
+          <DialogTitle>
+            {circle?.name ? <CirclePill name={circle.name} /> : "Circle"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">

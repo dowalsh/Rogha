@@ -54,8 +54,11 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Accept/Decline button spinners (keyed by user id)
-  const [actingId, setActingId] = useState<string | null>(null);
+  // Accept/Decline button spinners (keyed by user id + which action is in flight)
+  const [acting, setActing] = useState<{
+    userId: string;
+    action: "accept" | "decline";
+  } | null>(null);
 
   // "Share an old favourite" nudge, shown right after a successful accept —
   // shared with PendingRequestsCard's home-page version.
@@ -163,7 +166,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
   }
 
   async function handleAccept(userId: string, username: string) {
-    setActingId(userId);
+    setActing({ userId, action: "accept" });
     try {
       const res = await fetch(`/api/friends/${userId}/accept`, {
         method: "POST",
@@ -183,12 +186,12 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       console.error("[FriendsCarousel] accept failed:", e);
       toast.error(e?.message || "Failed to accept");
     } finally {
-      setActingId(null);
+      setActing(null);
     }
   }
 
   async function handleDecline(userId: string) {
-    setActingId(userId);
+    setActing({ userId, action: "decline" });
     try {
       const res = await fetch(`/api/friends/${userId}/decline`, {
         method: "POST",
@@ -204,7 +207,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       console.error("[FriendsCarousel] decline failed:", e);
       toast.error(e?.message || "Failed to decline");
     } finally {
-      setActingId(null);
+      setActing(null);
     }
   }
 
@@ -302,7 +305,11 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
             const initials = (u.username || "?").slice(0, 2).toUpperCase();
             const href = u.username ? `/profile/${u.username}` : "#";
             const isDeleting = deletingId === u.id;
-            const isActing = actingId === u.id;
+            const isAccepting =
+              acting?.userId === u.id && acting.action === "accept";
+            const isDeclining =
+              acting?.userId === u.id && acting.action === "decline";
+            const isActing = isAccepting || isDeclining;
 
             const isPending =
               item.state === "PENDING_INCOMING" ||
@@ -395,7 +402,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
                       disabled={isActing}
                       title="Accept"
                     >
-                      {isActing ? (
+                      {isAccepting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Check className="h-4 w-4" />
@@ -409,7 +416,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
                       disabled={isActing}
                       title="Decline"
                     >
-                      {isActing ? (
+                      {isDeclining ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <X className="h-4 w-4" />

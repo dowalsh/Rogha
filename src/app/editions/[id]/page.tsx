@@ -21,10 +21,10 @@ type EditionResponse = {
     status: string;
     updatedAt: string;
     authorId: string;
-    circleId?: string | null;
     audienceType: "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
     officialKind?: "EDITORS_NOTE" | "COMMUNITY_FEATURE" | null;
-    circle?: { id: string; name: string } | null;
+    circles?: { id: string; name: string }[];
+    hiddenCircleCount?: number;
     author?: { id: string; name?: string | null; image?: string | null } | null;
     heroImageUrl?: string | null;
     // content?: string | null;

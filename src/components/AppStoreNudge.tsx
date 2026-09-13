@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Capacitor } from "@capacitor/core";
 import Nudge from "@/components/Nudge";
 import { APP_STORE_URL } from "@/lib/appStore";
+import { useSuppressNudges } from "@/hooks/useSuppressNudges";
 
 // Mobile-web-only "we're on the App Store" banner. Never shows inside the
 // native app's own webview (Capacitor.isNativePlatform()) — that's covered
@@ -16,14 +16,14 @@ const SESSION_STORAGE_FROM_APP = "rogha_sign_in_from_app";
 
 export default function AppStoreNudge() {
   const [dismissed, setDismissed] = useState(true);
-  const [isNative] = useState(() => Capacitor.isNativePlatform());
+  const suppressed = useSuppressNudges();
 
   useEffect(() => {
     const fromApp = sessionStorage.getItem(SESSION_STORAGE_FROM_APP) === "1";
     setDismissed(fromApp || localStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  if (isNative || dismissed) return null;
+  if (suppressed || dismissed) return null;
 
   return (
     <div className="md:hidden">

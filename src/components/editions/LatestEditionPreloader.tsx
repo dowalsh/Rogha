@@ -12,7 +12,8 @@ type PreloadPost = {
   status?: string;
   heroImageUrl?: string | null;
   audienceType?: string;
-  circleId?: string | null;
+  circles?: { id: string; name: string }[];
+  hiddenCircleCount?: number;
   author?: {
     id: string;
     clerkId?: string | null;
@@ -40,7 +41,8 @@ function buildPostDTO(post: PreloadPost, edition: PreloadEdition) {
     editionId: edition.id,
     heroImageUrl: post.heroImageUrl ?? null,
     audienceType: post.audienceType,
-    circleId: post.circleId ?? null,
+    circles: post.circles ?? [],
+    hiddenCircleCount: post.hiddenCircleCount ?? 0,
     author: post.author
       ? {
           id: post.author.id,

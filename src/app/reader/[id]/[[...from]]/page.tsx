@@ -24,6 +24,7 @@ import { ReaderSkeleton } from "@/components/reader/ReaderSkeleton";
 import { ReaderJumpFab } from "@/components/reader/ReaderJumpFab";
 import { EditionUpNext } from "@/components/reader/EditionUpNext";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { CirclePillGroup } from "@/components/circles/CirclePill";
 import type { AudienceType } from "@/types/index";
 
 type PostDTO = {
@@ -43,6 +44,9 @@ type PostDTO = {
   likeCount: number;
   likedByMe: boolean;
   audienceType: AudienceType;
+  circles?: { id: string; name: string }[];
+  hiddenCircleCount?: number;
+  recipientCount?: number;
   edition?: { publishedAt: string | null } | null;
   newCommentCount?: number | null;
   republishedFromPostId?: string | null;
@@ -367,6 +371,9 @@ function ReadPostPageInner({
               ).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`}
           </span>
         )}
+        {post.audienceType === "CIRCLE" && post.circles && post.circles.length > 0 && (
+          <CirclePillGroup circles={post.circles} />
+        )}
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span>{authorName}</span>
           {post.edition?.publishedAt && (
@@ -447,6 +454,9 @@ function ReadPostPageInner({
             authorId: post.author?.id ?? "",
             authorName: post.author?.username ?? "post author",
             audienceType: post.audienceType,
+            circles: post.circles ?? [],
+            hiddenCircleCount: post.hiddenCircleCount ?? 0,
+            recipientCount: post.recipientCount ?? 0,
           }}
         />
       </div>

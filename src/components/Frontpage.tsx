@@ -80,6 +80,10 @@ function AudienceLabel({ post }: { post: Post }) {
   return <span>{getAudienceLabel(post)}</span>;
 }
 
+function hasAudienceLabel(post: Post): boolean {
+  return post.audienceType === "CIRCLE" || getAudienceLabel(post) !== "";
+}
+
 function getAuthorName(post: Post): string {
   if (post.officialKind != null) return "Rogha";
   return post.author?.username ?? "Unknown";
@@ -137,8 +141,12 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{authorName}</span>
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
-              <AudienceLabel post={post} />
+              {hasAudienceLabel(post) && (
+                <>
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
+                  <AudienceLabel post={post} />
+                </>
+              )}
             </div>
           </article>
         </Link>
@@ -176,8 +184,12 @@ function LeadStory({ item, currentUserId, onReported, onBlocked }: { item: Front
 
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>{authorName}</span>
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
-              <AudienceLabel post={post} />
+              {hasAudienceLabel(post) && (
+                <>
+                  <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
+                  <AudienceLabel post={post} />
+                </>
+              )}
             </div>
           </div>
         </article>
@@ -247,8 +259,12 @@ function SecondaryStory({ item, currentUserId, onReported, onBlocked }: { item: 
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>{authorName}</span>
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-            <AudienceLabel post={post} />
+            {hasAudienceLabel(post) && (
+              <>
+                <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                <AudienceLabel post={post} />
+              </>
+            )}
           </div>
         </article>
       </Link>
@@ -276,8 +292,12 @@ function TertiaryStory({ post }: { post: Post }) {
           </span>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>{authorName}</span>
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-            <AudienceLabel post={post} />
+            {hasAudienceLabel(post) && (
+              <>
+                <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
+                <AudienceLabel post={post} />
+              </>
+            )}
           </div>
         </div>
 

@@ -31,7 +31,6 @@ export type HeroData =
       state: HeroState;
       unreadPostIds: string[];
       teaserThumbUrls: string[];
-      readThumbUrls: string[];
     };
 
 // NOTE: "release day" is a literal calendar-day match (LA time) against the
@@ -77,14 +76,8 @@ export async function getHeroData(userId: string): Promise<HeroData> {
         ? "PARTIAL"
         : "CAUGHT_UP";
 
-  // Blurred teaser thumbs build suspense pre-open; once opened (even
-  // partially) we switch to the clear thumb so the hero stays interesting
-  // without re-hiding stories the viewer has already seen.
   const teaserThumbUrls = edition.posts
     .map((p) => p.heroThumbBlurUrl)
-    .filter((url): url is string => !!url);
-  const readThumbUrls = edition.posts
-    .map((p) => p.heroThumbUrl)
     .filter((url): url is string => !!url);
 
   return {
@@ -96,7 +89,6 @@ export async function getHeroData(userId: string): Promise<HeroData> {
     state,
     unreadPostIds,
     teaserThumbUrls,
-    readThumbUrls,
   };
 }
 

@@ -412,7 +412,7 @@ function LatestEditionTeaser({ edition }: { edition: FullEdition }) {
         <div className="space-y-2">
           <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
           <div className="flex items-center justify-between gap-2">
-            <p className="font-serif text-xl font-bold">This week's edition</p>
+            <p className="font-serif text-xl font-bold">Latest edition</p>
             <Link
               href={`/editions/${edition.id}`}
               className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
@@ -420,6 +420,9 @@ function LatestEditionTeaser({ edition }: { edition: FullEdition }) {
               Reread
             </Link>
           </div>
+          <p className="text-sm text-muted-foreground">
+            {totalCount} {totalCount === 1 ? "story" : "stories"}
+          </p>
         </div>
 
         {thumbStrip}
@@ -431,7 +434,7 @@ function LatestEditionTeaser({ edition }: { edition: FullEdition }) {
     <div className="rounded-xl border-2 border-accent p-6 space-y-4">
       <div className="space-y-2">
         <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
-        <h2 className="font-serif text-2xl font-bold leading-tight">This week's edition</h2>
+        <h2 className="font-serif text-2xl font-bold leading-tight">Latest edition</h2>
         <p className="text-sm text-muted-foreground">
           {totalCount} {totalCount === 1 ? "story" : "stories"} waiting.
         </p>

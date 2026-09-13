@@ -44,6 +44,7 @@ type PostDTO = {
   likedByMe: boolean;
   audienceType: AudienceType;
   circleLabel?: string | null;
+  soleCircle?: { id: string; name: string } | null;
   edition?: { publishedAt: string | null } | null;
   newCommentCount?: number | null;
   republishedFromPostId?: string | null;
@@ -451,7 +452,7 @@ function ReadPostPageInner({
             authorId: post.author?.id ?? "",
             authorName: post.author?.username ?? "post author",
             audienceType: post.audienceType,
-            circleLabel: post.circleLabel,
+            soleCircle: post.soleCircle,
           }}
         />
       </div>

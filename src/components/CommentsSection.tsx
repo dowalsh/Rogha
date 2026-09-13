@@ -11,6 +11,7 @@ import { useLike } from "@/hooks/useLike";
 import { LikeHeart, LikeCount } from "./LikeButton";
 import { ContentOverflowMenu } from "./ContentOverflowMenu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CircleMembersSheet } from "@/components/CircleMembersSheet";
 import type { AudienceType } from "@/types/index";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +26,12 @@ export type CommentsTarget =
       authorId: string;
       authorName: string;
       audienceType: AudienceType;
-      circleLabel?: string | null;
+      // Set only when this post targets exactly one circle — safe to
+      // reveal since viewing the post already proves membership in it.
+      // When it targets several, this stays null/absent and the banner
+      // just says "multiple circles" (names withheld, per
+      // buildReaderCircleLabel).
+      soleCircle?: { id: string; name: string } | null;
     }
   | { kind: "track"; id: string };
 
@@ -503,6 +509,24 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
     { kind: "new" } | { kind: "reply"; id: string; name: string; parentId: string } | null
   >(null);
   const [pulsingId, setPulsingId] = useState<string | null>(null);
+  const [showCircleMembers, setShowCircleMembers] = useState(false);
+
+  // Lazily fetched only when there's a single target circle to name — the
+  // same endpoint the composer's audience picker uses, scoped to circles
+  // the viewer belongs to (which this one must be, to be viewing the post).
+  const soleCircle =
+    target.kind === "post" && target.audienceType === "CIRCLE"
+      ? target.soleCircle ?? null
+      : null;
+  const { data: shareCircles } = useSWR<
+    { id: string; name: string; members: { id: string; username: string; image: string | null }[] }[]
+  >(soleCircle ? "/api/circles/share-picker" : null);
+  const soleCircleMembersSheet = showCircleMembers
+    ? {
+        title: soleCircle?.name ?? "",
+        members: shareCircles?.find((c) => c.id === soleCircle?.id)?.members ?? [],
+      }
+    : null;
 
   // Dragging the thread while the keyboard is up should dismiss it (like
   // Mail/Messages) rather than fight it — blur lets the keyboard hide and
@@ -776,7 +800,7 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
           </div>
           {target.audienceType === "FRIENDS" && (
             <p className="text-sm italic text-orange-500 mb-4">
-              Comments are visible to all {target.authorName}'s friends
+              Comments visible to all {target.authorName}'s friends
             </p>
           )}
           {target.audienceType === "ALL_USERS" && (
@@ -784,13 +808,32 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
               Comments are visible to all Rogha users
             </p>
           )}
-          {target.audienceType === "CIRCLE" && (
+          {target.audienceType === "CIRCLE" && soleCircle && (
+            <p className="flex flex-wrap items-center gap-1.5 text-sm italic text-muted-foreground mb-4">
+              <span>Comments visible to</span>
+              <button
+                type="button"
+                onClick={() => setShowCircleMembers(true)}
+                className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold not-italic text-muted-foreground hover:text-foreground"
+              >
+                {soleCircle.name}
+              </button>
+              <span>only.</span>
+            </p>
+          )}
+          {target.audienceType === "CIRCLE" && !soleCircle && (
             <p className="text-sm italic text-orange-500 mb-4">
-              {target.circleLabel ? `${target.circleLabel}. ` : ""}
-              Comments are visible to everyone who received this post.
+              Comments visible to multiple circles
             </p>
           )}
         </div>
+      )}
+
+      {target.kind === "post" && (
+        <CircleMembersSheet
+          target={soleCircleMembersSheet}
+          onClose={() => setShowCircleMembers(false)}
+        />
       )}
 
       <div

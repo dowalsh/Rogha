@@ -5,13 +5,7 @@ import useSWR, { mutate } from "swr";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
+import { CircleMembersSheet } from "@/components/CircleMembersSheet";
 import { NewCircleDialog } from "@/components/NewCircleDialog";
 import { createCircle } from "@/actions/circle.action";
 import { cn } from "@/lib/utils";
@@ -237,32 +231,7 @@ export function ShareAudienceSelector({
       />
 
       {/* Member popup — same for a circle or All Friends */}
-      <Sheet open={!!membersPopup} onOpenChange={(v) => !v && setMembersPopup(null)}>
-        <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="font-serif">
-              {membersPopup?.title}, {membersPopup?.members.length}{" "}
-              {membersPopup?.members.length === 1 ? "person" : "people"}
-            </SheetTitle>
-          </SheetHeader>
-          <div className="mt-2 divide-y divide-border">
-            {membersPopup?.members.map((m) => (
-              <div key={m.id} className="flex items-center gap-3 py-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={m.image ?? undefined} alt={m.username} />
-                  <AvatarFallback>{initialsFor(m.username)}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm">{m.username}</span>
-              </div>
-            ))}
-          </div>
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setMembersPopup(null)}>
-              Done
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <CircleMembersSheet target={membersPopup} onClose={() => setMembersPopup(null)} />
 
       <NewCircleDialog
         open={newCircleOpen}

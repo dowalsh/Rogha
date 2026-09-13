@@ -162,6 +162,12 @@ export async function GET(
       // Only the author needs the full target-circle id list (to prefill
       // the share screen for editing) — a reader only ever gets the label.
       if (isAuthor) baseResponse.circleIds = circleIds;
+      // Comments-section banner needs to distinguish "one circle" (pill +
+      // member popup) from "several circles" (generic line, names withheld)
+      // without leaking names the reader isn't allowed to see. Only ever
+      // attached when there's exactly one target circle — viewing this post
+      // at all already proves membership in it.
+      baseResponse.soleCircle = targetCircles.length === 1 ? targetCircles[0] : null;
     }
 
     console.log("[GET] Returning post to authorized viewer");

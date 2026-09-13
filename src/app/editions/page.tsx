@@ -484,7 +484,7 @@ function LatestEditionPreview({ edition }: { edition: FullEdition }) {
     items.push({
       kind: "jam",
       editionId: edition.id,
-      ownImageUrl: jamPreviewFromRows(edition.weeklyJam.rows).ownImageUrl,
+      ownImageUrl: jamPreviewFromRows(edition.weeklyJam.rows, edition.id).ownImageUrl,
     });
   }
   const [lead, ...rest] = items;

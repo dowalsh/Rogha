@@ -11,6 +11,7 @@ import {
   buildReaderCircleLabel,
 } from "@/lib/access/postAccess";
 import { getWeeklyJamForEdition, hasViewedWeeklyJam } from "@/lib/jam";
+import { hashToIndex } from "@/lib/jam-preview";
 
 type DbUser = { id: string };
 
@@ -260,9 +261,19 @@ export async function getPublishedEditions(user: DbUser) {
         where: { editionId: ed.id, userId: { in: jamCandidateIds } },
         select: { userId: true, imageUrl: true },
       });
+      // Random pick across the whole group (not just the viewer's own row) so
+      // non-connected viewers still get a cover — see jamPreviewFromRows for
+      // the client-safe version of this same logic, kept deterministic per
+      // edition so it doesn't flicker across reloads.
+      const jamImages = jamTracks
+        .map((t) => t.imageUrl)
+        .filter((url): url is string => url != null);
       const weeklyJam = {
         hasData: jamTracks.length > 0,
-        ownImageUrl: jamTracks.find((t) => t.userId === user.id)?.imageUrl ?? null,
+        ownImageUrl:
+          jamImages.length > 0
+            ? jamImages[hashToIndex(ed.id, jamImages.length)]
+            : null,
       };
 
       // Official posts (Editor's Note / Community Feature) sort last,

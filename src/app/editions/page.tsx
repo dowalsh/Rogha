@@ -1,17 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import useSWR from "swr";
-import { EditionRevealOverlay } from "@/components/EditionRevealOverlay";
 import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { EditionsListSkeleton } from "@/components/editions/EditionsListSkeleton";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
-import { ChevronRight, ChevronDown, ArrowRight } from "lucide-react";
-import { jamPreviewFromRows, type WeeklyJamData } from "@/lib/jam-preview";
+import { ChevronRight, ChevronDown } from "lucide-react";
+import { type WeeklyJamData } from "@/lib/jam-preview";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -368,173 +365,70 @@ function EditionsArchive({ editions }: { editions: EditionRow[] }) {
   );
 }
 
-// ── Latest Edition preview ──────────────────────────────────────────────────
+// ── Latest Edition teaser ────────────────────────────────────────────────────
 
-type FullEditionPost = FullEdition["posts"][number];
-
-// The Jam is appended as one more item after real posts (never interleaved)
-// — same treatment as src/components/Frontpage.tsx. Each item links itself
-// (rather than one shared outer Link) so the Jam item can point at its own
-// detail page and carry its own info dot, matching Frontpage.tsx.
-type PreviewItem =
-  | { kind: "post"; post: FullEditionPost }
-  | { kind: "jam"; editionId: string; ownImageUrl: string | null };
-
-function StoryLead({ item, editionId }: { item: PreviewItem; editionId: string }) {
-  if (item.kind === "jam") {
-    return (
-      <div className="relative border-b pb-8">
-        <Link href={`/editions/${editionId}/jam`} className="group block">
-          {item.ownImageUrl && (
-            <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
-              {/* Spotify/Last.fm-hosted art — plain <img>, not next/image,
-                  since these third-party CDNs aren't in next.config.js's
-                  remotePatterns allowlist. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.ownImageUrl} alt="The Weekly Jam" className="h-full w-full object-cover" />
-            </div>
-          )}
-          <h2 className="text-4xl font-black leading-tight group-hover:underline">The Weekly Jam</h2>
-        </Link>
-      </div>
-    );
-  }
-
-  const { post } = item;
-  return (
-    <Link href={`/editions/${editionId}`} className="group block border-b pb-8">
-      {post.heroImageUrl && (
-        <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted mb-4">
-          <Image
-            src={post.heroImageUrl}
-            alt={post.title ?? ""}
-            fill
-            sizes="(min-width: 1024px) 640px, 100vw"
-            className="object-cover"
-          />
-        </div>
-      )}
-      <h2 className="text-4xl font-black leading-tight group-hover:underline">
-        {post.title ?? "Untitled"}
-      </h2>
-      {(post.officialKind != null || post.author?.username) && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {post.officialKind != null ? "Rogha" : post.author!.username}
-        </p>
-      )}
-    </Link>
-  );
-}
-
-function StoryCard({ item, editionId }: { item: PreviewItem; editionId: string }) {
-  if (item.kind === "jam") {
-    return (
-      <div className="relative border bg-card p-3 space-y-2">
-        <Link href={`/editions/${editionId}/jam`} className="group block space-y-2">
-          {item.ownImageUrl && (
-            <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.ownImageUrl} alt="The Weekly Jam" className="h-full w-full object-cover" />
-            </div>
-          )}
-          <h3 className="text-base font-semibold leading-snug group-hover:underline">The Weekly Jam</h3>
-        </Link>
-      </div>
-    );
-  }
-
-  const { post } = item;
-  return (
-    <Link href={`/editions/${editionId}`} className="group block border bg-card p-3 space-y-2">
-      {post.heroImageUrl && (
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-          <Image
-            src={post.heroImageUrl}
-            alt={post.title ?? ""}
-            fill
-            sizes="(min-width: 1024px) 320px, (min-width: 768px) 480px, 100vw"
-            className="object-cover"
-          />
-        </div>
-      )}
-      <h3 className="text-base font-semibold leading-snug group-hover:underline">
-        {post.title ?? "Untitled"}
-      </h3>
-      {(post.officialKind != null || post.author?.username) && (
-        <p className="text-xs text-muted-foreground">
-          {post.officialKind != null ? "Rogha" : post.author!.username}
-        </p>
-      )}
-    </Link>
-  );
-}
-
-function LatestEditionPreview({ edition }: { edition: FullEdition }) {
-  const router = useRouter();
-  const [fading, setFading] = useState(false);
-  const showOverlay = !edition.hasOpened;
-
-  const handleReveal = () => {
-    setFading(true);
-    setTimeout(() => router.push(`/editions/${edition.id}`), 200);
-  };
-
-  const items: PreviewItem[] = edition.posts.map((post) => ({ kind: "post" as const, post }));
-  if (edition.weeklyJam) {
-    items.push({
-      kind: "jam",
-      editionId: edition.id,
-      ownImageUrl: jamPreviewFromRows(edition.weeklyJam.rows, edition.id).ownImageUrl,
-    });
-  }
-  const [lead, ...rest] = items;
+// This is intentionally a lightweight teaser — headline, count, blurred
+// thumbnail strip — not the full story grid. The actual reveal-with-
+// social-proof ritual (EditionRevealOverlay) lives on the edition page
+// itself; duplicating it here made /editions feel like the edition page
+// before you'd actually navigated to it.
+function LatestEditionTeaser({ edition }: { edition: FullEdition }) {
   const dateLabel = formatWeekDate(edition.weekStart);
+  const hasJam = (edition.weeklyJam?.rows.length ?? 0) > 0;
+  const totalCount = edition.posts.length + (hasJam ? 1 : 0);
+  const thumbUrls = edition.posts
+    .map((post) => post.heroImageUrl)
+    .filter((url): url is string => !!url);
+
+  if (totalCount === 0) {
+    return (
+      <div className="rounded-xl border p-6 text-center text-muted-foreground">
+        No stories this week
+      </div>
+    );
+  }
+
+  if (edition.hasOpened) {
+    return (
+      <div className="rounded-xl border p-6 space-y-2">
+        <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-serif text-xl font-bold">This week's edition</p>
+          <Link
+            href={`/editions/${edition.id}`}
+            className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Reread
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative rounded-md border overflow-hidden">
-      {showOverlay && (
-        <EditionRevealOverlay
-          editionId={edition.id}
-          viewerCount={edition.viewerCount}
-          viewerNames={edition.viewerNames}
-          fading={fading}
-          onReveal={handleReveal}
-          mode="inline"
-        />
-      )}
-      {/* Each item below links itself (to the edition, or — for the Jam —
-          to its own detail page), rather than one shared outer Link, since
-          nesting an anchor inside an anchor is invalid HTML. */}
-      <div className={`space-y-6 p-6 ${showOverlay ? "pointer-events-none" : ""}`}>
-        <Link
-          href={`/editions/${edition.id}`}
-          className="group flex items-center justify-between border-b pb-3 font-serif hover:text-foreground"
-        >
-          <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-        </Link>
-
-        {items.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground uppercase tracking-widest font-bold text-sm">
-            No stories this week
-          </p>
-        ) : (
-          <div className="font-serif space-y-6">
-            {lead && <StoryLead item={lead} editionId={edition.id} />}
-            {rest.length > 0 && (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {rest.map((item) => (
-                  <StoryCard
-                    key={item.kind === "jam" ? `jam-${item.editionId}` : item.post.id}
-                    item={item}
-                    editionId={edition.id}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+    <div className="rounded-xl border-2 border-accent p-6 space-y-4">
+      <div className="space-y-2">
+        <p className="text-sm italic text-muted-foreground">{dateLabel}</p>
+        <h2 className="font-serif text-2xl font-bold leading-tight">This week's edition</h2>
+        <p className="text-sm text-muted-foreground">
+          {totalCount} {totalCount === 1 ? "story" : "stories"} waiting.
+        </p>
       </div>
+
+      {thumbUrls.length > 0 && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+          {thumbUrls.map((url, i) => (
+            <div key={i} className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="h-full w-full scale-110 object-cover blur-sm" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button asChild>
+        <Link href={`/editions/${edition.id}`}>Open this week</Link>
+      </Button>
     </div>
   );
 }
@@ -638,7 +532,7 @@ export default function EditionsPage() {
               </h2>
 
               {latestEdition ? (
-                <LatestEditionPreview edition={latestEdition} />
+                <LatestEditionTeaser edition={latestEdition} />
               ) : (
                 <p className="py-12 text-center text-muted-foreground">
                   No editions published yet.

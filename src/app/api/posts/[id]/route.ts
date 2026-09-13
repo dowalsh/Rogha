@@ -55,7 +55,7 @@ export async function GET(
           select: { edition: { select: { publishedAt: true } } },
         },
         republishMessage: true,
-        _count: { select: { likes: true } },
+        _count: { select: { likes: true, recipients: true } },
         likes: { select: { id: true, userId: true } },
       },
     });
@@ -82,6 +82,7 @@ export async function GET(
     let baseResponse: any = {
       ...postWithoutCircles,
       likeCount: post._count.likes,
+      recipientCount: post._count.recipients,
       likedByMe: false,
       readByMe: false,
       newCommentCount: null as number | null,

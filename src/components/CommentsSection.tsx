@@ -34,6 +34,10 @@ export type CommentsTarget =
       // the post also targets circles this viewer isn't in.
       circles?: { id: string; name: string }[];
       hiddenCircleCount?: number;
+      // Only meaningful for audienceType "RECIPIENTS" (republish) — the
+      // size of the named recipient list, to distinguish "sole recipient"
+      // from "several friends" in the audience label.
+      recipientCount?: number;
     }
   | { kind: "track"; id: string };
 
@@ -805,6 +809,13 @@ export default function CommentsSection({ target }: { target: CommentsTarget }) 
           {target.audienceType === "FRIENDS" && (
             <p className="text-sm italic text-orange-500 mb-4">
               Comments visible to all {target.authorName}'s friends
+            </p>
+          )}
+          {target.audienceType === "RECIPIENTS" && (
+            <p className="text-sm italic text-orange-500 mb-4">
+              {target.recipientCount === 1
+                ? `Comments only visible to you and ${target.authorName}`
+                : `Comments visible to some friends of ${target.authorName}`}
             </p>
           )}
           {target.audienceType === "ALL_USERS" && (

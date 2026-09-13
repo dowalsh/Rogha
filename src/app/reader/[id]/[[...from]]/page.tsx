@@ -46,6 +46,7 @@ type PostDTO = {
   audienceType: AudienceType;
   circles?: { id: string; name: string }[];
   hiddenCircleCount?: number;
+  recipientCount?: number;
   edition?: { publishedAt: string | null } | null;
   newCommentCount?: number | null;
   republishedFromPostId?: string | null;
@@ -455,6 +456,7 @@ function ReadPostPageInner({
             audienceType: post.audienceType,
             circles: post.circles ?? [],
             hiddenCircleCount: post.hiddenCircleCount ?? 0,
+            recipientCount: post.recipientCount ?? 0,
           }}
         />
       </div>

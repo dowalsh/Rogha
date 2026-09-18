@@ -17,6 +17,7 @@ import RepublishAnnouncementNudge from "@/components/RepublishAnnouncementNudge"
 import AppStoreNudge from "@/components/AppStoreNudge";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
+import SplashSeamTest from "@/components/SplashSeamTest";
 import TermsGate from "@/components/TermsGate";
 import { formatDistanceToNow } from "date-fns";
 import { SWRProvider } from "@/components/providers/SWRProvider";
@@ -80,6 +81,7 @@ export default async function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
+          <SplashSeamTest />
           <SWRProvider>
           <MePreloader />
           <TooltipProvider delayDuration={150}>
@@ -153,7 +155,10 @@ export default async function RootLayout({
               />
               <DeepLinkInit />
               <PushNotificationInit />
-              <SplashScreenInit />
+              {/* THROWAWAY: SplashSeamTest above owns the native splash hide
+                  call for this seam test — SplashScreenInit disabled to avoid
+                  a race between the two. Restore this once the test is removed. */}
+              {false && <SplashScreenInit />}
             </ThemeProvider>
             {/* Eruda in-page console — set to true to enable for mobile debugging */}
             {false && <Script id="eruda-init" strategy="afterInteractive">{`

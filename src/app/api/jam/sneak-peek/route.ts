@@ -2,12 +2,13 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { getDbUser } from "@/lib/getDbUser";
-import { getTopArtistLastWeek, getTopTrackLastWeek } from "@/lib/lastfm";
+import { getTopArtistSince, getTopTrackSince } from "@/lib/lastfm";
 import { resolveSpotifyAlbumImage, resolveSpotifyArtistMatch } from "@/lib/spotify";
+import { getWeekStartUTC } from "@/lib/utils";
 
 // On-demand, un-persisted look at the viewer's own top track/artist so far
-// this week (Last.fm's 7day period is already a trailing window, so this is
-// naturally "this week to date" rather than a completed week) — unlike
+// this week — "week to date" since Monday 00:00 (LA time, see
+// getWeekStartUTC), not a trailing 7-day window — unlike
 // captureWeeklyJamTracks/captureWeeklyJamArtists (src/lib/jam.ts), this never
 // writes a WeeklyTrack/WeeklyArtist row, it's just for the "sneak peek"
 // button in WeeklyJamExplainer.
@@ -24,9 +25,12 @@ export async function GET() {
     return NextResponse.json({ error: "NOT_CONFIGURED" }, { status: 500 });
   }
 
+  const fromUnix = Math.floor(getWeekStartUTC().getTime() / 1000);
+  const toUnix = Math.floor(Date.now() / 1000);
+
   const [trackResult, artistResult] = await Promise.all([
-    getTopTrackLastWeek(user.lastfmUsername, apiKey),
-    getTopArtistLastWeek(user.lastfmUsername, apiKey),
+    getTopTrackSince(user.lastfmUsername, apiKey, fromUnix, toUnix),
+    getTopArtistSince(user.lastfmUsername, apiKey, fromUnix, toUnix),
   ]);
 
   if ("error" in trackResult) {

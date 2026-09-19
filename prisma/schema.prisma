@@ -64,6 +64,7 @@ model User {
   weeklyArtists          WeeklyArtist[]
   weeklyJamViews         WeeklyJamView[]
   postRecipientOf        PostRecipient[]
+  circleInvitesCreated   CircleInvite[]
 }
 
 model Circle {
@@ -75,6 +76,25 @@ model Circle {
   members     CircleMember[]
   posts       Post[]         @relation("PostCircle") // legacy single-circle relation, superseded by postCircles
   postCircles PostCircle[]
+  invites     CircleInvite[]
+}
+
+// Invite-by-link: a multi-use, time-boxed link+code that lets anyone join a
+// circle directly, without requiring an existing friendship. See
+// docs/specs/2026-09-19-invite-by-link.md.
+model CircleInvite {
+  id          String    @id @default(cuid())
+  circleId    String
+  code        String    @unique // doubles as the /join/[code] URL slug and the typed code
+  createdById String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime? // set when superseded by a new invite, or manually revoked
+
+  circle    Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([circleId])
 }
 
 model CircleMember {
@@ -438,6 +458,7 @@ enum NotificationType {
   PUBLISH
   FRIEND_REQUEST
   FRIEND_REQUEST_ACCEPTED
+  CIRCLE_JOIN
 }
 
 model NotificationPreference {
@@ -457,6 +478,10 @@ model NotificationPreference {
 
   emailFriendRequests Boolean @default(true)
   pushFriendRequests  Boolean @default(true)
+
+  // Push-only, matching the other single-recipient notification types
+  // (FRIEND_REQUEST/_ACCEPTED) — no email trigger exists for those either.
+  pushCircleJoins Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

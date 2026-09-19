@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { X, Search } from "lucide-react";
+import { toast } from "sonner";
 import { Spinner } from "@/components/Spinner";
 import { CirclePill } from "@/components/circles/CirclePill";
 import {
@@ -20,6 +21,105 @@ import {
   leaveCircle,
 } from "@/actions/circle.action";
 import { getFriends } from "@/actions/friends.action";
+
+type CircleInvite = { code: string; url: string; expiresAt: string };
+
+function InviteSection({ circleId, circleName }: { circleId: string; circleName: string }) {
+  const [invite, setInvite] = useState<CircleInvite | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [customCode, setCustomCode] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/circles/${circleId}/invite`)
+      .then((r) => r.json())
+      .then((data) => setInvite(data.invite ?? null))
+      .finally(() => setLoading(false));
+  }, [circleId]);
+
+  const createInvite = async (replaceExisting: boolean) => {
+    if (replaceExisting && !confirm("This retires the current link/code. Continue?")) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`/api/circles/${circleId}/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customCode: customCode.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to create invite");
+      setInvite(data.invite);
+      setCustomCode("");
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to create invite");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const shareText = (i: CircleInvite) =>
+    `Join ${circleName} on Rogha! ${i.url} (code: ${i.code})`;
+
+  const share = async (i: CircleInvite) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: shareText(i) });
+        return;
+      } catch {
+        // fall through to clipboard
+      }
+    }
+    await navigator.clipboard.writeText(shareText(i));
+    toast.success("Copied invite to clipboard");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center p-4">
+        <Spinner className="h-4 w-4" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="font-medium mb-2">Invite</h3>
+      {invite ? (
+        <div className="space-y-2">
+          <p className="text-sm">
+            Code: <span className="font-mono">{invite.code}</span>
+          </p>
+          <p className="text-xs text-muted-foreground break-all">{invite.url}</p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => share(invite)}>
+              Share
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={creating}
+              onClick={() => createInvite(true)}
+            >
+              Create new
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Input
+            value={customCode}
+            onChange={(e) => setCustomCode(e.target.value)}
+            placeholder={`e.g. ${circleName.toUpperCase().replace(/[^A-Z0-9]+/g, "-")}`}
+          />
+          <Button size="sm" disabled={creating} onClick={() => createInvite(false)}>
+            {creating ? "Creating..." : "Create invite"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CircleDialog({
   circle,
@@ -135,6 +235,8 @@ export function CircleDialog({
         </DialogHeader>
 
         <div className="space-y-5">
+          {circle?.id && <InviteSection circleId={circle.id} circleName={circle.name} />}
+
           <div>
             <h3 className="font-medium mb-2">Members</h3>
             <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">

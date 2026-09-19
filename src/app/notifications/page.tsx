@@ -33,6 +33,8 @@ const getNotificationIcon = (type: string) => {
     case "FRIEND_REQUEST":
     case "FRIEND_REQUEST_ACCEPTED":
       return <UserPlus className="size-4 text-green-500" />;
+    case "CIRCLE_JOIN":
+      return <UserPlus className="size-4 text-purple-500" />;
     default:
       return null;
   }
@@ -128,7 +130,9 @@ function NotificationsPage() {
                                   ? "sent you a friend request"
                                   : notification.type === "FRIEND_REQUEST_ACCEPTED"
                                     ? "accepted your friend request"
-                                    : "submitted a new post"}
+                                    : notification.type === "CIRCLE_JOIN"
+                                      ? "joined your circle"
+                                      : "submitted a new post"}
                         </span>
                       </div>
 

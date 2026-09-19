@@ -40,7 +40,14 @@ export function formatWeekLabel(date: Date): string {
 
 type NotificationWithRelations = {
   id: string;
-  type: "LIKE" | "COMMENT" | "SUBMIT" | "PUBLISH" | "FRIEND_REQUEST" | "FRIEND_REQUEST_ACCEPTED";
+  type:
+    | "LIKE"
+    | "COMMENT"
+    | "SUBMIT"
+    | "PUBLISH"
+    | "FRIEND_REQUEST"
+    | "FRIEND_REQUEST_ACCEPTED"
+    | "CIRCLE_JOIN";
   postId?: string | null;
   commentId?: string | null;
   post?: { id: string | null } | null;
@@ -110,6 +117,10 @@ export function getNotificationLink(
 
   if (n.type === "FRIEND_REQUEST_ACCEPTED") {
     return n.creator?.username ? `/profile/${n.creator.username}` : "/friends";
+  }
+
+  if (n.type === "CIRCLE_JOIN") {
+    return "/friends";
   }
 
   console.warn(

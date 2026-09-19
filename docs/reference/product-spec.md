@@ -27,7 +27,7 @@ These are constraints on *how* Rogha works — its mechanics and its feel — no
 - **No public feed for ordinary users.** Posts are visible only to friends or circle members. The `ALL_USERS` audience option exists in the schema but is admin-only by convention — regular users can't broadcast site-wide. `ALL_USERS` is also the substrate for admin-authored **official posts** (Editor's Note, Community Feature) — see the Post section below.
 - **No algorithmic ranking.** Content is ordered chronologically (by edition week / update time), not by engagement or relevance scoring.
 - **No always-on feed.** There is no scrollable, real-time timeline — content surfaces weekly, per Edition.
-- **No open circle joining.** Circles aren't discoverable or joinable by link/search — membership only grows through your existing friend graph.
+- **No *discoverable* or *open* circle joining.** Circles are still never searchable, listed, or public. A member can hand a specific person an invite link/code (multi-use, 7-day) to join directly, without requiring an existing friendship — that's the sanctioned, person-to-person growth vector, not a searchable directory. Full spec: [2026-09-19-invite-by-link.md](../specs/2026-09-19-invite-by-link.md).
 
 ## Core concepts
 

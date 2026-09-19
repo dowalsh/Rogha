@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { useUser } from "@clerk/nextjs";
-import Nudge from "@/components/Nudge";
-import { useSuppressNudges } from "@/hooks/useSuppressNudges";
+import type { NudgeConfig } from "@/components/NudgeStack";
 
 type Me = { username: string };
 
@@ -14,27 +13,26 @@ type Me = { username: string };
 // not-yet-built nudges framework in docs/specs/2026-07-28-nudges-framework.md).
 const DISMISS_KEY = "rogha:nudge:republish-launch-2026-08";
 
-export default function RepublishAnnouncementNudge() {
+// Eligibility + content for this nudge; rendering, priority among nudges,
+// and cross-session "already shown one" coordination live in NudgeStack.
+export function useRepublishAnnouncementNudge(): NudgeConfig | null {
   const { isSignedIn } = useUser();
   const { data } = useSWR<Me>(isSignedIn ? "/api/me" : null);
   const [dismissed, setDismissed] = useState(true);
-  const suppressed = useSuppressNudges();
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  if (!data || dismissed || suppressed) return null;
+  if (!data || dismissed) return null;
 
-  return (
-    <Nudge
-      message="You can now share old posts with new friends! Just hit Republish on any of your posts."
-      ctaLabel="View your posts"
-      href="/posts"
-      onDismiss={() => {
-        localStorage.setItem(DISMISS_KEY, "1");
-        setDismissed(true);
-      }}
-    />
-  );
+  return {
+    message: "You can now share old posts with new friends! Just hit Republish on any of your posts.",
+    ctaLabel: "View your posts",
+    href: "/posts",
+    onDismiss: () => {
+      localStorage.setItem(DISMISS_KEY, "1");
+      setDismissed(true);
+    },
+  };
 }

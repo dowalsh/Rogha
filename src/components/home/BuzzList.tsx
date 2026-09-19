@@ -4,13 +4,45 @@
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
-import type { BuzzPostsData } from "@/lib/home";
+import { CircleJoinPreviewRow } from "@/components/CircleJoinPreviewRow";
+import type { BuzzPostsData, BuzzRow } from "@/lib/home";
 
 type BuzzListProps = {
   buzz: BuzzPostsData;
   onShowMore?: () => void;
   isLoadingMore?: boolean;
 };
+
+function BuzzRowView({ row, variant }: { row: BuzzRow; variant: "new" | "earlier" }) {
+  if (row.kind === "circle_join") {
+    return (
+      <CircleJoinPreviewRow
+        variant={variant}
+        username={row.username}
+        avatarUrl={row.avatarUrl}
+        circleName={row.circleName}
+        metaText={`${formatDistanceToNow(new Date(row.joinedAt))} ago`}
+        href={`/friends?openCircle=${row.circleId}`}
+      />
+    );
+  }
+  return (
+    <PostPreviewRow
+      variant={variant}
+      postId={row.postId}
+      title={row.title}
+      authorName={row.authorName}
+      metaText={`${formatDistanceToNow(new Date(row.latestActivityAt))} ago`}
+      thumbUrl={row.heroThumbUrl}
+      newCount={variant === "new" ? row.newCount : undefined}
+      href={`/reader/${row.postId}/buzz`}
+    />
+  );
+}
+
+function rowKey(row: BuzzRow): string {
+  return row.kind === "circle_join" ? `join:${row.circleId}:${row.userId}` : `post:${row.postId}`;
+}
 
 export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
   const { newBuzz, earlier, earlierHasMore } = buzz;
@@ -33,17 +65,7 @@ export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
           <h2 className="text-lg font-semibold">New buzz</h2>
           <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
             {newBuzz.map((row) => (
-              <PostPreviewRow
-                key={row.postId}
-                variant="new"
-                postId={row.postId}
-                title={row.title}
-                authorName={row.authorName}
-                metaText={`${formatDistanceToNow(new Date(row.latestActivityAt))} ago`}
-                thumbUrl={row.heroThumbUrl}
-                newCount={row.newCount}
-                href={`/reader/${row.postId}/buzz`}
-              />
+              <BuzzRowView key={rowKey(row)} row={row} variant="new" />
             ))}
           </div>
         </section>
@@ -54,16 +76,7 @@ export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
           <h2 className="text-lg font-semibold">Earlier</h2>
           <div className="rounded-xl border bg-background/60 p-3 sm:p-4 divide-y">
             {earlier.map((row) => (
-              <PostPreviewRow
-                key={row.postId}
-                variant="earlier"
-                postId={row.postId}
-                title={row.title}
-                authorName={row.authorName}
-                metaText={`${formatDistanceToNow(new Date(row.latestActivityAt))} ago`}
-                thumbUrl={row.heroThumbUrl}
-                href={`/reader/${row.postId}/buzz`}
-              />
+              <BuzzRowView key={rowKey(row)} row={row} variant="earlier" />
             ))}
           </div>
           {earlierHasMore && onShowMore && (

@@ -1,7 +1,7 @@
 // src/components/home/HomeContent.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { EditionHero } from "@/components/home/EditionHero";
 import { PendingRequestsCard } from "@/components/home/PendingRequestsCard";
@@ -10,6 +10,7 @@ import { HomeSkeleton } from "@/components/home/HomeSkeleton";
 import { LatestEditionPreloader } from "@/components/editions/LatestEditionPreloader";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 import { WelcomeIntroOverlay } from "@/components/onboarding/WelcomeIntroOverlay";
+import { markCircleJoinBuzzSeen } from "@/actions/buzz.action";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { HomeData } from "@/lib/home";
 
@@ -22,6 +23,16 @@ export function HomeContent() {
   const { data, isLoading } = useSWR<HomeData>(
     `/api/home?earlierLimit=${earlierLimit}`,
   );
+
+  // Advance the circle-join "seen" cursor once per visit, not on every
+  // refetch (e.g. "Show more" bumping earlierLimit) — otherwise New buzz
+  // would shift to Earlier under the viewer mid-visit. See buzz.action.ts.
+  const markedSeenRef = useRef(false);
+  useEffect(() => {
+    if (!data || markedSeenRef.current) return;
+    markedSeenRef.current = true;
+    markCircleJoinBuzzSeen().catch(() => {});
+  }, [data]);
 
   const showSkeleton = useDelayedLoading(isLoading || !data);
 

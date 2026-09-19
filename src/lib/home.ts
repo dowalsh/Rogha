@@ -244,6 +244,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
 // --- buzz (per-post New buzz / Earlier) ----------------------------------
 
 export type BuzzPostRow = {
+  kind: "post";
   postId: string;
   title: string;
   authorName: string;
@@ -252,9 +253,24 @@ export type BuzzPostRow = {
   newCount: number;
 };
 
+// One row per person joining a circle the viewer is in — not grouped, so
+// two people joining the same circle produce two rows. Sits in the same
+// New/Earlier lists as post rows, ordered purely by recency alongside them.
+export type CircleJoinBuzzRow = {
+  kind: "circle_join";
+  circleId: string;
+  circleName: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  joinedAt: string;
+};
+
+export type BuzzRow = BuzzPostRow | CircleJoinBuzzRow;
+
 export type BuzzPostsData = {
-  newBuzz: BuzzPostRow[];
-  earlier: BuzzPostRow[];
+  newBuzz: BuzzRow[];
+  earlier: BuzzRow[];
   earlierHasMore: boolean;
 };
 
@@ -266,15 +282,74 @@ const BUZZ_ACTIVITY_TYPES: ActivityEventType[] = [
   ActivityEventType.COMMENT_REPLIED,
 ];
 
+// Circle joins aren't gated by friendship — only by shared circle
+// membership — so this runs independent of the viewer's friend graph.
+// Temporal-gated the same way as everywhere else: a member only sees joins
+// that happened after *their own* join, never a circle's back-catalog.
+async function getCircleJoinBuzzRows(userId: string): Promise<CircleJoinBuzzRow[]> {
+  const ownMemberships = await prisma.circleMember.findMany({
+    where: { userId, status: "JOINED" },
+    select: { circleId: true, joinedAt: true, circle: { select: { name: true } } },
+  });
+  if (ownMemberships.length === 0) return [];
+
+  const rows = await Promise.all(
+    ownMemberships.map(async ({ circleId, joinedAt, circle }) => {
+      const others = await prisma.circleMember.findMany({
+        where: {
+          circleId,
+          status: "JOINED",
+          userId: { not: userId },
+          joinedAt: { gt: joinedAt },
+        },
+        select: {
+          joinedAt: true,
+          user: { select: { id: true, username: true, image: true } },
+        },
+      });
+      return others.map((m) => ({
+        kind: "circle_join" as const,
+        circleId,
+        circleName: circle.name,
+        userId: m.user.id,
+        username: m.user.username,
+        avatarUrl: m.user.image,
+        joinedAt: m.joinedAt.toISOString(),
+      }));
+    }),
+  );
+
+  return rows.flat();
+}
+
 export async function getBuzzPosts(
   userId: string,
   opts: { earlierLimit?: number } = {},
 ): Promise<BuzzPostsData> {
   const earlierLimit = opts.earlierLimit ?? 15;
 
+  const [circleJoinRows, seenUser] = await Promise.all([
+    getCircleJoinBuzzRows(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { circleJoinBuzzSeenAt: true } }),
+  ]);
+  const buzzSeenAt = seenUser?.circleJoinBuzzSeenAt ?? null;
+
+  const newCircleJoinRows: BuzzRow[] = [];
+  const earlierCircleJoinRows: BuzzRow[] = [];
+  for (const row of circleJoinRows) {
+    const isNew = !buzzSeenAt || new Date(row.joinedAt) > buzzSeenAt;
+    (isNew ? newCircleJoinRows : earlierCircleJoinRows).push(row);
+  }
+
   const friendships = await getAcceptedFriendships(userId);
   if (!friendships.length) {
-    return { newBuzz: [], earlier: [], earlierHasMore: false };
+    return mergeBuzzRows({
+      newPostRows: [],
+      earlierPostRows: [],
+      newCircleJoinRows,
+      earlierCircleJoinRows,
+      earlierLimit,
+    });
   }
   const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
   const friendIds = Array.from(friendMap.keys());
@@ -382,14 +457,15 @@ export async function getBuzzPosts(
   const postIds = Array.from(grouped.keys());
   const readMap = await getReadMapForPosts(userId, postIds);
 
-  const newBuzz: BuzzPostRow[] = [];
-  const earlierAll: BuzzPostRow[] = [];
+  const newPostRows: BuzzRow[] = [];
+  const earlierPostRows: BuzzRow[] = [];
 
   for (const g of Array.from(grouped.values())) {
     const readAt = readMap.get(g.postId) ?? null;
     const unread = !readAt || g.latestActivityAt > readAt;
     const newCount = g.activityTimes.filter((t: Date) => !readAt || t > readAt).length;
     const row: BuzzPostRow = {
+      kind: "post",
       postId: g.postId,
       title: g.title,
       authorName: g.authorName,
@@ -397,14 +473,39 @@ export async function getBuzzPosts(
       latestActivityAt: g.latestActivityAt.toISOString(),
       newCount,
     };
-    (unread ? newBuzz : earlierAll).push(row);
+    (unread ? newPostRows : earlierPostRows).push(row);
   }
 
-  const byRecency = (a: BuzzPostRow, b: BuzzPostRow) =>
-    new Date(b.latestActivityAt).getTime() - new Date(a.latestActivityAt).getTime();
+  return mergeBuzzRows({
+    newPostRows,
+    earlierPostRows,
+    newCircleJoinRows,
+    earlierCircleJoinRows,
+    earlierLimit,
+  });
+}
 
-  newBuzz.sort(byRecency);
-  earlierAll.sort(byRecency);
+function rowTimestamp(row: BuzzRow): number {
+  return new Date(row.kind === "post" ? row.latestActivityAt : row.joinedAt).getTime();
+}
+
+function mergeBuzzRows({
+  newPostRows,
+  earlierPostRows,
+  newCircleJoinRows,
+  earlierCircleJoinRows,
+  earlierLimit,
+}: {
+  newPostRows: BuzzRow[];
+  earlierPostRows: BuzzRow[];
+  newCircleJoinRows: BuzzRow[];
+  earlierCircleJoinRows: BuzzRow[];
+  earlierLimit: number;
+}): BuzzPostsData {
+  const byRecency = (a: BuzzRow, b: BuzzRow) => rowTimestamp(b) - rowTimestamp(a);
+
+  const newBuzz = [...newPostRows, ...newCircleJoinRows].sort(byRecency);
+  const earlierAll = [...earlierPostRows, ...earlierCircleJoinRows].sort(byRecency);
 
   return {
     newBuzz,

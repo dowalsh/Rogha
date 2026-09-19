@@ -38,6 +38,12 @@ model User {
   onboardingIntroSeenAt        DateTime?
   onboardingChecklistCollapsed Boolean   @default(false)
 
+  // Global "seen" cursor for circle-join rows in the home page Buzz list —
+  // advanced once per visit by the client, not on every /api/home read, so
+  // the New/Earlier split doesn't shift under the user mid-visit. Null means
+  // "never seen anything," i.e. everything is new.
+  circleJoinBuzzSeenAt DateTime?
+
   posts                Post[]
   comments             Comment[]
   postLikes            PostLike[]

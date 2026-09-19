@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Trash2, Blend } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import { NewCircleDialog } from "./NewCircleDialog";
 import { CirclePill } from "@/components/circles/CirclePill";
 
 export function CirclesCarousel() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [circles, setCircles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any | null>(null);
@@ -23,6 +26,20 @@ export function CirclesCarousel() {
       setLoading(false);
     });
   }, []);
+
+  // ?openCircle=<id> — the circle-join Buzz row's click-through target.
+  // Opens that circle's dialog once its data has loaded, then clears the
+  // param so a refresh/back-nav doesn't reopen it.
+  useEffect(() => {
+    const openCircleId = searchParams.get("openCircle");
+    if (!openCircleId || circles.length === 0) return;
+    const match = circles.find((c) => c.id === openCircleId);
+    if (match) setSelected(match);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("openCircle");
+    router.replace(params.size ? `/friends?${params}` : "/friends");
+  }, [circles, searchParams, router]);
 
   const handleCreate = async (name: string, description?: string) => {
     const newCircle = await createCircle({ name, description });

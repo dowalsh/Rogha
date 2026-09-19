@@ -5,6 +5,8 @@
 import { prisma } from "@/lib/prisma";
 import { getDbUserId } from "./user.action";
 import { revalidatePath } from "next/cache";
+import { defaultInviteBase, generateUniqueInviteCode } from "@/lib/inviteCode";
+import { createCircleJoinNotifications } from "./notification.action";
 
 // --- Types ---
 interface CreateCircleInput {
@@ -196,8 +198,11 @@ export async function removeMemberFromCircle(
     });
     if (!isMember) throw new Error("You are not a member of this circle");
 
-    await prisma.circleMember.deleteMany({
+    // Soft-remove (not delete): a REMOVED row is what lets joinCircleByCode
+    // block that person from rejoining via a still-live invite link.
+    await prisma.circleMember.updateMany({
       where: { circleId, userId: memberId },
+      data: { status: "REMOVED" },
     });
 
     // No revalidatePath here — same reasoning as addMemberToCircle above.
@@ -257,4 +262,130 @@ export async function getCircleById(circleId: string) {
     console.error("[GET_CIRCLE_ERROR]", error);
     throw new Error("Failed to fetch circle");
   }
+}
+
+// --- Invite by link (docs/specs/2026-09-19-invite-by-link.md) ---
+
+const INVITE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+
+function inviteStatus(invite: { expiresAt: Date; revokedAt: Date | null }) {
+  if (invite.revokedAt) return "revoked" as const;
+  if (invite.expiresAt.getTime() <= Date.now()) return "expired" as const;
+  return "active" as const;
+}
+
+export async function getActiveCircleInvite(circleId: string) {
+  const userId = await getDbUserId();
+  if (!userId) throw new Error("Not authenticated");
+
+  const isMember = await prisma.circleMember.findFirst({
+    where: { circleId, userId, status: "JOINED" },
+  });
+  if (!isMember) throw new Error("You are not a member of this circle");
+
+  const invite = await prisma.circleInvite.findFirst({
+    where: { circleId, revokedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+  });
+  return invite;
+}
+
+export async function createCircleInvite({
+  circleId,
+  customCode,
+}: {
+  circleId: string;
+  customCode?: string;
+}) {
+  const userId = await getDbUserId();
+  if (!userId) throw new Error("Not authenticated");
+
+  const [isMember, circle] = await Promise.all([
+    prisma.circleMember.findFirst({
+      where: { circleId, userId, status: "JOINED" },
+    }),
+    prisma.circle.findUnique({ where: { id: circleId }, select: { name: true } }),
+  ]);
+  if (!isMember) throw new Error("You are not a member of this circle");
+  if (!circle) throw new Error("Circle not found");
+
+  const code = await generateUniqueInviteCode(customCode || defaultInviteBase(circle.name));
+
+  // Creating a new invite always retires any currently-active one for this
+  // circle — re-sharing offers "copy existing" for that, this path is "create new".
+  const [invite] = await prisma.$transaction([
+    prisma.circleInvite.create({
+      data: {
+        circleId,
+        code,
+        createdById: userId,
+        expiresAt: new Date(Date.now() + INVITE_LIFETIME_MS),
+      },
+    }),
+    prisma.circleInvite.updateMany({
+      where: { circleId, revokedAt: null, code: { not: code } },
+      data: { revokedAt: new Date() },
+    }),
+  ]);
+
+  return invite;
+}
+
+// Public — no auth. Backs the /join/[code] landing page.
+export async function getCircleInviteInfo(code: string) {
+  const invite = await prisma.circleInvite.findUnique({
+    where: { code },
+    include: {
+      circle: {
+        select: {
+          id: true,
+          name: true,
+          members: { where: { status: "JOINED" }, select: { userId: true } },
+        },
+      },
+      createdBy: { select: { username: true } },
+    },
+  });
+
+  if (!invite) return { status: "not_found" as const };
+
+  return {
+    status: inviteStatus(invite),
+    circleId: invite.circle.id,
+    circleName: invite.circle.name,
+    inviterUsername: invite.createdBy.username,
+    memberCount: invite.circle.members.length,
+  };
+}
+
+export async function joinCircleByCode(code: string) {
+  const userId = await getDbUserId();
+  if (!userId) throw new Error("Not authenticated");
+
+  const invite = await prisma.circleInvite.findUnique({ where: { code } });
+  if (!invite) return { error: "not_found" as const };
+
+  const status = inviteStatus(invite);
+  if (status !== "active") return { error: status };
+
+  const existingMembership = await prisma.circleMember.findUnique({
+    where: { circleId_userId: { circleId: invite.circleId, userId } },
+  });
+
+  if (existingMembership?.status === "REMOVED") {
+    return { error: "removed" as const };
+  }
+  if (existingMembership?.status === "JOINED") {
+    return { alreadyMember: true as const, circleId: invite.circleId };
+  }
+
+  await prisma.circleMember.upsert({
+    where: { circleId_userId: { circleId: invite.circleId, userId } },
+    update: { status: "JOINED", joinedAt: new Date() },
+    create: { circleId: invite.circleId, userId, status: "JOINED" },
+  });
+
+  await createCircleJoinNotifications({ circleId: invite.circleId, joinedUserId: userId });
+
+  return { joined: true as const, circleId: invite.circleId };
 }

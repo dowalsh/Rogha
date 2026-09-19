@@ -1,8 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { FriendsCarousel } from "@/components/FriendsCarousel";
 import { CirclesCarousel } from "@/components/CirclesCarousel";
+import { WelcomeCircleBanner } from "@/components/WelcomeCircleBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function FriendsPage() {
@@ -13,6 +15,10 @@ export default function FriendsPage() {
       </SignedOut>
 
       <SignedIn>
+        <Suspense fallback={null}>
+          <WelcomeCircleBanner />
+        </Suspense>
+
         {/* Mobile: tabs */}
         <div className="md:hidden pt-4">
           <Tabs defaultValue="friends">

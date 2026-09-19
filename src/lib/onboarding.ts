@@ -9,10 +9,9 @@ import { prisma } from "@/lib/prisma";
 export type OnboardingState = {
   hasCircle: boolean;
   primaryCircleId: string | null;
-  // Proxy for "has invited someone": their primary circle has more than
-  // just them. True whether that second member arrived via the existing
-  // friend-add flow or (once it ships) invite-by-link — both write the same
-  // JOINED CircleMember row, so this check doesn't need to change later.
+  // "Has invited someone": their primary circle has more than just them.
+  // True whether that second member arrived via the plain friend-add flow
+  // or invite-by-link — both write the same JOINED CircleMember row.
   hasInvitedSomeone: boolean;
   hasPosted: boolean;
   introSeen: boolean;

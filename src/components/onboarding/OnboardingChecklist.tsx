@@ -160,11 +160,11 @@ function rows(
     },
     {
       key: "invite",
-      label: "Add friends already on Rogha — invite links are coming soon",
+      label: "Invite people to your circle",
       done: onboarding.hasInvitedSomeone,
       action:
         onboarding.hasCircle && handlers
-          ? { label: "Add friends", onClick: handlers.onInvite }
+          ? { label: "Invite", onClick: handlers.onInvite }
           : undefined,
     },
     {

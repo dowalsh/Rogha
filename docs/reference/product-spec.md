@@ -42,8 +42,8 @@ A mutual, two-party relationship gating most visibility and circle membership.
 A small, named group of friends used as a posting audience.
 
 - Anyone can create a circle; the creator is auto-joined.
-- **You can only add a friend to a circle, and only if you yourself are already a member.** There's no open joining, invite link, or approval workflow.
-- All members have equal standing — there is no owner/admin role within a circle. Any member can add friends or remove other members.
+- A member can add an existing friend directly, or generate a multi-use, 7-day invite link/code that lets anyone join without requiring friendship first — see [2026-09-19-invite-by-link.md](../specs/2026-09-19-invite-by-link.md). Still no discoverability: circles aren't searchable or listed, and joining is never open/unsolicited — only a member-shared link or friend-add gets you in.
+- All members have equal standing — there is no owner/admin role within a circle. Any member can add friends, generate/rotate the invite link, or remove other members. A removed member can't rejoin on the same invite until re-invited.
 - No member cap.
 - Leaving is a soft-remove (`LEFT` status), not a deletion.
 
@@ -137,8 +137,8 @@ The signed-in home page orients a returning user in priority order and routes th
 A calm, state-driven layer for anyone who has never submitted a post — gated on `hasPosted` (any non-`DRAFT` post authored by the viewer), retiring permanently once that flips true. Full spec: [2026-09-19-first-run-onboarding.md](../specs/2026-09-19-first-run-onboarding.md).
 
 - A cold arrival (no circle yet) sees a one-time full-screen value-moment intro before the checklist; an arrival already in a circle skips straight to the inline checklist.
-- The home page shows a dismissible-but-recoverable "Getting started" checklist above the normal hero/Buzz content: create a circle (with a suggested/randomized name), add people, write a first post — plus a non-actionable "first edition lands Sunday" forecast line.
-- **v1 note:** the "add people" step reuses the existing friend-based add-to-circle flow, not invite-by-link (not yet shipped). Its completion is tracked via a state proxy — the viewer's circle has more than one joined member — which keeps working unchanged once invite-by-link ships, since a link-joiner becomes a `CircleMember` row the same way.
+- The home page shows a dismissible-but-recoverable "Getting started" checklist above the normal hero/Buzz content: create a circle (with a suggested/randomized name), invite people (opens the circle's member sheet, which carries invite-by-link's generate/share UI), write a first post — plus a non-actionable "first edition lands Sunday" forecast line.
+- The "invite people" step's completion is a state signal, not a dedicated flag: the viewer's circle has more than one joined member, true whether that second member arrived via invite-by-link or the plain friend-add flow.
 - The composer has an always-available "what should I write?" help sheet (not gated to the first post).
 
 ## Auth (summary)

@@ -38,8 +38,10 @@ type PublishTarget = "next-week" | "now";
 
 function HeroImageUploadButton({
   onComplete,
+  onUploadingChange,
 }: {
   onComplete: (url: string) => void;
+  onUploadingChange: (isUploading: boolean) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { startUpload, isUploading } = useUploadThing("imageUploader", {
@@ -49,6 +51,12 @@ function HeroImageUploadButton({
     },
     onUploadError: (err: Error) => alert(`Upload failed: ${err.message}`),
   });
+
+  // Surface upload-in-flight to the parent so it can hold off Save/Submit
+  // until the new heroImageUrl has actually landed in state.
+  useEffect(() => {
+    onUploadingChange(isUploading);
+  }, [isUploading, onUploadingChange]);
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -101,6 +109,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
 
   // LOCK: editor locked in SUBMITTED / PUBLISHED / ARCHIVED (your current rule)
   const editorLocked = useMemo(
@@ -179,6 +188,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   // so callers (e.g. submit) can flush pending changes before moving on.
   const handleSave = async (): Promise<boolean> => {
     if (editorLocked) return true;
+    if (isUploadingHero) {
+      toast.error("Still uploading image, please wait…");
+      return false;
+    }
     try {
       setIsSaving(true);
       const res = await fetch(`/api/posts/${params.id}`, {
@@ -226,6 +239,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       : publishingNow
         ? "PUBLISHED"
         : "SUBMITTED";
+
+    if (isUploadingHero) {
+      toast.error("Still uploading image, please wait…");
+      return false;
+    }
 
     // guard: if circle is selected audience, require at least one circle
     if (audienceType === "CIRCLE" && circleIds.length === 0) {
@@ -424,6 +442,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
                 setHeroImageUrl(url);
                 setSaved(false);
               }}
+              onUploadingChange={setIsUploadingHero}
             />
           </div>
         )}
@@ -602,15 +621,17 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
         <Button
           onClick={handleSave}
-          disabled={editorLocked || isSaving || saved}
+          disabled={editorLocked || isSaving || saved || isUploadingHero}
         >
           {editorLocked
             ? "Locked"
-            : isSaving
-              ? "Saving..."
-              : saved
-                ? "Saved"
-                : "Save"}
+            : isUploadingHero
+              ? "Uploading…"
+              : isSaving
+                ? "Saving..."
+                : saved
+                  ? "Saved"
+                  : "Save"}
         </Button>
 
         <> {/*placeholder div to ensure spreading of buttons*/}</>
@@ -620,12 +641,15 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
             type="button"
             variant="secondary"
             onClick={handleToggleSubmit}
+            disabled={status !== "SUBMITTED" && isUploadingHero}
             title={
               status === "SUBMITTED"
                 ? "Unsubmit"
-                : sundayLiveJoinAvailable && publishTarget === "now"
-                  ? "Publish now"
-                  : "Submit"
+                : isUploadingHero
+                  ? "Waiting for image upload to finish…"
+                  : sundayLiveJoinAvailable && publishTarget === "now"
+                    ? "Publish now"
+                    : "Submit"
             }
             className="flex items-center gap-2"
             // keep enabled for SUBMITTED so Unsubmit works even when editorLocked

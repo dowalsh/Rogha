@@ -6,7 +6,8 @@ import useSWR, { mutate } from "swr";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
-import { Send, Undo, Trash2, ImageIcon, Zap } from "lucide-react";
+import { Send, Undo, Trash2, ImageIcon, Zap, HelpCircle } from "lucide-react";
+import { FirstPostHelpSheet } from "@/components/editor/FirstPostHelpSheet";
 import { useUploadThing } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
 import { AudienceType } from "@/types";
@@ -109,6 +110,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [isUploadingHero, setIsUploadingHero] = useState(false);
 
   // LOCK: editor locked in SUBMITTED / PUBLISHED / ARCHIVED (your current rule)
@@ -381,7 +383,17 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         <div className="text-sm text-muted-foreground">
           {editorLocked ? `Status: ${status} (read-only)` : `Status: ${status}`}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            title="What should I write?"
+            onClick={() => setHelpOpen(true)}
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Button>
           <ConfirmDelete
             trigger={
               <Button
@@ -673,6 +685,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           </Button>
         )}
       </div>
+
+      <FirstPostHelpSheet open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

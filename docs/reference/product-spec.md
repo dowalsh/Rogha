@@ -133,6 +133,14 @@ The signed-in home page orients a returning user in priority order and routes th
 - **Coming Sunday** — nested inside the hero, always present, with three states driven by the viewer's friend graph and this week's submissions: *no friends* (prompts the viewer to add friends, linking to Circles, since there's nothing to queue without a circle), *friends but nothing submitted yet* ("nothing yet" plus a "Start a post" CTA), and *posts queued* (lists submitted posts with titles visible but hero thumbnails blurred and a lock icon, and nudges the viewer to add their own before the reveal if they haven't).
 - **Buzz** — everything below the hero, one row per post (never per event), ordered by most recent activity. **New buzz** is posts with unread activity; **Earlier** is the rest (capped, with "show more"). A post counts as unread when its latest *comment or reply* is newer than the last time the viewer opened it. Likes never count as activity, and newly submitted or published posts don't appear in Buzz at all — the hero owns new content, Buzz owns new conversation. Rows carry no actor names and no comment text; their only job is "is this worth opening?"
 
+### First-run onboarding
+A calm, state-driven layer for anyone who has never submitted a post — gated on `hasPosted` (any non-`DRAFT` post authored by the viewer), retiring permanently once that flips true. Full spec: [2026-09-19-first-run-onboarding.md](../specs/2026-09-19-first-run-onboarding.md).
+
+- A cold arrival (no circle yet) sees a one-time full-screen value-moment intro before the checklist; an arrival already in a circle skips straight to the inline checklist.
+- The home page shows a dismissible-but-recoverable "Getting started" checklist above the normal hero/Buzz content: create a circle (with a suggested/randomized name), add people, write a first post — plus a non-actionable "first edition lands Sunday" forecast line.
+- **v1 note:** the "add people" step reuses the existing friend-based add-to-circle flow, not invite-by-link (not yet shipped). Its completion is tracked via a state proxy — the viewer's circle has more than one joined member — which keeps working unchanged once invite-by-link ships, since a link-joiner becomes a `CircleMember` row the same way.
+- The composer has an always-available "what should I write?" help sheet (not gated to the first post).
+
 ## Auth (summary)
 
 Sign-in is Clerk-based. Web sign-in is standard Clerk. The native (iOS/Capacitor) app can't authenticate inline in its WebView, so it hands off to an in-app Safari browser at the app's own current origin, completes Clerk auth there, and deep-links back with a short-lived ticket that's exchanged for a session in the native WebView. Full detail, including why the flow is "origin-aware" (so a future staging build of the app can authenticate against staging instead of always bouncing to prod), is in [specs/origin-aware-signin.md](../specs/origin-aware-signin.md).

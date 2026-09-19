@@ -34,6 +34,10 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // First-run onboarding (docs/specs/2026-09-19-first-run-onboarding.md)
+  onboardingIntroSeenAt        DateTime?
+  onboardingChecklistCollapsed Boolean   @default(false)
+
   posts                Post[]
   comments             Comment[]
   postLikes            PostLike[]

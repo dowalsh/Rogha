@@ -15,6 +15,7 @@ import {
 import { getJamConnectedFriendCount, getJamConnectedFriends } from "@/lib/jam";
 import type { ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
 import { getWeekStartUTC } from "@/lib/utils";
+import { getOnboardingState, type OnboardingState } from "@/lib/onboarding";
 
 // --- hero -------------------------------------------------------------
 
@@ -418,17 +419,19 @@ export type HomeData = {
   hero: HeroData;
   comingNext: ComingNextData;
   buzz: BuzzPostsData;
+  onboarding: OnboardingState | null;
 };
 
 export async function getHomeData(
   userId: string,
   opts: { earlierLimit?: number } = {},
 ): Promise<HomeData> {
-  const [hero, comingNext, buzz] = await Promise.all([
+  const [hero, comingNext, buzz, onboarding] = await Promise.all([
     getHeroData(userId),
     getComingNext(userId),
     getBuzzPosts(userId, opts),
+    getOnboardingState(userId),
   ]);
 
-  return { hero, comingNext, buzz };
+  return { hero, comingNext, buzz, onboarding };
 }

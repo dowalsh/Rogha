@@ -4,7 +4,7 @@ Entity/relationship reference. Source of truth is always [`prisma/schema.prisma`
 
 ## Core entities
 
-**User** — `email`, `username` (unique), `clerkId` (unique, links to Clerk). `role: USER | ADMIN`. `lastfmUsername` (nullable) + `jamEnabled` (bool, default `false`) back the Weekly Jam opt-in (see `WeeklyTrack` below). Fans out to nearly everything else: posts, comments, likes, notifications (sent + received), friendships, circle memberships, notification preferences (1:1), push devices, reports filed, blocks given/received.
+**User** — `email`, `username` (unique), `clerkId` (unique, links to Clerk). `role: USER | ADMIN`. `lastfmUsername` (nullable) + `jamEnabled` (bool, default `false`) back the Weekly Jam opt-in (see `WeeklyTrack` below). `onboardingIntroSeenAt` (nullable, stamped once) + `onboardingChecklistCollapsed` (bool, default `false`) back first-run onboarding's one-time full-screen intro and the dismissible-but-recoverable home checklist — see [product-spec.md](./product-spec.md#first-run-onboarding). Fans out to nearly everything else: posts, comments, likes, notifications (sent + received), friendships, circle memberships, notification preferences (1:1), push devices, reports filed, blocks given/received.
 
 **Friendship** — composite PK `(aId, bId)`, stored as a canonical ordered pair (`aId < bId`) so each pair has exactly one row regardless of who requested. `requesterId` tracks who initiated. `status: PENDING | ACCEPTED`, `acceptedAt` stamped on accept — this timestamp drives the temporal friend-visibility gate on posts (see product-spec).
 

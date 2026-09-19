@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Shuffle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,17 +13,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { suggestCircleName } from "@/lib/circleNames";
 
 export function NewCircleDialog({
   open,
   onClose,
   onCreate,
+  initialName,
 }: {
   open: boolean;
   onClose: () => void;
   onCreate: (name: string, description?: string) => void;
+  // Onboarding's "create your first circle" step passes a suggested default
+  // so the field is never blank; other callers omit this and get the old
+  // empty-field behavior.
+  initialName?: string;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName ?? "");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -46,12 +53,30 @@ export function NewCircleDialog({
         <div className="space-y-4">
           <div>
             <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              placeholder=""
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="name"
+                placeholder=""
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              {initialName !== undefined && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Try another name"
+                  onClick={() => setName(suggestCircleName())}
+                >
+                  <Shuffle className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {initialName !== undefined && (
+              <p className="text-xs text-muted-foreground mt-1">
+                You can change this anytime.
+              </p>
+            )}
           </div>
 
           <div>

@@ -8,6 +8,8 @@ import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/Spinner";
+import { secretCodeFont } from "@/lib/fonts/secretCode";
+import { cn } from "@/lib/utils";
 
 type InviteInfo =
   | { status: "not_found" }
@@ -111,7 +113,10 @@ export default function JoinCircleClient({
             value={code}
             disabled
             readOnly
-            className="h-12 rounded-lg border-2 bg-muted text-center font-mono text-lg font-semibold uppercase tracking-[0.3em] text-foreground disabled:cursor-default disabled:opacity-100"
+            className={cn(
+              secretCodeFont.className,
+              "h-12 rounded-lg border-2 bg-muted text-center text-lg uppercase tracking-[0.3em] text-foreground disabled:cursor-default disabled:opacity-100",
+            )}
           />
           <Lock className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>

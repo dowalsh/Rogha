@@ -21,6 +21,8 @@ import {
   leaveCircle,
 } from "@/actions/circle.action";
 import { getFriends } from "@/actions/friends.action";
+import { secretCodeFont } from "@/lib/fonts/secretCode";
+import { cn } from "@/lib/utils";
 
 type CircleInvite = { code: string; url: string; expiresAt: string };
 
@@ -88,7 +90,7 @@ function InviteSection({ circleId, circleName }: { circleId: string; circleName:
       {invite ? (
         <div className="space-y-2">
           <p className="text-sm">
-            Code: <span className="font-mono">{invite.code}</span>
+            Code: <span className={cn(secretCodeFont.className, "tracking-wider")}>{invite.code}</span>
           </p>
           <p className="text-xs text-muted-foreground break-all">{invite.url}</p>
           <div className="flex gap-2">
@@ -111,7 +113,7 @@ function InviteSection({ circleId, circleName }: { circleId: string; circleName:
             value={customCode}
             onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
             placeholder={`e.g. ${circleName.toUpperCase().replace(/[^A-Z0-9]+/g, "-")}`}
-            className="uppercase placeholder:normal-case"
+            className={cn(secretCodeFont.className, "uppercase tracking-wider placeholder:normal-case")}
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}

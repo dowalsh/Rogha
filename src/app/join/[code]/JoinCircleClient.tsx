@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { toast } from "sonner";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/Spinner";
 
 type InviteInfo =
@@ -98,9 +100,21 @@ export default function JoinCircleClient({
         <p className="text-muted-foreground">
           {info.memberCount} {info.memberCount === 1 ? "person" : "people"} already here.
         </p>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
-          Code: {code}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+          Your invite code
         </p>
+        <div className="relative mx-auto max-w-[220px]">
+          <Input
+            value={code}
+            disabled
+            readOnly
+            className="h-12 rounded-lg border-2 bg-muted text-center font-mono text-lg font-semibold uppercase tracking-[0.3em] text-foreground disabled:cursor-default disabled:opacity-100"
+          />
+          <Lock className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        </div>
       </div>
 
       {busy ? (

@@ -4,18 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
+import { requestOrigin } from "@/lib/serverOrigin";
 
 function generateToken(): string {
   return randomBytes(16).toString("base64url");
 }
 
-function shareUrl(token: string): string {
-  return `${process.env.APP_URL ?? ""}/share/post/${token}`;
+function shareUrl(req: NextRequest, token: string): string {
+  return `${requestOrigin(req)}/share/post/${token}`;
 }
 
 // GET — check whether an active share link exists (author only)
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   const { user, error } = await getDbUser();
@@ -38,12 +39,12 @@ export async function GET(
   if (!post.publicShareEnabled || !post.publicShareToken)
     return NextResponse.json({ active: false });
 
-  return NextResponse.json({ active: true, url: shareUrl(post.publicShareToken) });
+  return NextResponse.json({ active: true, url: shareUrl(req, post.publicShareToken) });
 }
 
 // POST — create (or return existing) active share link
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   const { user, error } = await getDbUser();
@@ -68,7 +69,7 @@ export async function POST(
     return NextResponse.json({ error: "Post cannot be shared" }, { status: 409 });
 
   if (post.publicShareEnabled && post.publicShareToken)
-    return NextResponse.json({ url: shareUrl(post.publicShareToken), created: false });
+    return NextResponse.json({ url: shareUrl(req, post.publicShareToken), created: false });
 
   // Generate a fresh token (covers both first-time create and re-enable after disable)
   const token = generateToken();
@@ -87,7 +88,7 @@ export async function POST(
     postStatus: post.status,
   });
 
-  return NextResponse.json({ url: shareUrl(token), created: true });
+  return NextResponse.json({ url: shareUrl(req, token), created: true });
 }
 
 // DELETE — disable share link

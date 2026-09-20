@@ -2,9 +2,10 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createCircleInvite, getActiveCircleInvite } from "@/actions/circle.action";
+import { requestOrigin } from "@/lib/serverOrigin";
 
-function shareUrl(code: string): string {
-  return `${process.env.APP_URL ?? ""}/join/${code}`;
+function shareUrl(req: NextRequest, code: string): string {
+  return `${requestOrigin(req)}/join/${code}`;
 }
 
 function errorResponse(error: any) {
@@ -21,7 +22,7 @@ function errorResponse(error: any) {
 
 // GET — the circle's current active invite, if any (for "copy existing" UI)
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -29,7 +30,7 @@ export async function GET(
     const invite = await getActiveCircleInvite(id);
     if (!invite) return NextResponse.json({ invite: null });
     return NextResponse.json({
-      invite: { code: invite.code, url: shareUrl(invite.code), expiresAt: invite.expiresAt },
+      invite: { code: invite.code, url: shareUrl(req, invite.code), expiresAt: invite.expiresAt },
     });
   } catch (error) {
     console.error("[CIRCLE_INVITE_GET_ERROR]", error);
@@ -49,7 +50,7 @@ export async function POST(
 
     const invite = await createCircleInvite({ circleId: id, customCode });
     return NextResponse.json({
-      invite: { code: invite.code, url: shareUrl(invite.code), expiresAt: invite.expiresAt },
+      invite: { code: invite.code, url: shareUrl(req, invite.code), expiresAt: invite.expiresAt },
     });
   } catch (error) {
     console.error("[CIRCLE_INVITE_POST_ERROR]", error);

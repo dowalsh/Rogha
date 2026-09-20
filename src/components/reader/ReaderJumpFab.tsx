@@ -44,9 +44,11 @@ export function ReaderJumpFab({ commentsAnchorId }: { commentsAnchorId: string }
     }
     setVisible(true);
 
+    // Flip as soon as any part of the comments section is on screen, so the
+    // button reflects "Top" for the whole time you're over comments rather
+    // than only near its bottom edge.
     const observer = new IntersectionObserver(
       ([entry]) => setState(entry.isIntersecting ? "atComments" : "above"),
-      { rootMargin: "-40% 0px -60% 0px" },
     );
     observer.observe(anchor);
     return () => observer.disconnect();

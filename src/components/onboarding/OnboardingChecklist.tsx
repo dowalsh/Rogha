@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NewCircleDialog } from "@/components/NewCircleDialog";
 import { CircleDialog } from "@/components/CircleDialog";
@@ -53,19 +53,6 @@ export function OnboardingChecklist({
     setCircleForInvite(circle);
   };
 
-  if (collapsed) {
-    return (
-      <button
-        type="button"
-        onClick={() => toggleCollapsed(false)}
-        className="w-full text-left rounded-xl border bg-background/60 px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
-      >
-        Getting started — {rows(onboarding).filter((r) => r.done).length}/
-        {rows(onboarding).length} done
-      </button>
-    );
-  }
-
   const items = rows(onboarding, {
     onCreateCircle: () => {
       setSuggestedName(suggestCircleName());
@@ -77,55 +64,73 @@ export function OnboardingChecklist({
 
   return (
     <section className="rounded-xl border bg-background/60 p-4 sm:p-6 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-serif text-xl">Getting started</p>
-          <p className="text-sm text-muted-foreground">
-            A little guidance, not a checklist to finish in order.
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <p className="font-serif text-xl truncate">Welcome to Rogha!</p>
+          {collapsed && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {items.map((row) => (
+                <span
+                  key={row.key}
+                  title={row.label}
+                  className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                    row.done ? "bg-foreground text-background border-foreground" : "text-transparent"
+                  }`}
+                >
+                  <Check className="h-3 w-3" />
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <Button
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0"
-          onClick={() => toggleCollapsed(true)}
-          title="Collapse"
+          onClick={() => toggleCollapsed(!collapsed)}
+          title={collapsed ? "Expand" : "Collapse"}
         >
-          <X className="h-4 w-4" />
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${collapsed ? "-rotate-90" : ""}`}
+          />
         </Button>
       </div>
 
-      <ul className="space-y-2">
-        {items.map((row) => (
-          <li
-            key={row.key}
-            className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  row.done ? "bg-foreground text-background border-foreground" : "text-transparent"
-                }`}
+      {!collapsed && (
+        <>
+          <ul className="space-y-2">
+            {items.map((row) => (
+              <li
+                key={row.key}
+                className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
               >
-                <Check className="h-3.5 w-3.5" />
-              </span>
-              <span className={`text-sm truncate ${row.done ? "text-muted-foreground line-through" : ""}`}>
-                {row.label}
-              </span>
-            </div>
-            {row.action && !row.done && (
-              <Button size="sm" variant="outline" onClick={row.action.onClick}>
-                {row.action.label}
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                      row.done ? "bg-foreground text-background border-foreground" : "text-transparent"
+                    }`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </span>
+                  <span className={`text-sm truncate ${row.done ? "text-muted-foreground line-through" : ""}`}>
+                    {row.label}
+                  </span>
+                </div>
+                {row.action && !row.done && (
+                  <Button size="sm" variant="outline" onClick={row.action.onClick}>
+                    {row.action.label}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
 
-      {onboarding.hasCircle && (
-        <p className="text-xs text-muted-foreground border-t pt-3">
-          Your first edition lands Sunday, once everyone's had a chance to write.
-        </p>
+          {onboarding.hasCircle && (
+            <p className="text-xs text-muted-foreground border-t pt-3">
+              Your first edition lands Sunday, once everyone's had a chance to write.
+            </p>
+          )}
+        </>
       )}
 
       <NewCircleDialog

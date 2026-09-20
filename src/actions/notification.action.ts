@@ -274,6 +274,7 @@ export async function createCommentNotification({
           url: `${process.env.APP_URL}/open/editions/${track.editionId}/jam#comment-${newComment.id}`,
           postTitle: `${track.name} — ${track.artist}`,
           isReply: false,
+          contentLabel: "Weekly Jam",
         });
       }
     } catch (err) {
@@ -284,7 +285,7 @@ export async function createCommentNotification({
     if (pushPrefs.pushEnabled && pushPrefs.pushComments) {
       await sendPushToUser(track.userId, {
         title: "New comment",
-        body: `${commenter.username} commented on "${track.name}"`,
+        body: `${commenter.username} commented on your Weekly Jam`,
         url: `/editions/${track.editionId}/jam#comment-${newCommentId}`,
       });
     }

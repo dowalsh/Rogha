@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs";
+import { useUser, SignUpButton } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -126,18 +126,11 @@ export default function JoinCircleClient({
           Join {info.circleName}
         </Button>
       ) : (
-        <div className="space-y-2">
-          <SignUpButton mode="modal" forceRedirectUrl={returnUrl}>
-            <Button size="lg" className="w-full">
-              Join {info.circleName}
-            </Button>
-          </SignUpButton>
-          <SignInButton mode="modal" forceRedirectUrl={returnUrl}>
-            <Button size="lg" variant="outline" className="w-full">
-              I already have an account
-            </Button>
-          </SignInButton>
-        </div>
+        <SignUpButton mode="modal" forceRedirectUrl={returnUrl}>
+          <Button size="lg" className="w-full">
+            Join {info.circleName}
+          </Button>
+        </SignUpButton>
       )}
     </div>
   );

@@ -11,6 +11,7 @@ import {
   getMostRecentPublishedEditionForUser,
   getPublishedEditionById,
   plannedPublishAt,
+  getSundayLiveJoinWindow,
 } from "@/lib/editions";
 import { getJamConnectedFriendCount, getJamConnectedFriends } from "@/lib/jam";
 import type { ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
@@ -116,6 +117,7 @@ export type ComingNextData =
       jamConnectedCount: number;
       jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
+      showJamTeaser: boolean;
     }
   | {
       visible: true;
@@ -127,6 +129,7 @@ export type ComingNextData =
       jamConnectedCount: number;
       jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
+      showJamTeaser: boolean;
     };
 
 function computeDaysLeft(now: Date): number {
@@ -134,6 +137,14 @@ function computeDaysLeft(now: Date): number {
   const publishAt = plannedPublishAt(weekStart);
   const ms = publishAt.getTime() - now.getTime();
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
+
+// The Coming Sunday panel's Jam teaser is about the *upcoming* (unpublished)
+// jam — it should stay hidden through the 24h Sunday live-join window (see
+// getSundayLiveJoinWindow) so it doesn't compete with the jam that just
+// published, then reappear once that window closes at Monday 07:00 UTC.
+function computeShowJamTeaser(now: Date): boolean {
+  return !getSundayLiveJoinWindow(now).isOpen;
 }
 
 export async function getComingNext(userId: string): Promise<ComingNextData> {
@@ -194,6 +205,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
       jamConnectedCount,
       jamConnectedFriends,
       viewerJamConnected,
+      showJamTeaser: computeShowJamTeaser(new Date()),
     };
   }
 
@@ -238,6 +250,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     jamConnectedCount,
     jamConnectedFriends,
     viewerJamConnected,
+    showJamTeaser: computeShowJamTeaser(new Date()),
   };
 }
 

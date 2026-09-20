@@ -35,7 +35,8 @@ export function OnboardingChecklist({
   const [suggestedName, setSuggestedName] = useState(() => suggestCircleName());
   const [circleForInvite, setCircleForInvite] = useState<any>(null);
 
-  const refresh = () => mutate((key) => typeof key === "string" && key.startsWith("/api/home"));
+  const refresh = () =>
+    mutate((key) => typeof key === "string" && key.startsWith("/api/home"));
 
   const toggleCollapsed = (next: boolean) => {
     setCollapsed(next);
@@ -74,7 +75,9 @@ export function OnboardingChecklist({
                   key={row.key}
                   title={row.label}
                   className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                    row.done ? "bg-foreground text-background border-foreground" : "text-transparent"
+                    row.done
+                      ? "bg-foreground text-background border-foreground"
+                      : "text-transparent"
                   }`}
                 >
                   <Check className="h-3 w-3" />
@@ -107,29 +110,31 @@ export function OnboardingChecklist({
                 <div className="flex items-center gap-2 min-w-0">
                   <span
                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                      row.done ? "bg-foreground text-background border-foreground" : "text-transparent"
+                      row.done
+                        ? "bg-foreground text-background border-foreground"
+                        : "text-transparent"
                     }`}
                   >
                     <Check className="h-3.5 w-3.5" />
                   </span>
-                  <span className={`text-sm truncate ${row.done ? "text-muted-foreground line-through" : ""}`}>
+                  <span
+                    className={`text-sm truncate ${row.done ? "text-muted-foreground line-through" : ""}`}
+                  >
                     {row.label}
                   </span>
                 </div>
                 {row.action && !row.done && (
-                  <Button size="sm" variant="outline" onClick={row.action.onClick}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={row.action.onClick}
+                  >
                     {row.action.label}
                   </Button>
                 )}
               </li>
             ))}
           </ul>
-
-          {onboarding.hasCircle && (
-            <p className="text-xs text-muted-foreground border-t pt-3">
-              Your first edition lands Sunday, once everyone's had a chance to write.
-            </p>
-          )}
         </>
       )}
 
@@ -153,7 +158,11 @@ export function OnboardingChecklist({
 
 function rows(
   onboarding: OnboardingState,
-  handlers?: { onCreateCircle: () => void; onInvite: () => void; onWritePost: () => void },
+  handlers?: {
+    onCreateCircle: () => void;
+    onInvite: () => void;
+    onWritePost: () => void;
+  },
 ): Row[] {
   return [
     { key: "account", label: "Create an account", done: true },

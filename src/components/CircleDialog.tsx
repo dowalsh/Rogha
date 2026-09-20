@@ -109,8 +109,12 @@ function InviteSection({ circleId, circleName }: { circleId: string; circleName:
         <div className="space-y-2">
           <Input
             value={customCode}
-            onChange={(e) => setCustomCode(e.target.value)}
+            onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
             placeholder={`e.g. ${circleName.toUpperCase().replace(/[^A-Z0-9]+/g, "-")}`}
+            className="uppercase placeholder:normal-case"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
           />
           <Button size="sm" disabled={creating} onClick={() => createInvite(false)}>
             {creating ? "Creating..." : "Create invite"}

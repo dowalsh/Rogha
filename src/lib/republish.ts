@@ -22,3 +22,17 @@ export async function hasRepublishRationAvailable(authorId: string): Promise<boo
 
   return count === 0;
 }
+
+/**
+ * Whether this user has ever published a post — i.e. has anything a
+ * Republish action could actually target. Used to gate the republish
+ * announcement nudge, which is pointless to show someone with nothing
+ * publishable yet.
+ */
+export async function hasPublishedPost(authorId: string): Promise<boolean> {
+  const count = await prisma.post.count({
+    where: { authorId, status: "PUBLISHED" },
+  });
+
+  return count > 0;
+}

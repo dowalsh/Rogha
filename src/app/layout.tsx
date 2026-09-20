@@ -12,9 +12,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { time, logTiming, requestIdFromHeaders } from "@/lib/timing";
 import DeepLinkInit from "@/components/DeepLinkInit";
 import MePreloader from "@/components/MePreloader";
-import UsernameNudge from "@/components/UsernameNudge";
-import RepublishAnnouncementNudge from "@/components/RepublishAnnouncementNudge";
-import AppStoreNudge from "@/components/AppStoreNudge";
+import NudgeStack from "@/components/NudgeStack";
 import PushNotificationInit from "@/components/PushNotificationInit";
 import SplashScreenInit from "@/components/SplashScreenInit";
 import TermsGate from "@/components/TermsGate";
@@ -136,9 +134,7 @@ export default async function RootLayout({
                   </div>
                 )}
                 <Navbar />
-                <UsernameNudge />
-                <RepublishAnnouncementNudge />
-                <AppStoreNudge />
+                <NudgeStack />
                 <main className="pb-8">
                   <div className="max-w-7xl mx-auto px-4">
                     <TermsGate>{children}</TermsGate>

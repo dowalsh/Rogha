@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { EditionHero } from "@/components/home/EditionHero";
+import { ComingSunday } from "@/components/home/ComingSunday";
 import { PendingRequestsCard } from "@/components/home/PendingRequestsCard";
 import { BuzzList } from "@/components/home/BuzzList";
 import { HomeSkeleton } from "@/components/home/HomeSkeleton";
@@ -57,7 +58,15 @@ export function HomeContent() {
       )}
       {onboarding && <OnboardingChecklist onboarding={onboarding} />}
       <PendingRequestsCard />
-      <EditionHero hero={data.hero} comingNext={data.comingNext} />
+      <EditionHero hero={data.hero} />
+      {/* Persistent regardless of hero state — renders even when the hero
+          itself is hidden (no edition/no visible posts last week). */}
+      <section className="rounded-xl border bg-background/60 p-4 sm:p-6">
+        <ComingSunday
+          data={data.comingNext}
+          collapsed={data.hero.kind === "edition" && data.hero.state === "NOT_OPENED"}
+        />
+      </section>
       <BuzzList
         buzz={data.buzz}
         onShowMore={() => setEarlierLimit((n) => n + EARLIER_PAGE_SIZE)}

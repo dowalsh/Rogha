@@ -116,10 +116,10 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         <p className="text-sm font-medium">Coming Sunday.</p>
         <div className="flex items-center justify-between gap-2 pt-1 text-sm">
           <span className="text-muted-foreground">
-            Add some friends to start seeing what they're writing.
+            Build your circle to start seeing what they're writing.
           </span>
           <Button asChild size="sm">
-            <Link href="/friends">Find friends</Link>
+            <Link href="/friends">Build your circle</Link>
           </Button>
         </div>
       </div>

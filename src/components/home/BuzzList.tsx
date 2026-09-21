@@ -48,14 +48,7 @@ export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {
   const { newBuzz, earlier, earlierHasMore } = buzz;
 
   if (newBuzz.length === 0 && earlier.length === 0) {
-    return (
-      <section className="rounded-xl border bg-background/60 p-3 sm:p-4">
-        <p className="text-sm text-muted-foreground">
-          No buzz yet. Friends' activities show up here as they do stuff in
-          Rogha.
-        </p>
-      </section>
-    );
+    return null;
   }
 
   return (

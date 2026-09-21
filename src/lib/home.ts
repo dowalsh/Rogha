@@ -148,7 +148,24 @@ function computeShowJamTeaser(now: Date): boolean {
 }
 
 export async function getComingNext(userId: string): Promise<ComingNextData> {
-  const friendIds = await getAcceptedFriendIds(userId);
+  const [friendIds, ownCircleMemberships] = await Promise.all([
+    getAcceptedFriendIds(userId),
+    prisma.circleMember.findMany({
+      where: { userId, status: "JOINED" },
+      select: { circleId: true },
+    }),
+  ]);
+  const ownCircleIds = ownCircleMemberships.map((m) => m.circleId);
+
+  // Circle membership (esp. via invite-link join) doesn't imply friendship,
+  // so a circle-mate's queued post wouldn't otherwise surface here — see
+  // buildAudienceCandidateWhere's CIRCLE branch in postAccess.ts for the
+  // published-post equivalent of this rule.
+  const hasCircleMates = ownCircleIds.length
+    ? (await prisma.circleMember.count({
+        where: { circleId: { in: ownCircleIds }, status: "JOINED", userId: { not: userId } },
+      })) > 0
+    : false;
 
   const submittedRaw = await prisma.post.findMany({
     where: {
@@ -157,6 +174,10 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
         { authorId: userId },
         { authorId: { in: friendIds } },
         { audienceType: "ALL_USERS" }, // official posts queue for every user
+        {
+          audienceType: "CIRCLE",
+          postCircles: { some: { circleId: { in: ownCircleIds } } },
+        },
       ],
     },
     orderBy: { createdAt: "desc" },
@@ -183,7 +204,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
     return p.authorId === userId || recipientPostIds.has(p.id);
   });
 
-  if (friendIds.length === 0 && submitted.length === 0) {
+  if (friendIds.length === 0 && !hasCircleMates && submitted.length === 0) {
     return { visible: true, state: "no-friends" };
   }
 

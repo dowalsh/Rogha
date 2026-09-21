@@ -4,9 +4,8 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ComingSunday } from "@/components/home/ComingSunday";
 import { cn } from "@/lib/utils";
-import type { HeroData, ComingNextData } from "@/lib/home";
+import type { HeroData } from "@/lib/home";
 
 const pillClass =
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] uppercase tracking-[0.16em]";
@@ -15,52 +14,21 @@ const cardBase = "rounded-xl border bg-background/60 p-4 sm:p-6 space-y-4";
 
 type EditionHeroProps = {
   hero: HeroData;
-  comingNext: ComingNextData;
 };
 
-function ComingSundaySlot({
-  comingNext,
-  collapsed,
-}: {
-  comingNext: ComingNextData;
-  collapsed: boolean;
-}) {
-  return (
-    <div className="border-t pt-3">
-      <ComingSunday data={comingNext} collapsed={collapsed} />
-    </div>
-  );
-}
-
-export function EditionHero({ hero, comingNext }: EditionHeroProps) {
+export function EditionHero({ hero }: EditionHeroProps) {
+  // No edition/no visible posts last week — the hero has nothing to say, so
+  // it doesn't render at all (Coming Sunday, rendered by the caller, is what
+  // stays persistent).
   if (hero.kind === "empty") {
-    return (
-      <section className={cardBase}>
-        <p className="font-serif text-xl">No posts last week</p>
-        <p className="text-sm text-muted-foreground">
-          Once your friends submit some posts, they'll come together into
-          your next weekly edition. In the meantime, explore previous
-          editions or write a post yourself!
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/editions">Explore previous editions</Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/posts">Write a post</Link>
-          </Button>
-        </div>
-
-        <ComingSundaySlot comingNext={comingNext} collapsed={false} />
-      </section>
-    );
+    return null;
   }
 
   if (hero.state === "NOT_OPENED") {
     const pillLabel = hero.isReleaseDay ? "Just published · today" : "Not opened";
     const headline = hero.isReleaseDay
-      ? "This week's edition just dropped"
-      : "You haven't opened this week yet";
+      ? "Last week's edition just dropped"
+      : "You haven't opened last week's edition yet";
     const subtitle = hero.isReleaseDay
       ? `${hero.totalCount} stories from your friends · be the first in.`
       : `${hero.totalCount} stories waiting.`;
@@ -92,10 +60,8 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
         )}
 
         <Button asChild>
-          <Link href={`/editions/${hero.editionId}`}>Open this week</Link>
+          <Link href={`/editions/${hero.editionId}`}>Open last week</Link>
         </Button>
-
-        <ComingSundaySlot comingNext={comingNext} collapsed />
       </section>
     );
   }
@@ -105,7 +71,7 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
       <section className={cardBase}>
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
-            <h2 className="font-serif text-xl font-bold">Keep reading this week</h2>
+            <h2 className="font-serif text-xl font-bold">Keep reading last week</h2>
             <span className="text-sm text-muted-foreground">
               {hero.openedCount} of {hero.totalCount}
             </span>
@@ -128,19 +94,39 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
             Finish the {hero.unreadPostIds.length} you missed
           </Link>
         </Button>
-
-        <ComingSundaySlot comingNext={comingNext} collapsed={false} />
       </section>
     );
   }
 
-  // CAUGHT_UP
+  // CAUGHT_UP, but still release day — stays loud (accent card, reveal-card
+  // energy) rather than dropping straight to the subtle reread prompt below;
+  // it only downgrades once release day has passed (see docs audit).
+  if (hero.isReleaseDay) {
+    return (
+      <section className={cn(cardBase, "border-2 border-accent")}>
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <h2 className="font-serif text-xl font-bold leading-tight">
+            You're all caught up on last week's edition
+          </h2>
+        </div>
+        <Link
+          href={`/editions/${hero.editionId}`}
+          className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Reread
+        </Link>
+      </section>
+    );
+  }
+
+  // CAUGHT_UP, past release day — subtle, out of the way.
   return (
     <section className={cardBase}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-muted-foreground">
           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-          <p className="text-sm">You're all caught up this week.</p>
+          <p className="text-sm">You're all caught up on last week's edition.</p>
         </div>
         <Link
           href={`/editions/${hero.editionId}`}
@@ -149,8 +135,6 @@ export function EditionHero({ hero, comingNext }: EditionHeroProps) {
           Reread
         </Link>
       </div>
-
-      <ComingSundaySlot comingNext={comingNext} collapsed={false} />
     </section>
   );
 }

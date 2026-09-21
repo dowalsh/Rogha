@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import { useUser } from "@clerk/nextjs";
 import useSWR, { mutate } from "swr";
 import { Textarea } from "@/components/ui/textarea";
@@ -279,6 +280,7 @@ function InlineComposer({
   onSubmit: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isNative] = useState(() => Capacitor.isNativePlatform());
 
   // Focus on mount (no preventScroll) — iOS lifts this above the keyboard,
   // and since it's the DOM node right after the target comment (or at the
@@ -312,6 +314,16 @@ function InlineComposer({
           const el = e.currentTarget;
           el.style.height = "auto";
           el.style.height = `${el.scrollHeight}px`;
+        }}
+        onKeyDown={(e) => {
+          // Web only: on native, Enter/Return behaves like a normal hardware
+          // or software keyboard key and Cmd/Ctrl+Enter isn't an expected
+          // submit gesture there.
+          if (isNative) return;
+          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            if (value.trim()) onSubmit();
+          }
         }}
         placeholder={placeholder}
         // max-h + overflow-y-auto do the capping/scrolling purely in CSS —

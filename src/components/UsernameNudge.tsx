@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { useUser } from "@clerk/nextjs";
 import type { NudgeConfig } from "@/components/NudgeStack";
+import { useSuppressNudges } from "@/hooks/useSuppressNudges";
 
 type Me = { username: string };
 

@@ -14,6 +14,13 @@ type CircleInvite = { code: string; url: string; expiresAt: string };
 
 const PITCH = "Weekly letters between friends — get in here.";
 
+function defaultInviteCodePlaceholder(circleName: string) {
+  return circleName
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "CIRCLE";
+}
+
 function messageFor(circleName: string, invite: CircleInvite) {
   return `${circleName} on Rogha\n${PITCH}\n${invite.url}\nCODE  ${invite.code}`;
 }
@@ -174,7 +181,7 @@ export function InviteSheet({
             <Input
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
-              placeholder="kitchen-table"
+              placeholder={defaultInviteCodePlaceholder(circleName)}
               className={cn(secretCodeFont.className, "uppercase tracking-wider placeholder:normal-case")}
               autoCapitalize="characters"
               autoCorrect="off"

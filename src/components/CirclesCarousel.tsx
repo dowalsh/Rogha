@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Trash2, Blend } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Blend } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CircleDialog } from "./CircleDialog";
 import { getCirclesForUser, createCircle } from "@/actions/circle.action";
 import { motion } from "framer-motion";
 import { NewCircleDialog } from "./NewCircleDialog";
@@ -14,10 +12,8 @@ import { CirclePill } from "@/components/circles/CirclePill";
 
 export function CirclesCarousel() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [circles, setCircles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<any | null>(null);
   const [newDialogOpen, setNewDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -27,36 +23,10 @@ export function CirclesCarousel() {
     });
   }, []);
 
-  // ?openCircle=<id> — the circle-join Buzz row's click-through target.
-  // Opens that circle's dialog once its data has loaded, then clears the
-  // param so a refresh/back-nav doesn't reopen it.
-  useEffect(() => {
-    const openCircleId = searchParams.get("openCircle");
-    if (!openCircleId || circles.length === 0) return;
-    const match = circles.find((c) => c.id === openCircleId);
-    if (match) setSelected(match);
-
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("openCircle");
-    router.replace(params.size ? `/friends?${params}` : "/friends");
-  }, [circles, searchParams, router]);
-
   const handleCreate = async (name: string, description?: string) => {
     const newCircle = await createCircle({ name, description });
     setCircles((prev) => [newCircle, ...prev]);
-  };
-
-  // When the dialog reports membership changed, update circles + selected
-  const handleMembersChanged = (nextMembers: { user: any }[]) => {
-    if (!selected) return;
-    setCircles((prev) =>
-      prev.map((c) =>
-        c.id === selected.id ? { ...c, members: nextMembers } : c
-      )
-    );
-    setSelected((prev: any) =>
-      prev ? { ...prev, members: nextMembers } : prev
-    );
+    router.push(`/circles/${newCircle.id}`);
   };
 
   return (
@@ -87,7 +57,7 @@ export function CirclesCarousel() {
         {circles.map((circle) => (
           <motion.div key={circle.id} whileHover={{ scale: 1.03 }}>
             <Card
-              onClick={() => setSelected(circle)}
+              onClick={() => router.push(`/circles/${circle.id}`)}
               className="relative w-32 h-32 p-3 flex flex-col items-center justify-center cursor-pointer hover:shadow-md transition rounded-full"
             >
               <div className="text-center">
@@ -102,13 +72,6 @@ export function CirclesCarousel() {
       </div>
       )}
 
-      <CircleDialog
-        key={selected?.id ?? "none"} // keep open after mutations
-        circle={selected}
-        open={!!selected}
-        onClose={() => setSelected(null)}
-        onMembersChanged={handleMembersChanged} // renamed prop
-      />
       <NewCircleDialog
         open={newDialogOpen}
         onClose={() => setNewDialogOpen(false)}

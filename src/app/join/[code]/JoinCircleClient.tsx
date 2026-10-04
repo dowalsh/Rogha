@@ -55,10 +55,11 @@ export default function JoinCircleClient({
       }
       if (data.alreadyMember) {
         toast("You're already in this circle.");
+        router.push(`/circles/${data.circleId}`);
       } else {
         toast.success(`Welcome to ${info.status !== "not_found" ? info.circleName : "the circle"}!`);
+        router.push(`/circles/${data.circleId}?joined=1`);
       }
-      router.push(`/friends?welcomeCircle=${data.circleId}`);
     } catch {
       toast.error("Something went wrong — try again.");
       setJoining(false);

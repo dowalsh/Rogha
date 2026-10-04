@@ -22,7 +22,7 @@ function BuzzRowView({ row, variant }: { row: BuzzRow; variant: "new" | "earlier
         avatarUrl={row.avatarUrl}
         circleName={row.circleName}
         metaText={`${formatDistanceToNow(new Date(row.joinedAt))} ago`}
-        href={`/friends?openCircle=${row.circleId}`}
+        href={`/circles/${row.circleId}`}
       />
     );
   }

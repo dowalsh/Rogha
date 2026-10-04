@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
@@ -94,6 +94,7 @@ function HeroImageUploadButton({
 
 export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [title, setTitle] = useState<string>("");
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
@@ -159,14 +160,28 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     if (typeof postData.heroImageUrl === "string")
       setHeroImageUrl(postData.heroImageUrl);
     else setHeroImageUrl(null);
-    if (postData.audienceType) setAudienceType(postData.audienceType);
-    setCircleIds(postData.circleIds ?? []);
+    // A "Write to [Circle]" entry point (e.g. the circle page) creates a
+    // bare draft and links here with ?circleId=... — preselect that circle
+    // as the audience, but only for a still-untouched default draft so
+    // revisiting a post with a stale circleId param never overrides its
+    // real audience.
+    const presetCircleId = searchParams.get("circleId");
+    const isUntouchedDefault =
+      (postData.audienceType ?? "FRIENDS") === "FRIENDS" &&
+      (postData.circleIds ?? []).length === 0;
+    if (presetCircleId && isUntouchedDefault) {
+      setAudienceType("CIRCLE");
+      setCircleIds([presetCircleId]);
+    } else {
+      if (postData.audienceType) setAudienceType(postData.audienceType);
+      setCircleIds(postData.circleIds ?? []);
+    }
     setOfficialKind(postData.officialKind ?? null);
     setNotifyAllUsers(postData.notifyAllUsers ?? false);
     setSundayLiveJoinAvailable(postData.sundayLiveJoin?.available ?? false);
 
     setSaved(true);
-  }, [postData, params.id]);
+  }, [postData, params.id, searchParams]);
 
   const { data: me } = useSWR<{
     signoffEmoji?: string | null;

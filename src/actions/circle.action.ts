@@ -223,6 +223,7 @@ export async function leaveCircle(circleId: string) {
   });
 
   revalidatePath("/friends");
+  revalidatePath(`/circles/${circleId}`);
   return { success: true };
 }
 
@@ -241,15 +242,7 @@ export async function getCircleById(circleId: string) {
         members: {
           include: {
             user: {
-              select: { id: true, username: true, email: true },
-            },
-          },
-        },
-        posts: {
-          where: { status: "PUBLISHED" },
-          include: {
-            author: {
-              select: { id: true, username: true },
+              select: { id: true, username: true, email: true, image: true },
             },
           },
         },
@@ -257,11 +250,45 @@ export async function getCircleById(circleId: string) {
     });
 
     if (!circle) throw new Error("Circle not found or you are not a member");
-    return circle;
+
+    // Posts targeting this circle via the multi-circle join table — Circle's
+    // own `posts` relation is the legacy single-circle FK, superseded by
+    // PostCircle (see schema comments) and no longer written by new code.
+    const posts = await prisma.post.findMany({
+      where: {
+        status: "PUBLISHED",
+        audienceType: "CIRCLE",
+        postCircles: { some: { circleId } },
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: { select: { id: true, username: true } },
+      },
+    });
+
+    return { ...circle, posts };
   } catch (error) {
     console.error("[GET_CIRCLE_ERROR]", error);
     throw new Error("Failed to fetch circle");
   }
+}
+
+export async function renameCircle(circleId: string, name: string) {
+  const userId = await getDbUserId();
+  if (!userId) throw new Error("Not authenticated");
+
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Circle name can't be empty");
+
+  const isMember = await prisma.circleMember.findFirst({
+    where: { circleId, userId, status: "JOINED" },
+  });
+  if (!isMember) throw new Error("You are not a member of this circle");
+
+  await prisma.circle.update({ where: { id: circleId }, data: { name: trimmed } });
+  revalidatePath(`/circles/${circleId}`);
+  revalidatePath("/friends");
+  return { success: true };
 }
 
 // --- Invite by link (docs/specs/2026-09-19-invite-by-link.md) ---

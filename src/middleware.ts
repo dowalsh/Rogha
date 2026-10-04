@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { newRequestId, timingEnabled, logTiming, TIMING_RID_HEADER } from "@/lib/timing";
 
 const isProtectedRoute = createRouteMatcher([
+  "/circles(.*)",
   "/editions(.*)",
   "/friends(.*)",
   "/posts(.*)",

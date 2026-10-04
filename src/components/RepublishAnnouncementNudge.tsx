@@ -25,6 +25,7 @@ export function useRepublishAnnouncementNudge(): NudgeConfig | null {
     isSignedIn ? "/api/republish/status" : null,
   );
   const [dismissed, setDismissed] = useState(true);
+  const suppressed = useSuppressNudges();
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");

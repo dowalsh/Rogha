@@ -20,12 +20,13 @@ export function useUsernameNudge(): NudgeConfig | null {
   const { isSignedIn } = useUser();
   const { data } = useSWR<Me>(isSignedIn ? "/api/me" : null);
   const [dismissed, setDismissed] = useState(true);
+  const suppressed = useSuppressNudges();
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  if (!data || dismissed) return null;
+  if (!data || dismissed || suppressed) return null;
 
   return {
     message: "Rogha now has usernames & profile customization! Head to your profile to customize.",

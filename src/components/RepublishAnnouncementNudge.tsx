@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { useUser } from "@clerk/nextjs";
 import type { NudgeConfig } from "@/components/NudgeStack";
+import { useSuppressNudges } from "@/hooks/useSuppressNudges";
 
 type Me = { username: string };
 type RepublishStatus = { available: boolean; hasPublishedPost: boolean };
@@ -31,7 +32,7 @@ export function useRepublishAnnouncementNudge(): NudgeConfig | null {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
   }, []);
 
-  if (!data || !status?.hasPublishedPost || dismissed) return null;
+  if (!data || !status?.hasPublishedPost || dismissed || suppressed) return null;
 
   return {
     message: "You can now share old posts with new friends! Just hit Republish on any of your posts.",

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { FriendsCarousel } from "@/components/FriendsCarousel";
 import { CirclesCarousel } from "@/components/CirclesCarousel";
@@ -24,7 +25,9 @@ export default function FriendsPage() {
               <FriendsCarousel />
             </TabsContent>
             <TabsContent value="circles" className="mt-4">
-              <CirclesCarousel />
+              <Suspense fallback={null}>
+                <CirclesCarousel />
+              </Suspense>
             </TabsContent>
           </Tabs>
         </div>
@@ -32,7 +35,9 @@ export default function FriendsPage() {
         {/* Desktop: two-column */}
         <div className="hidden md:grid md:grid-cols-2 md:gap-6 pt-4">
           <FriendsCarousel />
-          <CirclesCarousel />
+          <Suspense fallback={null}>
+            <CirclesCarousel />
+          </Suspense>
         </div>
       </SignedIn>
     </>

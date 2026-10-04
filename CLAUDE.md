@@ -17,6 +17,10 @@ This app has three layers that don't all refresh together: the Next.js dev serve
 
 Don't leave this implicit or assume the user will infer it — call it out the same way you call out the changed-files list.
 
+## Before starting a non-trivial fix/feature: ask where it should live
+
+Before writing code for a real fix or feature (not a one-line typo/config tweak), ask whether it should happen directly on the current branch/checkout or in a new `git worktree` — don't default to committing straight onto whatever branch happens to be checked out (including `staging`). This matters most when the working directory is already on a shared branch like `staging` or `main`, since committing there directly precludes parallel work on that branch and can't be un-done by just deleting a folder. Skip the question only when the user has already named the branch/worktree, or explicitly said to just work in place.
+
 ## Working on multiple features in parallel (git worktrees)
 
 The user runs concurrent features/agents via `git worktree`, sibling folders next to the main `rogha` checkout (e.g. `rogha-<feature-name>`), each on its own branch. One `.git` and branch history is shared across all of them, but git will never let the same branch be checked out in two worktrees at once — so worktrees on different branches can never collide when committing.

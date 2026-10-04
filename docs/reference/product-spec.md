@@ -27,7 +27,7 @@ These are constraints on *how* Rogha works — its mechanics and its feel — no
 - **No public feed for ordinary users.** Posts are visible only to friends or circle members. The `ALL_USERS` audience option exists in the schema but is admin-only by convention — regular users can't broadcast site-wide. `ALL_USERS` is also the substrate for admin-authored **official posts** (Editor's Note, Community Feature) — see the Post section below.
 - **No algorithmic ranking.** Content is ordered chronologically (by edition week / update time), not by engagement or relevance scoring.
 - **No always-on feed.** There is no scrollable, real-time timeline — content surfaces weekly, per Edition.
-- **No open circle joining.** Circles aren't discoverable or joinable by link/search — membership only grows through your existing friend graph.
+- **No *discoverable* or *open* circle joining.** Circles are still never searchable, listed, or public. A member can hand a specific person an invite link/code (multi-use, 7-day) to join directly, without requiring an existing friendship — that's the sanctioned, person-to-person growth vector, not a searchable directory. Full spec: [2026-09-19-invite-by-link.md](../specs/2026-09-19-invite-by-link.md).
 
 ## Core concepts
 
@@ -42,8 +42,8 @@ A mutual, two-party relationship gating most visibility and circle membership.
 A small, named group of friends used as a posting audience.
 
 - Anyone can create a circle; the creator is auto-joined.
-- **You can only add a friend to a circle, and only if you yourself are already a member.** There's no open joining, invite link, or approval workflow.
-- All members have equal standing — there is no owner/admin role within a circle. Any member can add friends or remove other members.
+- A member can add an existing friend directly, or generate a multi-use, 7-day invite link/code that lets anyone join without requiring friendship first — see [2026-09-19-invite-by-link.md](../specs/2026-09-19-invite-by-link.md). Still no discoverability: circles aren't searchable or listed, and joining is never open/unsolicited — only a member-shared link or friend-add gets you in.
+- All members have equal standing — there is no owner/admin role within a circle. Any member can add friends, generate/rotate the invite link, or remove other members. A removed member can't rejoin on the same invite until re-invited.
 - No member cap.
 - Leaving is a soft-remove (`LEFT` status), not a deletion.
 
@@ -57,15 +57,25 @@ The weekly publishing cycle — the core rhythm of the product.
 - **Weekly Jam** is treated as if it were a post: a compact card (blank author, the viewer's own track art as the thumbnail) appears in a fixed slot after all written posts — never interleaved by recency — on the Edition front page, the Editions listing preview, and the archive list. It shows each opted-in friend's auto-synced top track of the week (via Last.fm, art via Spotify) — passive participation for friends who never write a post. Clicking it opens a dedicated detail page (`/editions/[id]/jam`, mirroring the post reader's layout, read-only — no comments/likes) listing every visible friend's track. Same reveal-gated visibility as the posts above it; pre-publish, Coming Sunday shows only a static "N friends connected" count, not live track data. Full spec: [2026-08-04-weekly-jam-mvp.md](../specs/2026-08-04-weekly-jam-mvp.md).
 
 ### Post
-A single weekly submission, scoped to one audience.
+A single weekly submission, scoped to an audience.
 
 - Lifecycle: `DRAFT → SUBMITTED → PUBLISHED`, or `ARCHIVED` / `REMOVED` (moderation). One exception: during the Sunday live-join window, `DRAFT → PUBLISHED` directly, skipping `SUBMITTED` (see Edition above).
-- Audience is chosen per post: `FRIENDS`, `CIRCLE` (+ a specific circle), or `ALL_USERS` — enforced admin-only server-side (`PUT /api/posts/[id]` rejects a non-admin setting `ALL_USERS`) and hidden from the audience picker for non-admins in the editor.
-- **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. The same rule applies to `CIRCLE`-audience posts against circle-membership `joinedAt`. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Its one sanctioned exception is **Republish** (below) — an author-initiated, per-recipient override of the gate, not a bypass of it. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
+- Audience is chosen per post: `FRIENDS`, `CIRCLE` (**one or more** circles — see Multi-circle sharing below), or `ALL_USERS` — enforced admin-only server-side (`PUT /api/posts/[id]` rejects a non-admin setting `ALL_USERS`) and hidden from the audience picker for non-admins in the editor. A circle-audience post requires at least one circle, and the author must be a joined member of every circle they target. `FRIENDS` and `CIRCLE` are mutually exclusive per post (there's no "All Friends plus these circles" combination).
+- **Temporal gate:** a `FRIENDS`-audience post is only visible to friends whose friendship predates the post going *live* (the edition's `publishedAt`), not the post's draft `createdAt` — a post drafted before a friendship began but published after is still visible. `CIRCLE`-audience posts apply the same rule against circle-membership `joinedAt`, **evaluated per target circle then unioned**: a viewer sees the post if they were a joined member of *at least one* of its target circles before it published. Adding a new friend or joining a circle does not retroactively expose the back-catalog published before that date. Its one sanctioned exception is **Republish** (below) — an author-initiated, per-recipient override of the gate, not a bypass of it. Full rules: [post-visibility-rules.md](../specs/2026-08-02-post-visibility-rules.md).
 - A `SUBMITTED` (not-yet-published) post shows a title/thumbnail-only preview to its eligible audience immediately (no temporal gate — see the spec above), but full content stays author-only until it publishes.
 - A content filter runs once, at the moment a post is submitted (`DRAFT → SUBMITTED`) — not on every autosave keystroke.
 - Only the author can edit or delete their own post, at any status (there's no guard today preventing deletion of an already-published post).
 - Comments/likes on a post you've blocked, or reported, are filtered out of your own view (comments/likes inherit their parent post's visibility rules).
+
+#### Multi-circle sharing
+A `CIRCLE`-audience post can target several circles at once, published as one post into one shared room.
+
+- The composer's audience picker is an inline section (not a separate screen): circles are multi-select cards, each showing a member count and a row of member faces (tapping the faces opens a read-only member list); "All Friends" is a standalone, mutually-exclusive card below an "Or" divider.
+- The audience is the **deduped union** of every target circle's members. A person in several of the target circles receives the post, its notifications, and its single comment/like thread **once**.
+- **One shared room:** everyone in the union shares one comment/like thread, so a member of one target circle can see comments from a member of another they don't share a circle with. This is a deliberate, accepted concession, not a leak to fix.
+- **Per-reader visibility label:** a reader is shown the names of only the target circles *they* belong to; if the post also went to circles they aren't in, the label ends with "& others" (rendered in orange — the one semantic-colour exception to the otherwise grayscale UI). The author sees every target circle named. Readers never learn the names of circles they don't belong to.
+- Circle membership (not friendship) is what grants receipt of a circle post — though today membership itself still requires an existing friendship (decoupling that is the planned invite-by-link work).
+- Data note: target circles are stored as a set of join rows and rewritten as a whole on each save; `audienceType` stays `CIRCLE` and the legacy single-circle field is deprecated. Full spec: [2026-09-12-multi-circle-sharing.md](../specs/2026-09-12-multi-circle-sharing.md).
 
 #### Official posts (Editor's Note / Community Feature)
 Admin-authored, first-party content published into the edition — an **Editor's Note** (creator commentary) or a **Community Feature** (spotlighting a real user post). Driven by `Post.officialKind` (`EDITORS_NOTE` | `COMMUNITY_FEATURE` | `null`), admin-only to set.
@@ -101,7 +111,7 @@ Gifting one of your own already-published posts to specific friends who joined a
 ### Notifications
 Event types: `LIKE`, `COMMENT`, `SUBMIT`, `PUBLISH`, `FRIEND_REQUEST`, `FRIEND_REQUEST_ACCEPTED`.
 
-- `SUBMIT` notifications fan out based on the post's audience: all accepted friends (`FRIENDS`), all joined circle members (`CIRCLE`), or nobody (`ALL_USERS` — deliberately silent). The one exception: an official post (`officialKind != null`) with the admin's opt-in `notifyAllUsers` checked fans `SUBMIT` out to every user, respecting each user's `NotificationPreference` — a launch-style broadcast, off by default. In-app, `SUBMIT` rows are deliberately non-clickable — "coming Sunday, blurred, queued" has nothing readable yet.
+- `SUBMIT` notifications fan out based on the post's audience: all accepted friends (`FRIENDS`), the deduped union of every target circle's joined members (`CIRCLE`, minus the author), or nobody (`ALL_USERS` — deliberately silent). The one exception: an official post (`officialKind != null`) with the admin's opt-in `notifyAllUsers` checked fans `SUBMIT` out to every user, respecting each user's `NotificationPreference` — a launch-style broadcast, off by default. In-app, `SUBMIT` rows are deliberately non-clickable — "coming Sunday, blurred, queued" has nothing readable yet.
 - `PUBLISH` fires when a post live-joins today's Sunday edition (see Edition above), instead of `SUBMIT`. Same audience resolution and the same `NotificationPreference` fields (`emailSubmissions`/`pushSubmissions`) as `SUBMIT` — it's not a separate preference category. Unlike `SUBMIT`, it's **clickable**, routing straight to the readable post in the live edition, because it's live right now rather than queued.
 - Each user has independent, per-category toggles for in-app, email, and push delivery (`NotificationPreference`). A missing preference row defaults to everything enabled.
 - In-app notification rows are always created; email/push are conditional on the user's preferences.
@@ -121,7 +131,15 @@ The signed-in home page orients a returning user in priority order and routes th
 
 - **Edition hero** — a single, always-present card for the latest published edition. Its state follows how much of that edition the viewer has read: *not opened* (reveal-moment card, day-dependent copy), *partially read* ("keep reading" with an N-of-M progress indicator, linking to the edition front page rather than a specific post), or *caught up* (quiet card, no CTA). Before any edition exists, it's a first-run invite instead.
 - **Coming Sunday** — nested inside the hero, always present, with three states driven by the viewer's friend graph and this week's submissions: *no friends* (prompts the viewer to add friends, linking to Circles, since there's nothing to queue without a circle), *friends but nothing submitted yet* ("nothing yet" plus a "Start a post" CTA), and *posts queued* (lists submitted posts with titles visible but hero thumbnails blurred and a lock icon, and nudges the viewer to add their own before the reveal if they haven't).
-- **Buzz** — everything below the hero, one row per post (never per event), ordered by most recent activity. **New buzz** is posts with unread activity; **Earlier** is the rest (capped, with "show more"). A post counts as unread when its latest *comment or reply* is newer than the last time the viewer opened it. Likes never count as activity, and newly submitted or published posts don't appear in Buzz at all — the hero owns new content, Buzz owns new conversation. Rows carry no actor names and no comment text; their only job is "is this worth opening?"
+- **Buzz** — everything below the hero, ordered by most recent activity, mixing two kinds of row: **post rows** (one per post, never per event) and **circle-join rows** (one per person who joined a circle the viewer is in — not grouped). **New buzz** is unread rows; **Earlier** is the rest (capped, with "show more"). A post row counts as unread when its latest *comment or reply* is newer than the last time the viewer opened it — likes never count as activity, and newly submitted/published posts don't appear at all (the hero owns new content, Buzz owns new conversation). A circle-join row shows the joiner's avatar and links to that circle (opens its member sheet on Friends); it isn't gated by friendship, only shared circle membership, and is temporal-gated the same way as everything else — a member never sees joins from before *their own* join. Unlike post rows, circle-join "new" status comes from a single global cursor (`User.circleJoinBuzzSeenAt`) advanced once per home visit by the client rather than by opening anything — so a quick glance at home is enough to mark them seen; they age into Earlier on the *next* visit, not mid-session.
+
+### First-run onboarding
+A calm, state-driven layer for anyone who has never submitted a post — gated on `hasPosted` (any non-`DRAFT` post authored by the viewer), retiring permanently once that flips true. Full spec: [2026-09-19-first-run-onboarding.md](../specs/2026-09-19-first-run-onboarding.md).
+
+- A cold arrival (no circle yet) sees a one-time full-screen value-moment intro before the checklist; an arrival already in a circle skips straight to the inline checklist.
+- The home page shows a dismissible-but-recoverable "Getting started" checklist above the normal hero/Buzz content: create a circle (with a suggested/randomized name), invite people (opens the circle's member sheet, which carries invite-by-link's generate/share UI), write a first post — plus a non-actionable "first edition lands Sunday" forecast line.
+- The "invite people" step's completion is a state signal, not a dedicated flag: the viewer's circle has more than one joined member, true whether that second member arrived via invite-by-link or the plain friend-add flow.
+- The composer has an always-available "what should I write?" help sheet (not gated to the first post).
 
 ## Auth (summary)
 

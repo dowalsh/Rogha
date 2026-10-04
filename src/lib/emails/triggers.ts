@@ -251,12 +251,13 @@ type CommentEmailInput = {
   url: string; // link to the post/comment
   postTitle?: string | null;
   isReply?: boolean; // true = reply, false = comment on post
+  contentLabel?: string; // e.g. "post" or "Weekly Jam" — what was commented on
 };
 
 export async function triggerCommentNotificationEmail(
   input: CommentEmailInput
 ) {
-  const { to, actorName, commentText, url, postTitle, isReply } = input;
+  const { to, actorName, commentText, url, postTitle, isReply, contentLabel } = input;
 
   // use your builder
   const email = buildCommentNotificationEmail(
@@ -265,7 +266,8 @@ export async function triggerCommentNotificationEmail(
     url,
     postTitle ?? undefined,
     isReply ?? false,
-    process.env.APP_URL
+    process.env.APP_URL,
+    contentLabel ?? "post"
   );
 
   // send email

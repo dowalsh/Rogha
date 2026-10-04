@@ -116,10 +116,10 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         <p className="text-sm font-medium">Coming Sunday.</p>
         <div className="flex items-center justify-between gap-2 pt-1 text-sm">
           <span className="text-muted-foreground">
-            Add some friends to start seeing what they're writing.
+            Build your circle to start seeing what they're writing.
           </span>
           <Button asChild size="sm">
-            <Link href="/friends">Find friends</Link>
+            <Link href="/friends">Build your circle</Link>
           </Button>
         </div>
       </div>
@@ -130,7 +130,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
     return (
       <div className="space-y-1">
         <p className="text-sm font-medium">Coming Sunday.</p>
-        <JamTeaser data={data} />
+        {data.showJamTeaser && <JamTeaser data={data} />}
         <div className="flex items-center justify-between gap-2 pt-1 text-sm">
           <span className="text-muted-foreground">
             Nothing yet · {data.daysLeft} day{data.daysLeft === 1 ? "" : "s"} left
@@ -196,7 +196,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         {/* Positioned like one more row at the end of the list (not
             functionally part of `data.posts`) so it reads as a card in the
             list rather than trailing status text after the CTA below. */}
-        <JamTeaser data={data} />
+        {data.showJamTeaser && <JamTeaser data={data} />}
       </div>
 
       <div className="flex items-center justify-between pt-2 text-sm">

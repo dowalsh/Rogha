@@ -13,8 +13,8 @@ type NudgeProps = {
 
 // Generic, reusable informational banner: a centered, rounded card with a
 // thin blue border and a single call-to-action link. Callers own the
-// data/visibility logic (see UsernameNudge for an example) — this component
-// is purely presentational.
+// data/visibility logic (see NudgeStack and its useUsernameNudge etc. hooks
+// for an example) — this component is purely presentational.
 export default function Nudge({ message, ctaLabel, href, onDismiss }: NudgeProps) {
   return (
     <div className="w-full flex justify-center px-4 py-3">

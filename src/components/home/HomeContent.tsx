@@ -1,13 +1,17 @@
 // src/components/home/HomeContent.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { EditionHero } from "@/components/home/EditionHero";
+import { ComingSunday } from "@/components/home/ComingSunday";
 import { PendingRequestsCard } from "@/components/home/PendingRequestsCard";
 import { BuzzList } from "@/components/home/BuzzList";
 import { HomeSkeleton } from "@/components/home/HomeSkeleton";
 import { LatestEditionPreloader } from "@/components/editions/LatestEditionPreloader";
+import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
+import { WelcomeIntroOverlay } from "@/components/onboarding/WelcomeIntroOverlay";
+import { markCircleJoinBuzzSeen } from "@/actions/buzz.action";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import type { HomeData } from "@/lib/home";
 
@@ -15,10 +19,21 @@ const EARLIER_PAGE_SIZE = 15;
 
 export function HomeContent() {
   const [earlierLimit, setEarlierLimit] = useState(EARLIER_PAGE_SIZE);
+  const [introDismissedThisSession, setIntroDismissedThisSession] = useState(false);
 
   const { data, isLoading } = useSWR<HomeData>(
     `/api/home?earlierLimit=${earlierLimit}`,
   );
+
+  // Advance the circle-join "seen" cursor once per visit, not on every
+  // refetch (e.g. "Show more" bumping earlierLimit) — otherwise New buzz
+  // would shift to Earlier under the viewer mid-visit. See buzz.action.ts.
+  const markedSeenRef = useRef(false);
+  useEffect(() => {
+    if (!data || markedSeenRef.current) return;
+    markedSeenRef.current = true;
+    markCircleJoinBuzzSeen().catch(() => {});
+  }, [data]);
 
   const showSkeleton = useDelayedLoading(isLoading || !data);
 
@@ -29,10 +44,29 @@ export function HomeContent() {
     return null;
   }
 
+  const onboarding = data.onboarding;
+  const showIntro =
+    !!onboarding &&
+    !onboarding.hasCircle &&
+    !onboarding.introSeen &&
+    !introDismissedThisSession;
+
   return (
     <div className="space-y-6">
+      {showIntro && (
+        <WelcomeIntroOverlay onDismissed={() => setIntroDismissedThisSession(true)} />
+      )}
+      {onboarding && <OnboardingChecklist onboarding={onboarding} />}
       <PendingRequestsCard />
-      <EditionHero hero={data.hero} comingNext={data.comingNext} />
+      <EditionHero hero={data.hero} />
+      {/* Persistent regardless of hero state — renders even when the hero
+          itself is hidden (no edition/no visible posts last week). */}
+      <section className="rounded-xl border bg-background/60 p-4 sm:p-6">
+        <ComingSunday
+          data={data.comingNext}
+          collapsed={data.hero.kind === "edition" && data.hero.state === "NOT_OPENED"}
+        />
+      </section>
       <BuzzList
         buzz={data.buzz}
         onShowMore={() => setEarlierLimit((n) => n + EARLIER_PAGE_SIZE)}

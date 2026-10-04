@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import type { Content } from "@tiptap/react";
 import { TiptapMvp } from "@/components/tiptap-mvp";
 import { Button } from "@/components/ui/button";
-import { Send, Undo, Trash2, ImageIcon, Zap } from "lucide-react";
+import { Send, Undo, Trash2, ImageIcon, Zap, HelpCircle } from "lucide-react";
+import { FirstPostHelpSheet } from "@/components/editor/FirstPostHelpSheet";
 import { useUploadThing } from "@/lib/uploadthing";
 import { normalizeImage } from "@/lib/images";
 import { AudienceType } from "@/types";
@@ -38,8 +39,10 @@ type PublishTarget = "next-week" | "now";
 
 function HeroImageUploadButton({
   onComplete,
+  onUploadingChange,
 }: {
   onComplete: (url: string) => void;
+  onUploadingChange: (isUploading: boolean) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { startUpload, isUploading } = useUploadThing("imageUploader", {
@@ -49,6 +52,12 @@ function HeroImageUploadButton({
     },
     onUploadError: (err: Error) => alert(`Upload failed: ${err.message}`),
   });
+
+  // Surface upload-in-flight to the parent so it can hold off Save/Submit
+  // until the new heroImageUrl has actually landed in state.
+  useEffect(() => {
+    onUploadingChange(isUploading);
+  }, [isUploading, onUploadingChange]);
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -85,6 +94,7 @@ function HeroImageUploadButton({
 
 export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [title, setTitle] = useState<string>("");
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
@@ -101,6 +111,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
 
   // LOCK: editor locked in SUBMITTED / PUBLISHED / ARCHIVED (your current rule)
   const editorLocked = useMemo(
@@ -148,14 +160,28 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
     if (typeof postData.heroImageUrl === "string")
       setHeroImageUrl(postData.heroImageUrl);
     else setHeroImageUrl(null);
-    if (postData.audienceType) setAudienceType(postData.audienceType);
-    setCircleIds(postData.circleIds ?? []);
+    // A "Write to [Circle]" entry point (e.g. the circle page) creates a
+    // bare draft and links here with ?circleId=... — preselect that circle
+    // as the audience, but only for a still-untouched default draft so
+    // revisiting a post with a stale circleId param never overrides its
+    // real audience.
+    const presetCircleId = searchParams.get("circleId");
+    const isUntouchedDefault =
+      (postData.audienceType ?? "FRIENDS") === "FRIENDS" &&
+      (postData.circleIds ?? []).length === 0;
+    if (presetCircleId && isUntouchedDefault) {
+      setAudienceType("CIRCLE");
+      setCircleIds([presetCircleId]);
+    } else {
+      if (postData.audienceType) setAudienceType(postData.audienceType);
+      setCircleIds(postData.circleIds ?? []);
+    }
     setOfficialKind(postData.officialKind ?? null);
     setNotifyAllUsers(postData.notifyAllUsers ?? false);
     setSundayLiveJoinAvailable(postData.sundayLiveJoin?.available ?? false);
 
     setSaved(true);
-  }, [postData, params.id]);
+  }, [postData, params.id, searchParams]);
 
   const { data: me } = useSWR<{
     signoffEmoji?: string | null;
@@ -179,6 +205,10 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
   // so callers (e.g. submit) can flush pending changes before moving on.
   const handleSave = async (): Promise<boolean> => {
     if (editorLocked) return true;
+    if (isUploadingHero) {
+      toast.error("Still uploading image, please wait…");
+      return false;
+    }
     try {
       setIsSaving(true);
       const res = await fetch(`/api/posts/${params.id}`, {
@@ -226,6 +256,11 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
       : publishingNow
         ? "PUBLISHED"
         : "SUBMITTED";
+
+    if (isUploadingHero) {
+      toast.error("Still uploading image, please wait…");
+      return false;
+    }
 
     // guard: if circle is selected audience, require at least one circle
     if (audienceType === "CIRCLE" && circleIds.length === 0) {
@@ -363,7 +398,17 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
         <div className="text-sm text-muted-foreground">
           {editorLocked ? `Status: ${status} (read-only)` : `Status: ${status}`}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            title="What should I write?"
+            onClick={() => setHelpOpen(true)}
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Button>
           <ConfirmDelete
             trigger={
               <Button
@@ -424,6 +469,7 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
                 setHeroImageUrl(url);
                 setSaved(false);
               }}
+              onUploadingChange={setIsUploadingHero}
             />
           </div>
         )}
@@ -602,15 +648,17 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
 
         <Button
           onClick={handleSave}
-          disabled={editorLocked || isSaving || saved}
+          disabled={editorLocked || isSaving || saved || isUploadingHero}
         >
           {editorLocked
             ? "Locked"
-            : isSaving
-              ? "Saving..."
-              : saved
-                ? "Saved"
-                : "Save"}
+            : isUploadingHero
+              ? "Uploading…"
+              : isSaving
+                ? "Saving..."
+                : saved
+                  ? "Saved"
+                  : "Save"}
         </Button>
 
         <> {/*placeholder div to ensure spreading of buttons*/}</>
@@ -620,12 +668,15 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
             type="button"
             variant="secondary"
             onClick={handleToggleSubmit}
+            disabled={status !== "SUBMITTED" && isUploadingHero}
             title={
               status === "SUBMITTED"
                 ? "Unsubmit"
-                : sundayLiveJoinAvailable && publishTarget === "now"
-                  ? "Publish now"
-                  : "Submit"
+                : isUploadingHero
+                  ? "Waiting for image upload to finish…"
+                  : sundayLiveJoinAvailable && publishTarget === "now"
+                    ? "Publish now"
+                    : "Submit"
             }
             className="flex items-center gap-2"
             // keep enabled for SUBMITTED so Unsubmit works even when editorLocked
@@ -649,6 +700,8 @@ export default function TiptapMvpPage({ params }: { params: { id: string } }) {
           </Button>
         )}
       </div>
+
+      <FirstPostHelpSheet open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

@@ -105,7 +105,8 @@ export function buildCommentNotificationEmail(
   postUrl: string,
   postTitle?: string,
   isReply?: boolean,
-  baseUrl?: string
+  baseUrl?: string,
+  contentLabel: string = "post"
 ): BuiltEmail {
   const safeActor = actorName?.trim() || "Someone";
   const safeComment = commentText?.trim() || "";
@@ -116,8 +117,8 @@ export function buildCommentNotificationEmail(
   const subject = isReply
     ? `${safeActor} replied to your comment`
     : safeTitle
-      ? `${safeActor} commented on your post "${safeTitle}"`
-      : `${safeActor} commented on your post`;
+      ? `${safeActor} commented on your ${contentLabel} "${safeTitle}"`
+      : `${safeActor} commented on your ${contentLabel}`;
 
   const html = `
     <h1>${safeActor} ${isReply ? "replied to your comment" : "left a comment"}</h1>

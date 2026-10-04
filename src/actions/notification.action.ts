@@ -34,6 +34,7 @@ async function getUserPushPrefs(userId: string) {
     pushReplies: prefs?.pushReplies ?? true,
     pushSubmissions: prefs?.pushSubmissions ?? true,
     pushFriendRequests: prefs?.pushFriendRequests ?? true,
+    pushCircleJoins: prefs?.pushCircleJoins ?? true,
   };
 }
 
@@ -273,6 +274,7 @@ export async function createCommentNotification({
           url: `${process.env.APP_URL}/open/editions/${track.editionId}/jam#comment-${newComment.id}`,
           postTitle: `${track.name} — ${track.artist}`,
           isReply: false,
+          contentLabel: "Weekly Jam",
         });
       }
     } catch (err) {
@@ -283,7 +285,7 @@ export async function createCommentNotification({
     if (pushPrefs.pushEnabled && pushPrefs.pushComments) {
       await sendPushToUser(track.userId, {
         title: "New comment",
-        body: `${commenter.username} commented on "${track.name}"`,
+        body: `${commenter.username} commented on your Weekly Jam`,
         url: `/editions/${track.editionId}/jam#comment-${newCommentId}`,
       });
     }
@@ -734,5 +736,46 @@ export async function createPublishNotifications({
       body: `${authorName} published a new post — go read it${authorSignoff ? ` ${authorSignoff}` : ""}`,
       url: `/reader/${postId}`,
     });
+  }
+}
+
+// Invite by link: hype notification, fanned out to every existing member
+// when someone new joins — deliberately not batched or dampened, unlike
+// Rogha's usually-calm notification stance (see spec).
+export async function createCircleJoinNotifications({
+  circleId,
+  joinedUserId,
+}: {
+  circleId: string;
+  joinedUserId: string;
+}) {
+  const [recipients, circle, joiner] = await Promise.all([
+    prisma.circleMember.findMany({
+      where: { circleId, status: "JOINED", userId: { not: joinedUserId } },
+      select: { userId: true },
+    }),
+    prisma.circle.findUnique({ where: { id: circleId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: joinedUserId }, select: { username: true } }),
+  ]);
+
+  if (recipients.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: recipients.map((r) => ({
+      userId: r.userId,
+      creatorId: joinedUserId,
+      type: "CIRCLE_JOIN" as const,
+    })),
+  });
+
+  for (const { userId: recipientId } of recipients) {
+    const pushPrefs = await getUserPushPrefs(recipientId);
+    if (pushPrefs.pushEnabled && pushPrefs.pushCircleJoins) {
+      await sendPushToUser(recipientId, {
+        title: "New member!",
+        body: `${joiner?.username ?? "Someone"} joined ${circle?.name ?? "your circle"}`,
+        url: "/friends",
+      });
+    }
   }
 }

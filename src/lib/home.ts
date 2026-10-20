@@ -10,12 +10,11 @@ import { getReadMapForPosts } from "@/lib/postReads";
 import {
   getMostRecentPublishedEditionForUser,
   getPublishedEditionById,
-  plannedPublishAt,
   getSundayLiveJoinWindow,
 } from "@/lib/editions";
+import { nextRevealAt, livePostWhere, queuedPostWhere } from "@/lib/reveal";
 import { getJamConnectedFriendCount, getJamConnectedFriends } from "@/lib/jam";
 import type { ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
-import { getWeekStartUTC } from "@/lib/utils";
 import { getOnboardingState, type OnboardingState } from "@/lib/onboarding";
 
 // --- hero -------------------------------------------------------------
@@ -113,7 +112,7 @@ export type ComingNextData =
   | {
       visible: true;
       state: "empty";
-      daysLeft: number;
+      daysLeft: number | null; // null on Sunday (live-join window) — no countdown
       jamConnectedCount: number;
       jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
@@ -125,18 +124,20 @@ export type ComingNextData =
       posts: ComingNextPost[];
       hasSubmitted: boolean;
       friendsSubmittedCount: number;
-      daysLeft: number;
+      daysLeft: number | null;
       jamConnectedCount: number;
       jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
       showJamTeaser: boolean;
     };
 
-function computeDaysLeft(now: Date): number {
-  const weekStart = getWeekStartUTC(now);
-  const publishAt = plannedPublishAt(weekStart);
-  const ms = publishAt.getTime() - now.getTime();
-  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+// Days until the next reveal, counting 6 → 1 from Monday. Null through the
+// Sunday live-join window: today's edition just landed, so a countdown to
+// next Sunday would read as contradicting it.
+function computeDaysLeft(now: Date): number | null {
+  if (getSundayLiveJoinWindow(now).isOpen) return null;
+  const ms = nextRevealAt(now).getTime() - now.getTime();
+  return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
 // The Coming Sunday panel's Jam teaser is about the *upcoming* (unpublished)
@@ -169,7 +170,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
 
   const submittedRaw = await prisma.post.findMany({
     where: {
-      status: "SUBMITTED",
+      AND: [queuedPostWhere()],
       OR: [
         { authorId: userId },
         { authorId: { in: friendIds } },
@@ -476,7 +477,7 @@ export async function getBuzzPosts(
   const publishedPostsByFriends = await prisma.post.findMany({
     where: {
       authorId: { in: friendIds },
-      status: "PUBLISHED",
+      AND: [livePostWhere()],
       audienceType: { in: ["FRIENDS", "CIRCLE"] },
     },
     select: { id: true, authorId: true },

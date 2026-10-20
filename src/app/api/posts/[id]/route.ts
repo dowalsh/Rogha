@@ -15,7 +15,9 @@ import { generateHeroThumbnails } from "@/lib/heroThumbnails";
 import {
   getSundayLiveJoinWindow,
   getOpenLiveJoinEdition,
+  getOrCreateUpcomingEdition,
 } from "@/lib/editions";
+import { effectivePostStatus, isPostLive } from "@/lib/reveal";
 import { recordActivityEvent } from "@/actions/activityEvent.action";
 import { ActivityEventType } from "@/generated/prisma/enums";
 import { revalidatePath } from "next/cache";
@@ -81,6 +83,9 @@ export async function GET(
     // scoped to what this specific viewer is allowed to see.
     let baseResponse: any = {
       ...postWithoutCircles,
+      // Live by time even before the cron's lagging flip — the editor and
+      // reader key off this (see src/lib/reveal.ts).
+      status: effectivePostStatus(post.status, post.edition?.publishedAt ?? null),
       likeCount: post._count.likes,
       recipientCount: post._count.recipients,
       likedByMe: false,
@@ -325,13 +330,37 @@ export async function PUT(
       firstTimeSubmitFromDraft,
       livePublished,
     } = await prisma.$transaction(async (tx) => {
-      const post = await tx.post.findUnique({ where: { id } });
+      const post = await tx.post.findUnique({
+        where: { id },
+        include: { edition: { select: { publishedAt: true } } },
+      });
       if (!post || post.authorId !== user.id) {
         throw new Error("NOT_FOUND_OR_NOT_OWNER");
       }
 
+      // Its edition already revealed — it's live even if the cron hasn't
+      // flipped it to PUBLISHED yet, so no more edits or unsubmitting.
+      if (
+        post.status === "SUBMITTED" &&
+        isPostLive({
+          status: post.status,
+          editionPublishedAt: post.edition?.publishedAt ?? null,
+        })
+      ) {
+        throw new Error("ALREADY_LIVE");
+      }
+
       let updateData = { ...baseUpdate };
       let livePublished = false;
+
+      // The edition is fixed at submit time (next Sunday's reveal) so read
+      // access never waits on the cron; unsubmitting releases it.
+      if (body.status === "SUBMITTED" && (post.status !== "SUBMITTED" || !post.editionId)) {
+        const upcoming = await getOrCreateUpcomingEdition(tx);
+        updateData = { ...updateData, editionId: upcoming.id };
+      } else if (body.status === "DRAFT" && post.status === "SUBMITTED") {
+        updateData = { ...updateData, editionId: null };
+      }
 
       // Sunday live-join: publish straight into today's open edition.
       // Server re-validates independently of whatever the client showed —
@@ -419,6 +448,12 @@ export async function PUT(
   } catch (err: any) {
     if (err instanceof Error && err.message === "NOT_FOUND_OR_NOT_OWNER") {
       return NextResponse.json({ error: "Not Found" }, { status: 404 });
+    }
+    if (err instanceof Error && err.message === "ALREADY_LIVE") {
+      return NextResponse.json(
+        { error: "This post is already live in this week's edition." },
+        { status: 409 },
+      );
     }
     if (
       err instanceof Error &&

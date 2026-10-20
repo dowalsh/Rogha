@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
+import { effectivePostStatus } from "@/lib/reveal";
 // import { getWeekStartUTC, formatWeekLabel } from "@/lib/utils";
 
 // GET all posts for the signed-in user (most recent first)
@@ -23,12 +24,18 @@ export async function GET(_req: NextRequest) {
         status: true,
         updatedAt: true,
         heroImageUrl: true,
-        edition: { select: { id: true, title: true } },
+        edition: { select: { id: true, title: true, publishedAt: true } },
         republishedFromPostId: true,
       },
     });
 
-    return NextResponse.json(posts, { status: 200 });
+    return NextResponse.json(
+      posts.map((p) => ({
+        ...p,
+        status: effectivePostStatus(p.status, p.edition?.publishedAt ?? null),
+      })),
+      { status: 200 },
+    );
   } catch (error) {
     console.error("[POSTS_GET_ERROR]", error);
     return NextResponse.json(

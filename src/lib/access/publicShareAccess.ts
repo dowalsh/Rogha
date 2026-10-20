@@ -3,6 +3,7 @@
 // Anonymous users are allowed when the author explicitly created a public link.
 
 import { prisma } from "@/lib/prisma";
+import { livePostWhere } from "@/lib/reveal";
 
 export type PublicPostData = {
   id: string;
@@ -23,7 +24,7 @@ export async function getPostByShareToken(
     where: {
       publicShareToken: token,
       publicShareEnabled: true,
-      status: "PUBLISHED",
+      AND: [livePostWhere()],
     },
     select: {
       id: true,

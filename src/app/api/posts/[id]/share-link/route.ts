@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
+import { isPostLive } from "@/lib/reveal";
 import { requestOrigin } from "@/lib/serverOrigin";
 
 function generateToken(): string {
@@ -57,6 +58,7 @@ export async function POST(
     select: {
       authorId: true,
       status: true,
+      edition: { select: { publishedAt: true } },
       publicShareToken: true,
       publicShareEnabled: true,
     },
@@ -65,7 +67,7 @@ export async function POST(
   if (!post || post.authorId !== user.id)
     return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
-  if (post.status !== "PUBLISHED")
+  if (!isPostLive({ status: post.status, editionPublishedAt: post.edition?.publishedAt ?? null }))
     return NextResponse.json({ error: "Post cannot be shared" }, { status: 409 });
 
   if (post.publicShareEnabled && post.publicShareToken)

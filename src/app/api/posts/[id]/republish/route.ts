@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { getDbUser } from "@/lib/getDbUser";
 import { getRepublishEligibleFriends } from "@/lib/access/postAccess";
 import { hasRepublishRationAvailable } from "@/lib/republish";
+import { isPostLive } from "@/lib/reveal";
+import { getOrCreateUpcomingEdition } from "@/lib/editions";
 import { getAcceptedFriendIds } from "@/lib/friends";
 
 const MAX_REPUBLISH_MESSAGE_LENGTH = 500;
@@ -30,7 +32,11 @@ async function loadOwnedPublishedPost(id: string, authorId: string) {
     },
   });
 
-  if (!post || post.authorId !== authorId || post.status !== "PUBLISHED") {
+  if (
+    !post ||
+    post.authorId !== authorId ||
+    !isPostLive({ status: post.status, editionPublishedAt: post.edition?.publishedAt ?? null })
+  ) {
     return null;
   }
 
@@ -165,6 +171,7 @@ export async function POST(
     const rootOriginalId = post.republishedFromPostId ?? post.id;
 
     const created = await prisma.$transaction(async (tx) => {
+      const upcoming = await getOrCreateUpcomingEdition(tx);
       const newPost = await tx.post.create({
         data: {
           authorId: user.id,
@@ -174,6 +181,7 @@ export async function POST(
           heroThumbUrl: post.heroThumbUrl,
           heroThumbBlurUrl: post.heroThumbBlurUrl,
           status: "SUBMITTED",
+          editionId: upcoming.id,
           audienceType: "RECIPIENTS",
           republishedFromPostId: rootOriginalId,
           republishMessage,

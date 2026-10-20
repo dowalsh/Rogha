@@ -9,6 +9,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { getAcceptedFriendships } from "@/lib/friends";
+import { isPostLive } from "@/lib/reveal";
 
 export type AudienceType = "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
 
@@ -17,7 +18,7 @@ export type AudienceType = "ALL_USERS" | "FRIENDS" | "CIRCLE" | "RECIPIENTS";
  * FRIENDS-with-friend / CIRCLE-with-member), expressed as a Prisma `OR`
  * clause for cheap DB-level candidate filtering. Callers still need to run
  * results through resolveVisiblePosts for the temporal/block/report checks
- * this clause can't express — it only narrows PUBLISHED-eligible candidates.
+ * this clause can't express — it only narrows live-eligible candidates.
  * Single source of truth so a feed query can't forget an audience branch
  * (see docs/specs/2026-08-02-post-visibility-rules.md).
  */
@@ -98,8 +99,9 @@ function canViewPostPolicy(args: {
   // Removed → no one
   if (post.status === "REMOVED") return false;
 
-  // Unpublished → author only
-  if (post.status !== "PUBLISHED") {
+  // Not live yet → author only. Live is by the edition's fixed reveal
+  // time, not the cron's lagging status flip (see src/lib/reveal.ts).
+  if (!isPostLive({ status: post.status, editionPublishedAt: post.publishedAt })) {
     return viewerId === post.authorId;
   }
 

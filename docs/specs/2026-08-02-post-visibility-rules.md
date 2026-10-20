@@ -30,7 +30,8 @@ paths but not others. The fix consolidates all of it into one place.
 - `post.audienceType`: `ALL_USERS | FRIENDS | CIRCLE | RECIPIENTS`
 - `post.circleId` (when `CIRCLE`)
 - `post.authorId`
-- `post.edition.publishedAt` (null until the post's edition has published)
+- `post.edition.publishedAt` — the edition's fixed scheduled reveal instant,
+  assigned at submit time (may be in the future while the post is queued)
 - viewer↔author `Friendship` (status, `acceptedAt`)
 - viewer's `CircleMember` row for `post.circleId` (status, `joinedAt`)
 - a `Block` row from the viewer against the author (one-directional)
@@ -62,7 +63,8 @@ paths but not others. The fix consolidates all of it into one place.
    set by any code path today; treated the same as `DRAFT` as the
    conservative default. Confirm intended semantics with product before it's
    ever wired up.)*
-6. **Submitted** (`status === SUBMITTED`, not yet published):
+6. **Queued** (`status === SUBMITTED` and `post.edition.publishedAt > now`,
+   or no edition yet):
    - Full content (single-post read) — author only, same as Draft.
    - **Lightweight preview only** (title, thumbnail, author name — never the
      body) is visible to any viewer who passes the audience test in rule 7,
@@ -71,8 +73,10 @@ paths but not others. The fix consolidates all of it into one place.
      no "old" content yet to guard against. This is intentionally asymmetric
      with rule 7, and is what powers the "Coming Sunday" section
      (`getComingNext` in `src/lib/home.ts`).
-7. **Published** (`status === PUBLISHED`) — visible if the viewer passes the
-   audience test:
+7. **Live** (`status === PUBLISHED`, **or** `status === SUBMITTED` with
+   `post.edition.publishedAt <= now` — the reveal is a time check, not the
+   cron's status flip; see `isPostLive` in `src/lib/reveal.ts`) — visible if
+   the viewer passes the audience test:
    - `ALL_USERS` → everyone, including anonymous.
    - `FRIENDS` → viewer has an `ACCEPTED` friendship with the author **and**
      `friendship.acceptedAt <= post.edition.publishedAt`.

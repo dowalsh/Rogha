@@ -57,7 +57,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
   // Accept/Decline button spinners (keyed by user id + which action is in flight)
   const [acting, setActing] = useState<{
     userId: string;
-    action: "accept" | "decline";
+    action: "accept" | "decline" | "cancel";
   } | null>(null);
 
   // "Share an old favourite" nudge, shown right after a successful accept —
@@ -211,6 +211,27 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
     }
   }
 
+  async function handleCancel(userId: string) {
+    setActing({ userId, action: "cancel" });
+    try {
+      const res = await fetch(`/api/friends/${userId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(data?.message || data?.error || res.statusText);
+      toast("Request cancelled");
+      await loadAll();
+    } catch (e: any) {
+      console.error("[FriendsCarousel] cancel failed:", e);
+      toast.error(e?.message || "Failed to cancel");
+    } finally {
+      setActing(null);
+    }
+  }
+
   const hasAny = useMemo(() => items.length > 0, [items]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -309,7 +330,9 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
               acting?.userId === u.id && acting.action === "accept";
             const isDeclining =
               acting?.userId === u.id && acting.action === "decline";
-            const isActing = isAccepting || isDeclining;
+            const isCancelling =
+              acting?.userId === u.id && acting.action === "cancel";
+            const isActing = isAccepting || isDeclining || isCancelling;
 
             const isPending =
               item.state === "PENDING_INCOMING" ||
@@ -427,6 +450,20 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
                   <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />
                     Pending
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2"
+                      onClick={() => handleCancel(u.id)}
+                      disabled={isActing}
+                      title="Cancel request"
+                    >
+                      {isCancelling ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 ) : null}
               </div>

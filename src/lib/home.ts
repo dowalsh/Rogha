@@ -395,7 +395,7 @@ async function getLikesBuzzRows(
   const likes = await prisma.postLike.findMany({
     where: {
       userId: { notIn: excludedIds },
-      post: { authorId: userId, status: "PUBLISHED" },
+      post: { authorId: userId, AND: [livePostWhere()] },
     },
     select: {
       createdAt: true,

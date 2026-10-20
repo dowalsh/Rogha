@@ -1,6 +1,6 @@
 # Docs
 
-Rogha's docs are split into two kinds of thing, and the split is the whole
+Rogha's docs are split into three kinds of thing, and the split is the whole
 point:
 
 - **[reference/](./reference/)** — the **long-term source of truth**. Evergreen
@@ -8,6 +8,8 @@ point:
 - **[specs/](./specs/)** — **short-term working docs** for individual in-flight
   fixes and features. Disposable: once a change ships, its durable content is
   folded up into `reference/` and the spec is archived.
+- **[backlog/](./backlog/)** - **not-committed ideas**: brainstorms, deferred
+  items, and open decision docs. Nothing here is built or scheduled.
 
 Nothing canonical should live *only* in a spec. If a behaviour is true of the
 app today, `reference/` describes it; a spec is where a change is worked out,
@@ -46,6 +48,14 @@ rationale for a change while it's being designed and built.
 3. **Move the spec to [specs/archive/](./specs/archive/)** (keeping its dated
    filename). It stays as history; it is no longer canonical. See
    [specs/archive/README.md](./specs/archive/README.md).
+
+## backlog/ - not committed
+
+Anything that isn't being built or already shipped: half-baked brainstorms,
+deferred-item lists, and decision docs still awaiting a working session. Same
+`YYYY-MM-DD-name.md` naming. `specs/` holds only work that is live or actively
+being built, so a doc moves **from `backlog/` to `specs/`** when it's promoted
+to a real build (update its Status line when it does).
 
 ## Keeping this current
 

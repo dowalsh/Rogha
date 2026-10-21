@@ -10,6 +10,7 @@ import { Loader2, Check, X, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { RepublishAcceptNudge } from "@/components/RepublishAcceptNudge";
 import { useRepublishAcceptNudge } from "@/hooks/useRepublishAcceptNudge";
+import { isHomeKey } from "@/lib/swrKeys";
 
 type PendingItem = {
   state: "PENDING_INCOMING";
@@ -56,11 +57,19 @@ export function PendingRequestsCard() {
         toast.success(
           action === "accept" ? "Friend request accepted" : "Request declined",
         );
-        await mutate();
+        // Drop the row locally right away, then reconcile in the background.
+        void mutate(
+          (prev) =>
+            prev && {
+              ...prev,
+              items: prev.items.filter((i) => i.user.id !== userId),
+            },
+          { revalidate: true },
+        );
         if (action === "accept") {
           // A newly-accepted friend's submitted-for-next-edition posts need
           // to appear in the home feed's "Coming Sunday" section right away.
-          await globalMutate("/api/home");
+          void globalMutate(isHomeKey);
           nudge.checkAfterAccept(userId, username);
         }
       } catch (e: any) {
@@ -94,6 +103,8 @@ export function PendingRequestsCard() {
           <div className="flex flex-col gap-2">
             {items.map(({ user, mutualCount }) => {
               const isActing = acting?.userId === user.id;
+              const isAccepting = isActing && acting.action === "accept";
+              const isDeclining = isActing && acting.action === "decline";
               const profileHref = user.username
                 ? `/profile/${user.username}`
                 : "#";
@@ -130,35 +141,38 @@ export function PendingRequestsCard() {
                   </Link>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {isActing ? (
-                      <div className="flex h-8 items-center justify-center px-3">
+                    {/* Both buttons stay put; only the clicked one spins. */}
+                    <Button
+                      size="sm"
+                      className="h-8 px-3"
+                      disabled={isActing}
+                      onClick={() =>
+                        respond(user.id, "accept", user.username ?? "")
+                      }
+                    >
+                      {isAccepting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          className="h-8 px-3"
-                          onClick={() =>
-                            respond(user.id, "accept", user.username ?? "")
-                          }
-                        >
-                          <Check className="h-4 w-4" />
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-3"
-                          onClick={() =>
-                            respond(user.id, "decline", user.username ?? "")
-                          }
-                        >
-                          <X className="h-4 w-4" />
-                          Decline
-                        </Button>
-                      </>
-                    )}
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-3"
+                      disabled={isActing}
+                      onClick={() =>
+                        respond(user.id, "decline", user.username ?? "")
+                      }
+                    >
+                      {isDeclining ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                      Decline
+                    </Button>
                   </div>
                 </div>
               );

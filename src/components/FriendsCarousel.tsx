@@ -23,6 +23,7 @@ import { Plus, Loader2, X, UserMinus, Check, Clock, Users } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { RepublishAcceptNudge } from "@/components/RepublishAcceptNudge";
 import { useRepublishAcceptNudge } from "@/hooks/useRepublishAcceptNudge";
+import { isHomeKey } from "@/lib/swrKeys";
 
 type FriendState = "ACCEPTED" | "PENDING_OUTGOING" | "PENDING_INCOMING";
 
@@ -78,8 +79,10 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
     []
   );
 
+  // `loading` starts true and is only ever cleared here, so the full-list
+  // spinner shows on first load only — refetches after an accept/decline/
+  // cancel/unfriend reconcile in place instead of blanking the list.
   const loadAll = useCallback(async () => {
-    setLoading(true);
     try {
       const [accepted, incoming, outgoing] = await Promise.all([
         loadBox("accepted"),
@@ -177,10 +180,15 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       if (!res.ok)
         throw new Error(data?.message || data?.error || res.statusText);
       toast.success("Friend request accepted");
-      await loadAll();
+      setItems((prev) =>
+        prev.map((i) =>
+          i.user.id === userId ? { ...i, state: "ACCEPTED" } : i
+        )
+      );
+      void loadAll();
       // A newly-accepted friend's submitted-for-next-edition posts need to
       // appear in the home feed's "Coming Sunday" section right away.
-      await globalMutate("/api/home");
+      void globalMutate(isHomeKey);
       nudge.checkAfterAccept(userId, username);
     } catch (e: any) {
       console.error("[FriendsCarousel] accept failed:", e);
@@ -202,7 +210,8 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       if (!res.ok)
         throw new Error(data?.message || data?.error || res.statusText);
       toast("Request declined");
-      await loadAll();
+      setItems((prev) => prev.filter((i) => i.user.id !== userId));
+      void loadAll();
     } catch (e: any) {
       console.error("[FriendsCarousel] decline failed:", e);
       toast.error(e?.message || "Failed to decline");
@@ -223,7 +232,8 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       if (!res.ok)
         throw new Error(data?.message || data?.error || res.statusText);
       toast("Request cancelled");
-      await loadAll();
+      setItems((prev) => prev.filter((i) => i.user.id !== userId));
+      void loadAll();
     } catch (e: any) {
       console.error("[FriendsCarousel] cancel failed:", e);
       toast.error(e?.message || "Failed to cancel");

@@ -28,6 +28,14 @@ export type WeeklyJamRow = {
   // Visibility is gated by the row itself (i.e. the viewer doesn't need to
   // be friends with the inspiring person, only the row owner does).
   inspiredBy: { username: string } | null;
+  // "On Repeat": this row owner's own top song/artist matched their own top
+  // song/artist from an earlier edition. Tracked independently per song vs.
+  // artist since they're captured separately.
+  onRepeat: { song: boolean; artist: boolean };
+  // "In Sync": this row owner's top song/artist matches a friend's top
+  // song/artist in THIS SAME edition (as opposed to inspiredBy, which looks
+  // at a friend's earlier editions). Gated by the row owner's friend graph.
+  inSync: { song: { username: string } | null; artist: { username: string } | null };
 };
 
 export type WeeklyJamArtist = {

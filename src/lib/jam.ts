@@ -177,12 +177,16 @@ export async function getWeeklyJamForEdition(
         imageUrl: true,
         spotifyArtistUrl: true,
         lastfmUrl: true,
+        user: { select: { username: true } },
       },
     }),
   ]);
 
   const artistByUserId = new Map(artists.map((a) => [a.userId, a]));
-  const inspiredByUserId = await getInspirationByUserId(tracks, editionId);
+  const friendGraph = await buildFriendGraph(candidateIds);
+  const inspiredByUserId = await getInspirationByUserId(tracks, editionId, friendGraph);
+  const onRepeatByUserId = await getOnRepeatByUserId(tracks, artists, editionId);
+  const inSyncByUserId = getInSyncByUserId(tracks, artists, friendGraph);
 
   const rows: WeeklyJamRow[] = tracks
     .map((t) => {
@@ -211,6 +215,8 @@ export async function getWeeklyJamForEdition(
             }
           : null,
         inspiredBy: inspiredByUserId.get(t.userId) ?? null,
+        onRepeat: onRepeatByUserId.get(t.userId) ?? { song: false, artist: false },
+        inSync: inSyncByUserId.get(t.userId) ?? { song: null, artist: null },
       };
     })
     .sort((a, b) => (a.isViewer === b.isViewer ? 0 : a.isViewer ? -1 : 1));
@@ -219,6 +225,39 @@ export async function getWeeklyJamForEdition(
     rows,
     viewerConnected: Boolean(viewer?.jamEnabled && viewer?.lastfmUsername),
   };
+}
+
+/**
+ * Builds a userId -> set-of-accepted-friend-ids graph, scoped to the given
+ * row owners (not the full social graph). Shared by getInspirationByUserId
+ * and getInSyncByUserId, both of which need "is X friends with Y" checks
+ * rather than the viewer's own friend list.
+ */
+async function buildFriendGraph(rowUserIds: string[]): Promise<Map<string, Set<string>>> {
+  if (rowUserIds.length === 0) return new Map();
+
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [{ aId: { in: rowUserIds } }, { bId: { in: rowUserIds } }],
+    },
+    select: { aId: true, bId: true },
+  });
+
+  const graph = new Map<string, Set<string>>();
+  for (const f of friendships) {
+    if (rowUserIds.includes(f.aId)) {
+      const set = graph.get(f.aId) ?? new Set<string>();
+      set.add(f.bId);
+      graph.set(f.aId, set);
+    }
+    if (rowUserIds.includes(f.bId)) {
+      const set = graph.get(f.bId) ?? new Set<string>();
+      set.add(f.aId);
+      graph.set(f.bId, set);
+    }
+  }
+  return graph;
 }
 
 /**
@@ -232,34 +271,12 @@ export async function getWeeklyJamForEdition(
 async function getInspirationByUserId(
   tracks: { userId: string; name: string; artist: string }[],
   editionId: string,
+  friendGraph: Map<string, Set<string>>,
 ): Promise<Map<string, { username: string }>> {
   if (tracks.length === 0) return new Map();
 
-  const rowUserIds = tracks.map((t) => t.userId);
-  const friendships = await prisma.friendship.findMany({
-    where: {
-      status: "ACCEPTED",
-      OR: [{ aId: { in: rowUserIds } }, { bId: { in: rowUserIds } }],
-    },
-    select: { aId: true, bId: true },
-  });
-
-  const friendIdsByRowOwner = new Map<string, Set<string>>();
-  for (const f of friendships) {
-    if (rowUserIds.includes(f.aId)) {
-      const set = friendIdsByRowOwner.get(f.aId) ?? new Set<string>();
-      set.add(f.bId);
-      friendIdsByRowOwner.set(f.aId, set);
-    }
-    if (rowUserIds.includes(f.bId)) {
-      const set = friendIdsByRowOwner.get(f.bId) ?? new Set<string>();
-      set.add(f.aId);
-      friendIdsByRowOwner.set(f.bId, set);
-    }
-  }
-
   const allFriendIds = Array.from(
-    new Set(Array.from(friendIdsByRowOwner.values()).flatMap((s) => Array.from(s))),
+    new Set(Array.from(friendGraph.values()).flatMap((s) => Array.from(s))),
   );
   if (allFriendIds.length === 0) return new Map();
 
@@ -271,7 +288,7 @@ async function getInspirationByUserId(
   const result = new Map<string, { username: string }>();
   for (const t of tracks) {
     if (result.has(t.userId)) continue;
-    const friendIds = friendIdsByRowOwner.get(t.userId);
+    const friendIds = friendGraph.get(t.userId);
     if (!friendIds) continue;
     const match = priorTracks.find(
       (p) =>
@@ -281,6 +298,113 @@ async function getInspirationByUserId(
     );
     if (match) result.set(t.userId, { username: match.user.username });
   }
+  return result;
+}
+
+/**
+ * "On Repeat": whether this week's top song/artist for a row owner also
+ * featured as THEIR OWN top song/artist in some earlier edition — a repeat
+ * performance, not a friend connection. Song and artist are tracked
+ * independently since they're captured separately and can repeat on their
+ * own schedules. Matches case-insensitively, ignoring the current edition.
+ */
+async function getOnRepeatByUserId(
+  tracks: { userId: string; name: string; artist: string }[],
+  artists: { userId: string; name: string }[],
+  editionId: string,
+): Promise<Map<string, { song: boolean; artist: boolean }>> {
+  const result = new Map<string, { song: boolean; artist: boolean }>();
+  if (tracks.length === 0 && artists.length === 0) return result;
+
+  const trackUserIds = tracks.map((t) => t.userId);
+  const artistUserIds = artists.map((a) => a.userId);
+
+  const [priorTracks, priorArtists] = await Promise.all([
+    trackUserIds.length
+      ? prisma.weeklyTrack.findMany({
+          where: { userId: { in: trackUserIds }, editionId: { not: editionId } },
+          select: { userId: true, name: true, artist: true },
+        })
+      : [],
+    artistUserIds.length
+      ? prisma.weeklyArtist.findMany({
+          where: { userId: { in: artistUserIds }, editionId: { not: editionId } },
+          select: { userId: true, name: true },
+        })
+      : [],
+  ]);
+
+  for (const t of tracks) {
+    const matched = priorTracks.some(
+      (p) =>
+        p.userId === t.userId &&
+        p.name.toLowerCase() === t.name.toLowerCase() &&
+        p.artist.toLowerCase() === t.artist.toLowerCase(),
+    );
+    if (matched) {
+      const prev = result.get(t.userId) ?? { song: false, artist: false };
+      result.set(t.userId, { ...prev, song: true });
+    }
+  }
+  for (const a of artists) {
+    const matched = priorArtists.some(
+      (p) => p.userId === a.userId && p.name.toLowerCase() === a.name.toLowerCase(),
+    );
+    if (matched) {
+      const prev = result.get(a.userId) ?? { song: false, artist: false };
+      result.set(a.userId, { ...prev, artist: true });
+    }
+  }
+  return result;
+}
+
+/**
+ * "In Sync": whether a row owner's top song/artist THIS edition matches one
+ * of their friends' top song/artist in this SAME edition — purely a
+ * same-week comparison against already-fetched rows, so no extra query is
+ * needed beyond the shared friend graph. Matches case-insensitively.
+ */
+function getInSyncByUserId(
+  tracks: { userId: string; name: string; artist: string; user: { username: string } }[],
+  artists: { userId: string; name: string; user: { username: string } }[],
+  friendGraph: Map<string, Set<string>>,
+): Map<string, { song: { username: string } | null; artist: { username: string } | null }> {
+  const result = new Map<
+    string,
+    { song: { username: string } | null; artist: { username: string } | null }
+  >();
+
+  for (const t of tracks) {
+    const friendIds = friendGraph.get(t.userId);
+    if (!friendIds) continue;
+    const match = tracks.find(
+      (o) =>
+        o.userId !== t.userId &&
+        friendIds.has(o.userId) &&
+        o.name.toLowerCase() === t.name.toLowerCase() &&
+        o.artist.toLowerCase() === t.artist.toLowerCase(),
+    );
+    if (match) {
+      const prev = result.get(t.userId) ?? { song: null, artist: null };
+      result.set(t.userId, { ...prev, song: { username: match.user.username } });
+    }
+  }
+
+  for (const a of artists) {
+    const friendIds = friendGraph.get(a.userId);
+    if (!friendIds) continue;
+    const match = artists.find(
+      (o) =>
+        o.userId !== a.userId &&
+        friendIds.has(o.userId) &&
+        o.name.toLowerCase() === a.name.toLowerCase(),
+    );
+    if (match) {
+      const prev = result.get(a.userId) ?? { song: null, artist: null };
+      result.set(a.userId, { ...prev, artist: { username: match.user.username } });
+    }
+  }
+
   return result;
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ChevronDown, MessageCircle, Sparkles } from "lucide-react";
+import { Check, ChevronDown, MessageCircle, Repeat, Sparkles, Users } from "lucide-react";
 import type { WeeklyJamRow } from "@/lib/jam-preview";
 import {
   WeeklyJamExplainer,
@@ -126,6 +126,55 @@ function JamRow({
                 </PopoverContent>
               </Popover>
             )}
+            {row.onRepeat.song && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="On Repeat"
+                    className="shrink-0 text-blue-500 hover:text-blue-400"
+                  >
+                    <Repeat className="h-4 w-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-64 text-sm"
+                >
+                  <p className="font-medium">On Repeat</p>
+                  <p className="mt-1 text-muted-foreground">
+                    This song has featured in {row.isViewer ? "your" : `${row.username}'s`}{" "}
+                    weekly jam before.
+                  </p>
+                </PopoverContent>
+              </Popover>
+            )}
+            {row.inSync.song && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="In Sync"
+                    className="shrink-0 text-violet-500 hover:text-violet-400"
+                  >
+                    <Users className="h-4 w-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-64 text-sm"
+                >
+                  <p className="font-medium">In Sync</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {row.isViewer ? "You" : row.username} and{" "}
+                    {row.inSync.song.username} are jamming to the same song this
+                    week.
+                  </p>
+                </PopoverContent>
+              </Popover>
+            )}
             <Link
               href={row.spotifyTrackUrl ?? row.spotifySearchUrl}
               target="_blank"
@@ -156,6 +205,56 @@ function JamRow({
                   {row.topArtist.playCount} plays this week
                 </p>
               </div>
+              {row.onRepeat.artist && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label="On Repeat"
+                      className="shrink-0 text-blue-500 hover:text-blue-400"
+                    >
+                      <Repeat className="h-4 w-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-64 text-sm"
+                  >
+                    <p className="font-medium">On Repeat</p>
+                    <p className="mt-1 text-muted-foreground">
+                      This artist has featured in{" "}
+                      {row.isViewer ? "your" : `${row.username}'s`} weekly jam
+                      before.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              )}
+              {row.inSync.artist && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label="In Sync"
+                      className="shrink-0 text-violet-500 hover:text-violet-400"
+                    >
+                      <Users className="h-4 w-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-64 text-sm"
+                  >
+                    <p className="font-medium">In Sync</p>
+                    <p className="mt-1 text-muted-foreground">
+                      {row.isViewer ? "You" : row.username} and{" "}
+                      {row.inSync.artist.username} are jamming to the same
+                      artist this week.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              )}
               {row.topArtist.spotifyArtistUrl && (
                 <Link
                   href={row.topArtist.spotifyArtistUrl}

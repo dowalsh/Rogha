@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { PostPreviewRow } from "@/components/PostPreviewRow";
 import { CircleJoinPreviewRow } from "@/components/CircleJoinPreviewRow";
+import { LikesPreviewRow } from "@/components/LikesPreviewRow";
 import type { BuzzPostsData, BuzzRow } from "@/lib/home";
 
 type BuzzListProps = {
@@ -26,6 +27,18 @@ function BuzzRowView({ row, variant }: { row: BuzzRow; variant: "new" | "earlier
       />
     );
   }
+  if (row.kind === "likes") {
+    return (
+      <LikesPreviewRow
+        variant={variant}
+        likers={row.likers}
+        otherCount={row.otherCount}
+        title={row.title}
+        metaText={`${formatDistanceToNow(new Date(row.latestLikeAt))} ago`}
+        href={`/reader/${row.postId}/buzz`}
+      />
+    );
+  }
   return (
     <PostPreviewRow
       variant={variant}
@@ -41,7 +54,14 @@ function BuzzRowView({ row, variant }: { row: BuzzRow; variant: "new" | "earlier
 }
 
 function rowKey(row: BuzzRow): string {
-  return row.kind === "circle_join" ? `join:${row.circleId}:${row.userId}` : `post:${row.postId}`;
+  switch (row.kind) {
+    case "circle_join":
+      return `join:${row.circleId}:${row.userId}`;
+    case "likes":
+      return `likes:${row.postId}`;
+    case "post":
+      return `post:${row.postId}`;
+  }
 }
 
 export function BuzzList({ buzz, onShowMore, isLoadingMore }: BuzzListProps) {

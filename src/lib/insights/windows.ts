@@ -8,6 +8,7 @@
 // until the next Sunday reveal.
 
 import { prisma } from "@/lib/prisma";
+import { revealedEditionWhere } from "@/lib/reveal";
 
 export type EditionWithWindow = {
   id: string;
@@ -26,7 +27,7 @@ export type EditionWithWindow = {
  */
 export async function getAllEditionsWithWindows(): Promise<EditionWithWindow[]> {
   const editions = await prisma.edition.findMany({
-    where: { NOT: { publishedAt: null } },
+    where: revealedEditionWhere(),
     orderBy: { weekStart: "asc" },
     select: { id: true, title: true, weekStart: true, publishedAt: true },
   });
@@ -69,7 +70,7 @@ export async function getTrailingWindowsEndingAt(
 /** The edition immediately before the given one, by weekStart. */
 export async function getPreviousEditionId(weekStart: Date): Promise<string | null> {
   const prev = await prisma.edition.findFirst({
-    where: { weekStart: { lt: weekStart }, NOT: { publishedAt: null } },
+    where: { weekStart: { lt: weekStart }, ...revealedEditionWhere() },
     orderBy: { weekStart: "desc" },
     select: { id: true },
   });

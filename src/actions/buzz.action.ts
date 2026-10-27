@@ -4,8 +4,8 @@
 import { prisma } from "@/lib/prisma";
 import { getDbUserId } from "./user.action";
 
-// Advances the global "seen" cursor for circle-join Buzz rows (see
-// getCircleJoinBuzzRows in src/lib/home.ts). Called once per home-page visit
+// Advances the global "seen" cursor for circle-join and likes Buzz rows (see
+// getCircleJoinBuzzRows / getLikesBuzzRows in src/lib/home.ts). Called once per home-page visit
 // from the client, not on every /api/home read, so the New/Earlier split
 // doesn't shift under the viewer mid-visit — it only moves on their next
 // visit.

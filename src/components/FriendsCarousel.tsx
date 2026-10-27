@@ -23,6 +23,7 @@ import { Plus, Loader2, X, UserMinus, Check, Clock, Users } from "lucide-react";
 import { Spinner } from "@/components/Spinner";
 import { RepublishAcceptNudge } from "@/components/RepublishAcceptNudge";
 import { useRepublishAcceptNudge } from "@/hooks/useRepublishAcceptNudge";
+import { isHomeKey } from "@/lib/swrKeys";
 
 type FriendState = "ACCEPTED" | "PENDING_OUTGOING" | "PENDING_INCOMING";
 
@@ -57,7 +58,7 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
   // Accept/Decline button spinners (keyed by user id + which action is in flight)
   const [acting, setActing] = useState<{
     userId: string;
-    action: "accept" | "decline";
+    action: "accept" | "decline" | "cancel";
   } | null>(null);
 
   // "Share an old favourite" nudge, shown right after a successful accept —
@@ -78,8 +79,10 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
     []
   );
 
+  // `loading` starts true and is only ever cleared here, so the full-list
+  // spinner shows on first load only — refetches after an accept/decline/
+  // cancel/unfriend reconcile in place instead of blanking the list.
   const loadAll = useCallback(async () => {
-    setLoading(true);
     try {
       const [accepted, incoming, outgoing] = await Promise.all([
         loadBox("accepted"),
@@ -177,10 +180,15 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       if (!res.ok)
         throw new Error(data?.message || data?.error || res.statusText);
       toast.success("Friend request accepted");
-      await loadAll();
+      setItems((prev) =>
+        prev.map((i) =>
+          i.user.id === userId ? { ...i, state: "ACCEPTED" } : i
+        )
+      );
+      void loadAll();
       // A newly-accepted friend's submitted-for-next-edition posts need to
       // appear in the home feed's "Coming Sunday" section right away.
-      await globalMutate("/api/home");
+      void globalMutate(isHomeKey);
       nudge.checkAfterAccept(userId, username);
     } catch (e: any) {
       console.error("[FriendsCarousel] accept failed:", e);
@@ -202,10 +210,33 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
       if (!res.ok)
         throw new Error(data?.message || data?.error || res.statusText);
       toast("Request declined");
-      await loadAll();
+      setItems((prev) => prev.filter((i) => i.user.id !== userId));
+      void loadAll();
     } catch (e: any) {
       console.error("[FriendsCarousel] decline failed:", e);
       toast.error(e?.message || "Failed to decline");
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function handleCancel(userId: string) {
+    setActing({ userId, action: "cancel" });
+    try {
+      const res = await fetch(`/api/friends/${userId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(data?.message || data?.error || res.statusText);
+      toast("Request cancelled");
+      setItems((prev) => prev.filter((i) => i.user.id !== userId));
+      void loadAll();
+    } catch (e: any) {
+      console.error("[FriendsCarousel] cancel failed:", e);
+      toast.error(e?.message || "Failed to cancel");
     } finally {
       setActing(null);
     }
@@ -309,7 +340,9 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
               acting?.userId === u.id && acting.action === "accept";
             const isDeclining =
               acting?.userId === u.id && acting.action === "decline";
-            const isActing = isAccepting || isDeclining;
+            const isCancelling =
+              acting?.userId === u.id && acting.action === "cancel";
+            const isActing = isAccepting || isDeclining || isCancelling;
 
             const isPending =
               item.state === "PENDING_INCOMING" ||
@@ -427,6 +460,20 @@ export function FriendsCarousel({ refreshKey = 0 }: Props) {
                   <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" />
                     Pending
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2"
+                      onClick={() => handleCancel(u.id)}
+                      disabled={isActing}
+                      title="Cancel request"
+                    >
+                      {isCancelling ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 ) : null}
               </div>

@@ -10,12 +10,11 @@ import { getReadMapForPosts } from "@/lib/postReads";
 import {
   getMostRecentPublishedEditionForUser,
   getPublishedEditionById,
-  plannedPublishAt,
   getSundayLiveJoinWindow,
 } from "@/lib/editions";
+import { nextRevealAt, livePostWhere, queuedPostWhere } from "@/lib/reveal";
 import { getJamConnectedFriendCount, getJamConnectedFriends } from "@/lib/jam";
 import type { ConnectedFriend } from "@/components/jam/WeeklyJamExplainer";
-import { getWeekStartUTC } from "@/lib/utils";
 import { getOnboardingState, type OnboardingState } from "@/lib/onboarding";
 
 // --- hero -------------------------------------------------------------
@@ -113,7 +112,7 @@ export type ComingNextData =
   | {
       visible: true;
       state: "empty";
-      daysLeft: number;
+      daysLeft: number | null; // null on Sunday (live-join window) — no countdown
       jamConnectedCount: number;
       jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
@@ -125,18 +124,20 @@ export type ComingNextData =
       posts: ComingNextPost[];
       hasSubmitted: boolean;
       friendsSubmittedCount: number;
-      daysLeft: number;
+      daysLeft: number | null;
       jamConnectedCount: number;
       jamConnectedFriends: ConnectedFriend[];
       viewerJamConnected: boolean;
       showJamTeaser: boolean;
     };
 
-function computeDaysLeft(now: Date): number {
-  const weekStart = getWeekStartUTC(now);
-  const publishAt = plannedPublishAt(weekStart);
-  const ms = publishAt.getTime() - now.getTime();
-  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+// Days until the next reveal, counting 6 → 1 from Monday. Null through the
+// Sunday live-join window: today's edition just landed, so a countdown to
+// next Sunday would read as contradicting it.
+function computeDaysLeft(now: Date): number | null {
+  if (getSundayLiveJoinWindow(now).isOpen) return null;
+  const ms = nextRevealAt(now).getTime() - now.getTime();
+  return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
 // The Coming Sunday panel's Jam teaser is about the *upcoming* (unpublished)
@@ -169,7 +170,7 @@ export async function getComingNext(userId: string): Promise<ComingNextData> {
 
   const submittedRaw = await prisma.post.findMany({
     where: {
-      status: "SUBMITTED",
+      AND: [queuedPostWhere()],
       OR: [
         { authorId: userId },
         { authorId: { in: friendIds } },
@@ -300,7 +301,22 @@ export type CircleJoinBuzzRow = {
   joinedAt: string;
 };
 
-export type BuzzRow = BuzzPostRow | CircleJoinBuzzRow;
+// One row per post of the viewer's that others have liked — aggregated, so
+// "Luke, Peter +2 liked your post" rather than a row per like. While any
+// like is newer than the global Buzz cursor the row sits in New buzz naming
+// only the *new* likers; once seen it collapses into a single Earlier row
+// naming the most recent likers overall. A post never has both.
+export type LikesBuzzRow = {
+  kind: "likes";
+  postId: string;
+  title: string;
+  // Most recent first, capped at LIKES_BUZZ_NAMED — the rest go in otherCount.
+  likers: { userId: string; username: string; avatarUrl: string | null }[];
+  otherCount: number;
+  latestLikeAt: string;
+};
+
+export type BuzzRow = BuzzPostRow | CircleJoinBuzzRow | LikesBuzzRow;
 
 export type BuzzPostsData = {
   newBuzz: BuzzRow[];
@@ -308,8 +324,9 @@ export type BuzzPostsData = {
   earlierHasMore: boolean;
 };
 
-// Only comments/replies count as "activity" for Buzz — likes never resurface
-// a post, and submit/publish events belong to the hero, not Buzz (a new post
+// Only comments/replies count as "activity" for a post row — likes never
+// resurface a post row (they get their own aggregated likes row, see
+// getLikesBuzzRows), and submit/publish events belong to the hero, not Buzz (a new post
 // only enters Buzz once someone comments on it).
 const BUZZ_ACTIVITY_TYPES: ActivityEventType[] = [
   ActivityEventType.POST_COMMENTED,
@@ -356,6 +373,69 @@ async function getCircleJoinBuzzRows(userId: string): Promise<CircleJoinBuzzRow[
   return rows.flat();
 }
 
+const LIKES_BUZZ_NAMED = 2;
+
+// Likes on the viewer's own published posts, read straight from PostLike (not
+// ActivityEvent) so an unlike simply drops out. Shares the circle-join global
+// cursor for New/Earlier: seeing a like on home is enough to mark it seen —
+// there's nothing to "read" in a like, so opening the post isn't required.
+async function getLikesBuzzRows(
+  userId: string,
+  buzzSeenAt: Date | null,
+): Promise<{ newRows: LikesBuzzRow[]; earlierRows: LikesBuzzRow[] }> {
+  const blocks = await prisma.block.findMany({
+    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  const excludedIds = [
+    userId,
+    ...blocks.map((b) => (b.blockerId === userId ? b.blockedId : b.blockerId)),
+  ];
+
+  const likes = await prisma.postLike.findMany({
+    where: {
+      userId: { notIn: excludedIds },
+      post: { authorId: userId, AND: [livePostWhere()] },
+    },
+    select: {
+      createdAt: true,
+      post: { select: { id: true, title: true } },
+      user: { select: { id: true, username: true, image: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const byPost = new Map<string, typeof likes>();
+  for (const like of likes) {
+    const group = byPost.get(like.post.id);
+    if (group) group.push(like);
+    else byPost.set(like.post.id, [like]);
+  }
+
+  const newRows: LikesBuzzRow[] = [];
+  const earlierRows: LikesBuzzRow[] = [];
+  for (const group of Array.from(byPost.values())) {
+    // Already newest-first from the query.
+    const newLikes = group.filter((l) => !buzzSeenAt || l.createdAt > buzzSeenAt);
+    const shown = newLikes.length > 0 ? newLikes : group;
+    const row: LikesBuzzRow = {
+      kind: "likes",
+      postId: group[0].post.id,
+      title: group[0].post.title ?? "Untitled post",
+      likers: shown.slice(0, LIKES_BUZZ_NAMED).map((l) => ({
+        userId: l.user.id,
+        username: l.user.username,
+        avatarUrl: l.user.image,
+      })),
+      otherCount: Math.max(0, shown.length - LIKES_BUZZ_NAMED),
+      latestLikeAt: shown[0].createdAt.toISOString(),
+    };
+    (newLikes.length > 0 ? newRows : earlierRows).push(row);
+  }
+
+  return { newRows, earlierRows };
+}
+
 export async function getBuzzPosts(
   userId: string,
   opts: { earlierLimit?: number } = {},
@@ -368,20 +448,24 @@ export async function getBuzzPosts(
   ]);
   const buzzSeenAt = seenUser?.circleJoinBuzzSeenAt ?? null;
 
-  const newCircleJoinRows: BuzzRow[] = [];
-  const earlierCircleJoinRows: BuzzRow[] = [];
+  const newGlobalCursorRows: BuzzRow[] = [];
+  const earlierGlobalCursorRows: BuzzRow[] = [];
   for (const row of circleJoinRows) {
     const isNew = !buzzSeenAt || new Date(row.joinedAt) > buzzSeenAt;
-    (isNew ? newCircleJoinRows : earlierCircleJoinRows).push(row);
+    (isNew ? newGlobalCursorRows : earlierGlobalCursorRows).push(row);
   }
+
+  const likesRows = await getLikesBuzzRows(userId, buzzSeenAt);
+  newGlobalCursorRows.push(...likesRows.newRows);
+  earlierGlobalCursorRows.push(...likesRows.earlierRows);
 
   const friendships = await getAcceptedFriendships(userId);
   if (!friendships.length) {
     return mergeBuzzRows({
       newPostRows: [],
       earlierPostRows: [],
-      newCircleJoinRows,
-      earlierCircleJoinRows,
+      newGlobalCursorRows,
+      earlierGlobalCursorRows,
       earlierLimit,
     });
   }
@@ -393,7 +477,7 @@ export async function getBuzzPosts(
   const publishedPostsByFriends = await prisma.post.findMany({
     where: {
       authorId: { in: friendIds },
-      status: "PUBLISHED",
+      AND: [livePostWhere()],
       audienceType: { in: ["FRIENDS", "CIRCLE"] },
     },
     select: { id: true, authorId: true },
@@ -513,33 +597,42 @@ export async function getBuzzPosts(
   return mergeBuzzRows({
     newPostRows,
     earlierPostRows,
-    newCircleJoinRows,
-    earlierCircleJoinRows,
+    newGlobalCursorRows,
+    earlierGlobalCursorRows,
     earlierLimit,
   });
 }
 
 function rowTimestamp(row: BuzzRow): number {
-  return new Date(row.kind === "post" ? row.latestActivityAt : row.joinedAt).getTime();
+  switch (row.kind) {
+    case "post":
+      return new Date(row.latestActivityAt).getTime();
+    case "circle_join":
+      return new Date(row.joinedAt).getTime();
+    case "likes":
+      return new Date(row.latestLikeAt).getTime();
+  }
 }
 
+// Post rows split New/Earlier on per-post PostRead; circle-join and likes rows
+// split on the single global cursor (User.circleJoinBuzzSeenAt).
 function mergeBuzzRows({
   newPostRows,
   earlierPostRows,
-  newCircleJoinRows,
-  earlierCircleJoinRows,
+  newGlobalCursorRows,
+  earlierGlobalCursorRows,
   earlierLimit,
 }: {
   newPostRows: BuzzRow[];
   earlierPostRows: BuzzRow[];
-  newCircleJoinRows: BuzzRow[];
-  earlierCircleJoinRows: BuzzRow[];
+  newGlobalCursorRows: BuzzRow[];
+  earlierGlobalCursorRows: BuzzRow[];
   earlierLimit: number;
 }): BuzzPostsData {
   const byRecency = (a: BuzzRow, b: BuzzRow) => rowTimestamp(b) - rowTimestamp(a);
 
-  const newBuzz = [...newPostRows, ...newCircleJoinRows].sort(byRecency);
-  const earlierAll = [...earlierPostRows, ...earlierCircleJoinRows].sort(byRecency);
+  const newBuzz = [...newPostRows, ...newGlobalCursorRows].sort(byRecency);
+  const earlierAll = [...earlierPostRows, ...earlierGlobalCursorRows].sort(byRecency);
 
   return {
     newBuzz,

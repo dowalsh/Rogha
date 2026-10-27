@@ -7,13 +7,14 @@ import {
   getMutualFriendCount,
 } from "@/lib/friends";
 import { resolveVisiblePosts } from "@/lib/access/postAccess";
+import { livePostWhere } from "@/lib/reveal";
 
 export async function getUserPosts(userId: string) {
   try {
     const posts = await prisma.post.findMany({
       where: {
         authorId: userId,
-        status: "PUBLISHED",
+        AND: [livePostWhere()],
       },
       include: {
         author: {

@@ -12,15 +12,47 @@ import {
 } from "@/lib/access/postAccess";
 import { getWeeklyJamForEdition, hasViewedWeeklyJam } from "@/lib/jam";
 import { hashToIndex } from "@/lib/jam-preview";
+import type { Prisma } from "@/generated/prisma/client";
+import {
+  nextRevealAt,
+  revealAtForWeekStart,
+  weekStartForReveal,
+  livePostWhere,
+  revealedEditionWhere,
+} from "@/lib/reveal";
 
 type DbUser = { id: string };
 
-export function plannedPublishAt(weekStart: Date): Date {
-  const d = new Date(weekStart);
-  d.setUTCDate(d.getUTCDate() + 7);
-  d.setUTCHours(7, 0, 0, 0);
-  console.debug("[plannedPublishAt]", { weekStart, planned: d });
-  return d;
+/**
+ * The edition a post submitted at `now` belongs to — the one revealing at
+ * the next Sunday 07:00 UTC — created on first use with that fixed reveal
+ * instant as its publishedAt (see src/lib/reveal.ts). Called at submit time
+ * so read access never waits on the cron.
+ */
+export async function getOrCreateUpcomingEdition(
+  tx: Prisma.TransactionClient,
+  now: Date = new Date(),
+) {
+  const revealAt = nextRevealAt(now);
+  const weekStart = weekStartForReveal(revealAt);
+  const edition = await tx.edition.upsert({
+    where: { weekStart },
+    update: {},
+    create: {
+      weekStart,
+      title: `Week of ${formatWeekLabel(weekStart)}`,
+      publishedAt: revealAt,
+    },
+    select: { id: true, publishedAt: true },
+  });
+  // A row the old cron created without posts never got a publishedAt.
+  if (!edition.publishedAt) {
+    await tx.edition.update({
+      where: { id: edition.id },
+      data: { publishedAt: revealAt },
+    });
+  }
+  return edition;
 }
 
 /**
@@ -46,8 +78,8 @@ export function getSundayLiveJoinWindow(now: Date = new Date()) {
 
 /**
  * The edition currently open for Sunday live joins, if any — the edition
- * whose publishedAt landed within today's live-join window. Returns null
- * when the window is closed or (rare) the reveal cron hasn't run yet.
+ * whose (fixed) publishedAt is this morning's reveal. Returns null when the
+ * window is closed or nobody submitted to this week's edition.
  */
 export async function getOpenLiveJoinEdition(now: Date = new Date()) {
   const { windowStart, windowEnd, isOpen } = getSundayLiveJoinWindow(now);
@@ -61,46 +93,60 @@ export async function getOpenLiveJoinEdition(now: Date = new Date()) {
 }
 
 /**
- * Publishes the edition for the given weekStart.
- *
- * New model:
- *  - Posts do NOT carry editionId until PUBLISHED.
- *  - When publishing a week:
- *      1. Upsert edition for that week.
- *      2. Find *all* SUBMITTED posts (no date filter).
- *      3. Force-assign them to this edition and mark them PUBLISHED.
- *      4. If this is the first publish, stamp publishedAt.
- *      5. If already published, still promote new SUBMITTED posts.
- *
- * NOTE: Because cron only calls this for the *most recent week*,
- *       this effectively means: "every SUBMITTED post is included
- *       in the next edition".
+ * The cron's half of the weekly reveal for the given weekStart. Read access
+ * doesn't depend on this having run — posts carry their edition from
+ * submit time and go live at its fixed publishedAt (see src/lib/reveal.ts).
+ * This only records what already happened:
+ *   1. Ensure the edition exists with its fixed reveal instant.
+ *   2. Attach any legacy SUBMITTED posts with no edition (submitted before
+ *      submit-time assignment existed) — only once the edition is due.
+ *   3. Flip every SUBMITTED post whose edition has revealed to PUBLISHED
+ *      (any edition, so a missed cron run catches up) and record
+ *      POST_PUBLISHED activity for each.
+ * `published` is true when this run flipped anything — the caller's cue to
+ * send the edition email — so a re-run doesn't email twice.
  */
-export async function publishEditionForWeek(weekStart: Date) {
+export async function publishEditionForWeek(weekStart: Date, now: Date = new Date()) {
   console.debug("[publishEditionForWeek] weekStart:", weekStart);
+  const revealAt = revealAtForWeekStart(weekStart);
 
   return prisma.$transaction(async (tx) => {
-    // 1. Upsert edition (always exists in new model)
+    // 1. Upsert edition with its fixed reveal instant
     const edition = await tx.edition.upsert({
       where: { weekStart },
       update: {},
       create: {
         weekStart,
         title: `Week of ${formatWeekLabel(weekStart)}`,
+        publishedAt: revealAt,
       },
       select: { id: true, publishedAt: true },
     });
+    if (!edition.publishedAt) {
+      await tx.edition.update({
+        where: { id: edition.id },
+        data: { publishedAt: revealAt },
+      });
+    }
 
     console.debug("[publishEditionForWeek] edition:", edition);
 
-    // 2. Find *all* submitted posts (no date filtering)
+    // 2. Legacy safety net: unattached submissions join this edition once due
+    if (revealAt <= now) {
+      await tx.post.updateMany({
+        where: { status: "SUBMITTED", editionId: null },
+        data: { editionId: edition.id },
+      });
+    }
+
+    // 3. Flip everything that's already live by time to PUBLISHED
     const submittedPosts = await tx.post.findMany({
-      where: { status: "SUBMITTED" },
+      where: { status: "SUBMITTED", edition: { publishedAt: { lte: now } } },
       select: { id: true, authorId: true },
     });
 
     console.debug(
-      "[publishEditionForWeek] submitted posts found:",
+      "[publishEditionForWeek] due submitted posts:",
       submittedPosts.map((p) => p.id)
     );
 
@@ -108,21 +154,17 @@ export async function publishEditionForWeek(weekStart: Date) {
       return {
         ok: true,
         published: false,
-        reason: "NO_SUBMITTED_POSTS",
+        reason: "NO_DUE_POSTS",
         editionId: edition.id,
         postsPublished: 0,
       };
     }
 
-    // 3. Promote them + overwrite stale editionId
     const { count: promotedCount } = await tx.post.updateMany({
       where: {
         id: { in: submittedPosts.map((p) => p.id) },
       },
-      data: {
-        status: "PUBLISHED",
-        editionId: edition.id,
-      },
+      data: { status: "PUBLISHED" },
     });
 
     console.debug(
@@ -147,26 +189,10 @@ export async function publishEditionForWeek(weekStart: Date) {
       }
     }
 
-    // 4. Stamp publishedAt if first time publishing
-    let becamePublishedNow = false;
-
-    if (!edition.publishedAt) {
-      await tx.edition.update({
-        where: { id: edition.id },
-        data: { publishedAt: new Date() },
-      });
-      becamePublishedNow = true;
-
-      console.debug(
-        "[publishEditionForWeek] stamped publishedAt for edition",
-        edition.id
-      );
-    }
-
     return {
       ok: true,
-      published: becamePublishedNow,
-      reason: becamePublishedNow ? "FIRST_PUBLISH" : "ALREADY_PUBLISHED",
+      published: promotedCount > 0,
+      reason: "PROMOTED",
       editionId: edition.id,
       postsPublished: promotedCount,
     };
@@ -174,6 +200,7 @@ export async function publishEditionForWeek(weekStart: Date) {
 }
 
 export async function getPublishedEditions(user: DbUser) {
+  const now = new Date();
   const friendships = await getAcceptedFriendships(user.id);
   const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
   const friendIds = Array.from(friendMap.keys());
@@ -205,7 +232,7 @@ export async function getPublishedEditions(user: DbUser) {
   const recipientPostIdSet = new Set(recipientPostIds);
 
   const editions = await prisma.edition.findMany({
-    where: { NOT: { publishedAt: null } },
+    where: revealedEditionWhere(now),
     orderBy: { weekStart: "desc" },
     select: { id: true, title: true, weekStart: true, publishedAt: true },
   });
@@ -215,7 +242,7 @@ export async function getPublishedEditions(user: DbUser) {
       const posts = await prisma.post.findMany({
         where: {
           editionId: ed.id,
-          status: "PUBLISHED",
+          AND: [livePostWhere(now)],
           OR: buildAudienceCandidateWhere(user.id, friendIds, myCircleIds, recipientPostIds),
         },
         orderBy: { updatedAt: "desc" },
@@ -290,12 +317,16 @@ export async function getPublishedEditions(user: DbUser) {
         "posts:",
         orderedPosts.length
       );
-      return { ...ed, posts: orderedPosts, weeklyJam };
+      // status is the effective one — a live post may still read SUBMITTED
+      // until the cron's lagging flip (see src/lib/reveal.ts).
+      const livePosts = orderedPosts.map((p) => ({ ...p, status: "PUBLISHED" as const }));
+      return { ...ed, posts: livePosts, weeklyJam };
     })
   );
 }
 
 export async function getPublishedEditionById(user: DbUser, id: string) {
+  const now = new Date();
   // 1) Friendships with dates for temporal gating
   const friendships = await getAcceptedFriendships(user.id);
   const friendMap = new Map(friendships.map((f) => [f.friendId, f.acceptedAt]));
@@ -307,6 +338,8 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
     select: { id: true, title: true, weekStart: true, publishedAt: true },
   });
   if (!edition) return null;
+  // Not revealed yet — its edition row exists from the week's first submit
+  if (!edition.publishedAt || edition.publishedAt > now) return null;
 
   // 3) Circles the viewer is part of (for CIRCLE audience), with joinedAt
   //    for the temporal gate below
@@ -329,7 +362,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
   const posts = await prisma.post.findMany({
     where: {
       editionId: edition.id,
-      status: "PUBLISHED",
+      AND: [livePostWhere(now)],
       OR: buildAudienceCandidateWhere(user.id, validFriendIds, myCircleIds, recipientPostIds),
     },
     orderBy: { updatedAt: "desc" },
@@ -413,6 +446,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
           : { circles: [], hiddenCount: 0 };
       return {
         ...p,
+        status: "PUBLISHED" as const, // effective status, see src/lib/reveal.ts
         editionId: edition.id,
         likeCount: _count.likes,
         likedByMe: likes.length > 0,
@@ -486,9 +520,7 @@ export async function getPublishedEditionById(user: DbUser, id: string) {
 
 export async function getMostRecentPublishedEditionForUser() {
   return prisma.edition.findFirst({
-    where: {
-      publishedAt: { not: null },
-    },
+    where: revealedEditionWhere(),
     orderBy: {
       weekStart: "desc",
     },

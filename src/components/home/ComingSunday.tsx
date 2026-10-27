@@ -16,6 +16,12 @@ type ComingSundayProps = {
   collapsed: boolean;
 };
 
+// "6 days left" … "1 day left"; nothing on Sunday, when daysLeft is null.
+function daysLeftSuffix(daysLeft: number | null): string {
+  if (daysLeft === null) return "";
+  return ` · ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`;
+}
+
 function jamTeaserText(count: number, viewerJamConnected: boolean): string {
   if (viewerJamConnected) {
     // Viewer's already in — lead with that and point them at the sneak
@@ -133,7 +139,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         {data.showJamTeaser && <JamTeaser data={data} />}
         <div className="flex items-center justify-between gap-2 pt-1 text-sm">
           <span className="text-muted-foreground">
-            Nothing yet · {data.daysLeft} day{data.daysLeft === 1 ? "" : "s"} left
+            Nothing yet{daysLeftSuffix(data.daysLeft)}
           </span>
           <Button size="sm" onClick={handleStartPost} disabled={creating}>
             Start a post
@@ -208,7 +214,7 @@ export function ComingSunday({ data, collapsed }: ComingSundayProps) {
         ) : (
           <>
             <span className="text-muted-foreground">
-              Add yours · {data.daysLeft} day{data.daysLeft === 1 ? "" : "s"} left
+              Add yours{daysLeftSuffix(data.daysLeft)}
             </span>
             <Button size="sm" onClick={handleStartPost} disabled={creating}>
               Start a post

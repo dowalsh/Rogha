@@ -3,6 +3,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { livePostWhere } from "@/lib/reveal";
 import { getDbUserId } from "./user.action";
 import { revalidatePath } from "next/cache";
 import { defaultInviteBase, generateUniqueInviteCode } from "@/lib/inviteCode";
@@ -72,7 +73,7 @@ export async function getCirclesForUser() {
               },
             },
             posts: {
-              where: { status: "PUBLISHED" },
+              where: livePostWhere(),
               select: {
                 id: true,
                 title: true,
@@ -256,7 +257,7 @@ export async function getCircleById(circleId: string) {
     // PostCircle (see schema comments) and no longer written by new code.
     const posts = await prisma.post.findMany({
       where: {
-        status: "PUBLISHED",
+        AND: [livePostWhere()],
         audienceType: "CIRCLE",
         postCircles: { some: { circleId } },
       },

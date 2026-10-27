@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
+import { isHomeKey } from "@/lib/swrKeys";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -176,7 +177,7 @@ function ReadPostPageInner({
     if (!post?.id || readFiredRef.current) return;
     readFiredRef.current = true;
     fetch(`/api/posts/${post.id}/read`, { method: "POST" })
-      .then(() => mutate("/api/home"))
+      .then(() => mutate(isHomeKey))
       .catch(() => {});
   }, [post?.id]);
 

@@ -1,5 +1,11 @@
 # Spec: Sunday live join — write and join the current edition on the day
 
+> **Update (2026-10-20):** the reveal is now time-based, not cron-driven — see
+> [2026-10-20-time-based-reveal.md](./2026-10-20-time-based-reveal.md). The edition a live join
+> lands in exists from its week's first submit (with `publishedAt` = this morning's 07:00 UTC),
+> so live-join no longer waits on the cron having created/stamped it. Where this spec says "the
+> cron publishes", read "the edition reveals".
+
 Status: **draft.** Builds on the weekly Edition cadence (the Sunday 07:00 UTC publish/reveal
 described in [product-spec.md](../reference/product-spec.md)). Prompted by user feedback: people
 *love* the Sunday timing but resent that writing *on* Sunday benches them for a full week. The
